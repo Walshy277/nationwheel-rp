@@ -22,26 +22,27 @@ const ACTION_SIZES = {
 };
 const STATUS_COL = { pending:"#7f8c8d", active:"#3498db", complete:"#2ecc71", cancelled:"#e74c3c" };
 const WAR_COL    = { active:"#e74c3c", frozen:"#3498db", peace:"#2ecc71" };
-const POST_TYPES = ["Dispatch","Communiqué","Declaration","Intelligence","Propaganda","Treaty Proposal","Ultimatum"];
-const POST_COLS  = { Dispatch:"#3498db", Communiqué:"#9b59b6", Declaration:"#d4af37", Intelligence:"#e67e22", Propaganda:"#e74c3c", "Treaty Proposal":"#2ecc71", Ultimatum:"#c0392b" };
+const POST_TYPES = ["Dispatch","Official Statement","Declaration","Intelligence","Propaganda","Treaty Proposal","Ultimatum"];
+const POST_COLS  = { Dispatch:"#3498db", "Official Statement":"#9b59b6", "Communiqué":"#9b59b6", "CommuniquÃ©":"#9b59b6", Declaration:"#d4af37", Intelligence:"#e67e22", Propaganda:"#e74c3c", "Treaty Proposal":"#2ecc71", Ultimatum:"#c0392b" };
 const NEWS_CATS  = ["announcement","war","diplomacy","economy","lore","community"];
 const NEWS_COL   = { announcement:"#d4af37", war:"#e74c3c", diplomacy:"#3498db", economy:"#2ecc71", lore:"#9b59b6", community:"#e67e22" };
 
 const FORUM_BOARDS = [
-  { slug:"general",           name:"General",              desc:"Cross-world discussion and community chat",              icon:"", sort:1  },
-  { slug:"diplomacy",         name:"Diplomacy",            desc:"Treaties, negotiations, and alliances",                  icon:"", sort:2  },
-  { slug:"canon-actions",     name:"Canon Actions",        desc:"Action discussion, outcomes, and lore clarification",    icon:"", sort:3  },
-  { slug:"war-room",          name:"War Room",             desc:"Military strategy, war declarations, and battle reports", icon:"", sort:4  },
-  { slug:"intelligence",      name:"Intelligence",         desc:"Espionage, leaks, and covert operations",                icon:"", sort:5  },
-  { slug:"trade",             name:"Trade",                desc:"Economic deals, markets, and logistics",                 icon:"", sort:6  },
-  { slug:"propaganda",        name:"Propaganda",           desc:"State media, narratives, and public messaging",          icon:"", sort:7  },
-  { slug:"cultural-exchange", name:"Cultural Exchange",    desc:"Arts, religion, culture, and soft power",                icon:"", sort:8  },
-  { slug:"newsroom",          name:"Newsroom",             desc:"Reports, reactions, and world event discussion",         icon:"", sort:9  },
-  { slug:"lore-library",      name:"Lore Library",         desc:"World lore, canon rules, factions, and timeline",       icon:"", sort:10 },
-  { slug:"nation-introductions", name:"Nation Introductions", desc:"Introduce your nation, its history and culture",     icon:"", sort:11 },
-  { slug:"season-archives",   name:"Season Archives",      desc:"Completed seasons, outcomes, and historical records",    icon:"", sort:12 },
-  { slug:"support",           name:"Support",              desc:"Questions, onboarding, and site help",                   icon:"", sort:13 },
+  { slug:"general",           name:"General",              desc:"Cross-world discussion and community chat",              icon:"💬", sort:1  },
+  { slug:"diplomacy",         name:"Diplomacy",            desc:"Treaties, negotiations, and alliances",                  icon:"🤝", sort:2  },
+  { slug:"canon-actions",     name:"Canon Actions",        desc:"Action discussion, outcomes, and lore clarification",    icon:"🧭", sort:3  },
+  { slug:"war-room",          name:"War Room",             desc:"Military strategy, war declarations, and battle reports", icon:"⚔️", sort:4  },
+  { slug:"intelligence",      name:"Intelligence",         desc:"Espionage, leaks, and covert operations",                icon:"🔎", sort:5  },
+  { slug:"trade",             name:"Trade",                desc:"Economic deals, markets, and logistics",                 icon:"💱", sort:6  },
+  { slug:"propaganda",        name:"Propaganda",           desc:"State media, narratives, and public messaging",          icon:"📣", sort:7  },
+  { slug:"cultural-exchange", name:"Cultural Exchange",    desc:"Arts, religion, culture, and soft power",                icon:"🎭", sort:8  },
+  { slug:"newsroom",          name:"Newsroom",             desc:"Reports, reactions, and world event discussion",         icon:"📰", sort:9  },
+  { slug:"lore-library",      name:"Lore Library",         desc:"World lore, canon rules, factions, and timeline",       icon:"📚", sort:10 },
+  { slug:"nation-introductions", name:"Nation Introductions", desc:"Introduce your nation, its history and culture",     icon:"🌐", sort:11 },
+  { slug:"season-archives",   name:"Season Archives",      desc:"Completed seasons, outcomes, and historical records",    icon:"🗄️", sort:12 },
+  { slug:"support",           name:"Support",              desc:"Questions, onboarding, and site help",                   icon:"🛟", sort:13 },
 ];
+const BOARD_ICONS = Object.fromEntries(FORUM_BOARDS.map(b => [b.slug, b.icon]));
 
 // ─── SQL ──────────────────────────────────────────────────────────
 const SQL = `-- Run once in Supabase SQL Editor
@@ -226,19 +227,19 @@ create policy "auth_insert_fp" on forum_posts for insert with check (auth.uid()=
 
 -- Seed forum boards
 insert into forum_boards (name,description,slug,icon,sort_order) values
-('General','Cross-world discussion and community chat','general','',1),
-('Diplomacy','Treaties, negotiations, and alliances','diplomacy','',2),
-('Canon Actions','Action discussion and lore clarification','canon-actions','',3),
-('War Room','Military strategy and battle reports','war-room','',4),
-('Intelligence','Espionage, leaks, and covert operations','intelligence','',5),
-('Trade','Economic deals, markets, and logistics','trade','',6),
-('Propaganda','State media and public messaging','propaganda','',7),
-('Cultural Exchange','Arts, religion, and soft power','cultural-exchange','',8),
-('Newsroom','Reports and world event discussion','newsroom','',9),
-('Lore Library','World lore, canon rules, and timeline','lore-library','',10),
-('Nation Introductions','Introduce your nation to the world','nation-introductions','',11),
-('Season Archives','Completed seasons and historical records','season-archives','',12),
-('Support','Questions, onboarding, and site help','support','',13)
+('General','Cross-world discussion and community chat','general','💬',1),
+('Diplomacy','Treaties, negotiations, and alliances','diplomacy','🤝',2),
+('Canon Actions','Action discussion and lore clarification','canon-actions','🧭',3),
+('War Room','Military strategy and battle reports','war-room','⚔️',4),
+('Intelligence','Espionage, leaks, and covert operations','intelligence','🔎',5),
+('Trade','Economic deals, markets, and logistics','trade','💱',6),
+('Propaganda','State media and public messaging','propaganda','📣',7),
+('Cultural Exchange','Arts, religion, and soft power','cultural-exchange','🎭',8),
+('Newsroom','Reports and world event discussion','newsroom','📰',9),
+('Lore Library','World lore, canon rules, and timeline','lore-library','📚',10),
+('Nation Introductions','Introduce your nation to the world','nation-introductions','🌐',11),
+('Season Archives','Completed seasons and historical records','season-archives','🗄️',12),
+('Support','Questions, onboarding, and site help','support','🛟',13)
 on conflict (slug) do update set icon = excluded.icon;
 
 create or replace function public.is_admin(uid uuid)
@@ -1247,7 +1248,7 @@ const Leaderboards = ({ nations }) => {
 };
 
 // ─── FORUMS ───────────────────────────────────────────────────────
-const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefresh }) => {
+const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefresh, onRequireAuth }) => {
   const [view, setView] = useState({ type:"boards" });
   const [threadForm, setThreadForm] = useState({ title:"", body:"" });
   const [replyBody, setReplyBody] = useState("");
@@ -1269,17 +1270,20 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
   if (view.type==="boards") {
     return (
       <div>
-        <h2 style={{ margin:"0 0 1.25rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:20 }}>Boards</h2>
+        <h2 style={{ margin:"0 0 0.35rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:20 }}>Boards</h2>
+        {!profile && <p style={{ margin:"0 0 1.25rem", color:"#8fa0bd", fontSize:13 }}>Public viewing is open. Sign in to create threads or post replies.</p>}
         <div className="board-list" style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
           {boards.map(b=>{
             const bThreads = threads.filter(t=>t.board_id===b.id);
             const lastThread = bThreads[0];
+            const icon = b.icon || BOARD_ICONS[b.slug] || "•";
             return (
               <div className="board-card" key={b.id} style={{ ...card, cursor:"pointer", transition:"border-color 0.18s" }}
                 onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(212,175,55,0.38)"}
                 onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(212,175,55,0.1)"}
                 onClick={()=>setView({type:"board",board:b})}>
                 <div className="board-card-row" style={{ display:"flex", gap:"1rem", alignItems:"center" }}>
+                  <div className="board-icon" aria-hidden="true" style={{ fontSize:22, width:28, textAlign:"center", flexShrink:0 }}>{icon}</div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>{b.name}</div>
                     <div style={{ fontSize:12, color:"#8fa0bd", marginTop:2 }}>{b.description}</div>
@@ -1306,8 +1310,9 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
       <div>
         <button onClick={()=>setView({type:"boards"})} style={{ ...mkBtn("ghost"), marginBottom:"1rem", fontSize:12 }}>All Boards</button>
         <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap" }}>
-          <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:20, flex:1 }}>{view.board.name}</h2>
+          <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:20, flex:1 }}>{view.board.icon || BOARD_ICONS[view.board.slug] || "•"} {view.board.name}</h2>
           {profile && <button onClick={()=>setShowNewThread(!showNewThread)} style={mkBtn()}>+ New Thread</button>}
+          {!profile && <button onClick={onRequireAuth} style={mkBtn("ghost")}>Sign In to Post</button>}
         </div>
         {showNewThread && (
           <div style={{ ...card, border:"1px solid rgba(212,175,55,0.28)", marginBottom:"1rem" }}>
@@ -1538,16 +1543,21 @@ export default function App() {
       if (s.session?.user) {
         setUser(s.session.user);
         ensureProfile(s.session.user).then(p=>{if(p)setProfile(p);}).catch(console.error);
-        fetchAll();
       }
-      setLoading(false);
+      fetchAll();
     });
-    supabase.auth.onAuthStateChange((_,session) => { if(session?.user)setUser(session.user); else{setUser(null);setProfile(null);} });
+    supabase.auth.onAuthStateChange((_,session) => {
+      if(session?.user) {
+        setUser(session.user);
+        ensureProfile(session.user).then(p=>{if(p)setProfile(p);}).catch(console.error);
+      } else {
+        setUser(null);
+        setProfile(null);
+      }
+    });
   }, [fetchAll]);
 
   if (!SUPABASE_CONFIGURED) return <SetupModal onClose={()=>{}} />;
-
-  if (!user) return <Auth setupRequired={setupRequired} onAuth={(u,p)=>{setUser(u);if(p)setProfile(p);else ensureProfile(u).then(next=>{if(next)setProfile(next);}).catch(console.error);fetchAll();}} />;
 
   const userNation = profile?.nation_id ? data.nations.find(n=>n.id===profile.nation_id) : null;
   const isAdmin = profile?.role==="admin";
@@ -1555,14 +1565,15 @@ export default function App() {
 
   const nav = [
     {id:"forums",label:"Boards"},
-    {id:"rp",label:"Dispatches"},
-    {id:"actions",label:"Actions"},
-    {id:"wars",label:"Wars and Alliances"},
-    {id:"nations",label:"Nations"},
-    {id:"news",label:"News"},
-    {id:"leaderboards",label:"Leaderboards"},
-    {id:"home",label:"Overview"},
-    ...(isAdmin?[{id:"admin",label:"Admin"}]:[]),
+    ...(user ? [
+      {id:"rp",label:"Dispatches"},
+      {id:"actions",label:"Actions"},
+      {id:"wars",label:"Wars and Alliances"},
+      {id:"nations",label:"Nations"},
+      {id:"news",label:"News"},
+      {id:"leaderboards",label:"Leaderboards"},
+      {id:"home",label:"Overview"},
+    ] : []),
   ];
 
   const navigate = (id) => { setPage(id); setMenuOpen(false); };
@@ -1586,11 +1597,15 @@ export default function App() {
           ))}
         </nav>
         <div className="user-tools" style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexShrink:0 }}>
-          {userNation && <><Flag nation={userNation} size={20} /><span style={{ fontSize:11, color:"#9fb4d6", maxWidth:70, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{userNation.name}</span></>}
-          <span style={{ fontSize:11, color:"#9fb4d6" }}>@{profile?.username}</span>
-          {isMod && <span style={{ fontSize:9, color:"#3498db", border:"1px solid #3498db33", borderRadius:3, padding:"1px 5px", letterSpacing:"0.06em" }}>{profile?.role?.toUpperCase()}</span>}
-          <button onClick={()=>setShowSetup(true)} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>Setup</button>
-          <button onClick={()=>supabase.auth.signOut()} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>Out</button>
+          {user ? <>
+            {userNation && <><Flag nation={userNation} size={20} /><span style={{ fontSize:11, color:"#9fb4d6", maxWidth:70, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{userNation.name}</span></>}
+            <span style={{ fontSize:11, color:"#9fb4d6" }}>@{profile?.username}</span>
+            {isMod && <span style={{ fontSize:9, color:"#3498db", border:"1px solid #3498db33", borderRadius:3, padding:"1px 5px", letterSpacing:"0.06em" }}>{profile?.role?.toUpperCase()}</span>}
+            {isAdmin && <button onClick={()=>navigate("admin")} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>Admin</button>}
+            <button onClick={()=>supabase.auth.signOut()} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>Sign Out</button>
+          </> : (
+            <button onClick={()=>navigate("auth")} style={{ ...mkBtn("gold"), padding:"4px 10px", fontSize:11 }}>Sign In</button>
+          )}
         </div>
       </header>
 
@@ -1605,7 +1620,8 @@ export default function App() {
               {page==="wars"         && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} nations={data.nations} profile={profile} userNation={userNation} isMod={isMod} onRefresh={fetchAll} />}
               {page==="news"         && <NewsPage news={data.news} profile={profile} isMod={isMod} onRefresh={fetchAll} />}
               {page==="leaderboards" && <Leaderboards nations={data.nations} />}
-              {page==="forums"       && <Forums boards={data.boards} threads={data.threads} posts={data.forumPosts} profile={profile} userNation={userNation} nations={data.nations} onRefresh={fetchAll} />}
+              {page==="forums"       && <Forums boards={data.boards} threads={data.threads} posts={data.forumPosts} profile={profile} userNation={userNation} nations={data.nations} onRefresh={fetchAll} onRequireAuth={()=>navigate("auth")} />}
+              {page==="auth"         && <Auth setupRequired={setupRequired} onAuth={(u,p)=>{setUser(u);if(p)setProfile(p);else ensureProfile(u).then(next=>{if(next)setProfile(next);}).catch(console.error);fetchAll();setPage("forums");}} />}
               {page==="admin" && isAdmin && <Admin nations={data.nations} profiles={data.profiles} onRefresh={fetchAll} />}
             </>
         }
