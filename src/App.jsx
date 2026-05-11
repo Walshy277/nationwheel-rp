@@ -1120,7 +1120,20 @@ const WarCard = ({ war, nations, alliances = [], participants = [], isMod, onRef
   };
 
   const setWarStatus = async (status, extra = {}) => {
-    const { error } = await supabase.from("wars").update({ status, ...extra }).eq("id", war.id);
+    const payload = { status, ...extra };
+    let { error } = await supabase.from("wars").update(payload).eq("id", war.id);
+    if (error && /ceasefire_days|ceasefire_until|schema cache|column/i.test(error.message || "")) {
+      const fallback = { status };
+      if ("ended_at" in payload) fallback.ended_at = payload.ended_at;
+      if (status === "ceasefire") {
+        fallback.outcome = `Ceasefire for ${payload.ceasefire_days} day${payload.ceasefire_days === 1 ? "" : "s"}${payload.ceasefire_until ? `, until ${new Date(payload.ceasefire_until).toLocaleDateString()}` : ""}`;
+      }
+      const retry = await supabase.from("wars").update(fallback).eq("id", war.id);
+      error = retry.error;
+      if (!error) {
+        alert("Ceasefire status saved. Run supabase-war-participants-setup.sql to store ceasefire days and dates properly.");
+      }
+    }
     if (error) alert(error.message);
     else onRefresh();
   };
@@ -1162,7 +1175,9 @@ const WarCard = ({ war, nations, alliances = [], participants = [], isMod, onRef
       {war.casus_belli && <p style={{ margin:"0.4rem 0 0", color:"#9fb4d6", fontSize:12 }}>{war.casus_belli}</p>}
       {war.status === "ceasefire" && (
         <p style={{ margin:"0.45rem 0 0", color:"#9fb4d6", fontSize:12 }}>
-          Ceasefire{war.ceasefire_days ? ` for ${war.ceasefire_days} day${war.ceasefire_days === 1 ? "" : "s"}` : ""}{war.ceasefire_until ? `, until ${new Date(war.ceasefire_until).toLocaleDateString()}` : ""}
+          {war.ceasefire_days || war.ceasefire_until
+            ? <>Ceasefire{war.ceasefire_days ? ` for ${war.ceasefire_days} day${war.ceasefire_days === 1 ? "" : "s"}` : ""}{war.ceasefire_until ? `, until ${new Date(war.ceasefire_until).toLocaleDateString()}` : ""}</>
+            : (war.outcome || "Ceasefire")}
         </p>
       )}
       {isMod && (
