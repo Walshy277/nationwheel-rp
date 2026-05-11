@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+.env.local
+*.log
+debug-current.png
+dev-preview.png
+code.jsx
+code.jsx.txt
+/nationwheel_logo.jpg
