@@ -10,6 +10,9 @@ as $$
   select exists(select 1 from public.profiles where id = uid and role in ('admin','lore','mod'));
 $$;
 
+alter table wars add column if not exists ceasefire_days int;
+alter table wars add column if not exists ceasefire_until timestamptz;
+
 create table if not exists war_participants (
   id uuid primary key default gen_random_uuid(),
   war_id uuid references wars(id) on delete cascade,

@@ -21,7 +21,7 @@ const ACTION_SIZES = {
   epic:   { days: 21, label: "Epic",   color: "#9b59b6" },
 };
 const STATUS_COL = { pending:"#7f8c8d", active:"#3498db", complete:"#2ecc71", cancelled:"#e74c3c" };
-const WAR_COL    = { active:"#e74c3c", frozen:"#3498db", peace:"#2ecc71" };
+const WAR_COL    = { active:"#e74c3c", ceasefire:"#3498db", frozen:"#3498db", stalemate:"#f39c12", peace:"#2ecc71" };
 const POST_TYPES = ["Dispatch","Official Statement","Declaration","Intelligence","Propaganda","Treaty Proposal","Ultimatum"];
 const POST_COLS  = { Dispatch:"#3498db", "Official Statement":"#9b59b6", "Communiqué":"#9b59b6", "CommuniquÃ©":"#9b59b6", Declaration:"#d4af37", Intelligence:"#e67e22", Propaganda:"#e74c3c", "Treaty Proposal":"#2ecc71", Ultimatum:"#c0392b" };
 const NEWS_CATS  = ["announcement","war","diplomacy","economy","lore","community"];
@@ -137,8 +137,12 @@ create table if not exists wars (
   aggressor_id uuid references nations(id) on delete cascade,
   defender_id uuid references nations(id) on delete cascade,
   name text, status text default 'active', casus_belli text, outcome text,
+  ceasefire_days int, ceasefire_until timestamptz,
   started_at timestamptz default now(), ended_at timestamptz
 );
+
+alter table wars add column if not exists ceasefire_days int;
+alter table wars add column if not exists ceasefire_until timestamptz;
 
 create table if not exists alliances (
   id uuid primary key default gen_random_uuid(),
@@ -1091,6 +1095,7 @@ const WarCard = ({ war, nations, alliances = [], participants = [], isMod, onRef
   const defenders = warParticipants.filter(p=>p.side==="defender");
   const hasParticipants = warParticipants.length > 0;
   const [addForm, setAddForm] = useState({ side:"attacker", type:"nation", id:"" });
+  const [ceasefireDays, setCeasefireDays] = useState(war.ceasefire_days || 3);
 
   const addParticipant = async () => {
     if (!addForm.id) return;
@@ -1112,6 +1117,18 @@ const WarCard = ({ war, nations, alliances = [], participants = [], isMod, onRef
     const { error } = await supabase.from("war_participants").delete().eq("id", id);
     if (error) alert(error.message);
     else onRefresh();
+  };
+
+  const setWarStatus = async (status, extra = {}) => {
+    const { error } = await supabase.from("wars").update({ status, ...extra }).eq("id", war.id);
+    if (error) alert(error.message);
+    else onRefresh();
+  };
+
+  const setCeasefire = async () => {
+    const days = Math.max(1, parseInt(ceasefireDays, 10) || 1);
+    const until = new Date(Date.now() + days * 86400000).toISOString();
+    await setWarStatus("ceasefire", { ceasefire_days:days, ceasefire_until:until, ended_at:null });
   };
 
   const Side = ({ title, color, fallback, items }) => (
@@ -1137,12 +1154,17 @@ const WarCard = ({ war, nations, alliances = [], participants = [], isMod, onRef
         <span style={{ color:"#8493ad", fontFamily:"var(--display)", fontSize:18, alignSelf:"center" }}>vs</span>
         <Side title="Defenders" color="#d4af37" fallback={def?.name||"?"} items={defenders} />
         <div style={{ marginLeft:"auto", alignSelf:"center" }}>
-          <span style={{ fontSize:10, fontWeight:800, color:WAR_COL[war.status], border:`1px solid ${WAR_COL[war.status]}`, borderRadius:3, padding:"2px 7px" }}>{war.status?.toUpperCase()}</span>
+          <span style={{ fontSize:10, fontWeight:800, color:WAR_COL[war.status] || "#d4af37", border:`1px solid ${WAR_COL[war.status] || "#d4af37"}`, borderRadius:3, padding:"2px 7px" }}>{war.status?.toUpperCase()}</span>
         </div>
       </div>
       {!hasParticipants && <div style={{ marginTop:"0.55rem", fontSize:11, color:"#8fa0bd" }}>Legacy two-nation war. Lore team can add participants below to convert it.</div>}
       {war.name && <div style={{ fontFamily:"var(--display)", color:"#d7e2f2", fontSize:12, marginTop:"0.5rem", fontStyle:"italic" }}>"{war.name}"</div>}
       {war.casus_belli && <p style={{ margin:"0.4rem 0 0", color:"#9fb4d6", fontSize:12 }}>{war.casus_belli}</p>}
+      {war.status === "ceasefire" && (
+        <p style={{ margin:"0.45rem 0 0", color:"#9fb4d6", fontSize:12 }}>
+          Ceasefire{war.ceasefire_days ? ` for ${war.ceasefire_days} day${war.ceasefire_days === 1 ? "" : "s"}` : ""}{war.ceasefire_until ? `, until ${new Date(war.ceasefire_until).toLocaleDateString()}` : ""}
+        </p>
+      )}
       {isMod && (
         <div style={{ marginTop:"0.9rem", display:"flex", flexDirection:"column", gap:"0.55rem" }}>
           <div className="war-participant-form" style={{ display:"grid", gridTemplateColumns:"120px 120px minmax(180px,1fr) auto", gap:"0.45rem", alignItems:"center" }}>
@@ -1162,9 +1184,12 @@ const WarCard = ({ war, nations, alliances = [], participants = [], isMod, onRef
             </select>
             <button onClick={addParticipant} style={{ ...mkBtn("ghost"), fontSize:11 }}>Add</button>
           </div>
-          <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
-            {war.status==="active" && <button onClick={async()=>{await supabase.from("wars").update({status:"frozen"}).eq("id",war.id);onRefresh();}} style={{ ...mkBtn("blue"), fontSize:11 }}>Freeze</button>}
-            {["active","frozen"].includes(war.status) && <button onClick={async()=>{await supabase.from("wars").update({status:"peace",ended_at:new Date().toISOString()}).eq("id",war.id);onRefresh();}} style={{ ...mkBtn("ghost"), fontSize:11 }}>Set Peace</button>}
+          <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", alignItems:"center" }}>
+            <button onClick={()=>setWarStatus("active", { ceasefire_days:null, ceasefire_until:null, ended_at:null })} style={{ ...mkBtn("red"), fontSize:11 }}>Active War</button>
+            <button onClick={()=>setWarStatus("stalemate", { ceasefire_days:null, ceasefire_until:null, ended_at:null })} style={{ ...mkBtn("ghost"), fontSize:11 }}>Stalemate</button>
+            <input type="number" min="1" value={ceasefireDays} onChange={e=>setCeasefireDays(e.target.value)} style={{ ...inp, width:92, fontSize:12, padding:"7px 9px" }} />
+            <button onClick={setCeasefire} style={{ ...mkBtn("blue"), fontSize:11 }}>Ceasefire Days</button>
+            <button onClick={()=>setWarStatus("peace", { ended_at:new Date().toISOString(), ceasefire_days:null, ceasefire_until:null })} style={{ ...mkBtn("green"), fontSize:11 }}>Peace</button>
           </div>
         </div>
       )}
@@ -1871,6 +1896,24 @@ const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
 // ═══════════════════════════════════════════════════════════════════
 // ROOT APP
 // ═══════════════════════════════════════════════════════════════════
+const StaffTools = ({ isAdmin, page, navigate, setShowSetup, counts }) => (
+  <div className="staff-tools" style={{ position:"sticky", top:50, zIndex:150, background:"rgba(3,7,13,0.96)", borderBottom:"1px solid rgba(78,128,190,0.24)", backdropFilter:"blur(16px)" }}>
+    <div style={{ maxWidth:980, margin:"0 auto", padding:"0.45rem 1rem", display:"flex", gap:"0.4rem", alignItems:"center", overflowX:"auto", scrollbarWidth:"none" }}>
+      <span style={{ fontSize:10, color:"#8fa0bd", letterSpacing:"0.12em", textTransform:"uppercase", flexShrink:0 }}>{isAdmin ? "Admin Tools" : "Lore Tools"}</span>
+      {[
+        ["admin", isAdmin ? "Admin Panel" : "Lore Panel"],
+        ["nations", `Nations ${counts.nations}`],
+        ["wars", `Wars ${counts.wars}`],
+        ["actions", `Actions ${counts.actions}`],
+        ["news", "News"],
+      ].map(([id,label])=>(
+        <button key={id} onClick={()=>navigate(id)} style={{ ...mkBtn(page===id?"gold":"ghost"), minHeight:30, padding:"5px 9px", fontSize:10.5 }}>{label}</button>
+      ))}
+      <button onClick={()=>setShowSetup(true)} style={{ ...mkBtn("ghost"), minHeight:30, padding:"5px 9px", fontSize:10.5, marginLeft:"auto" }}>Setup SQL</button>
+    </div>
+  </div>
+);
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -2016,6 +2059,20 @@ export default function App() {
         </div>
       </header>
 
+      {isLoreTeam && (
+        <StaffTools
+          isAdmin={isAdmin}
+          page={page}
+          navigate={navigate}
+          setShowSetup={setShowSetup}
+          counts={{
+            nations:data.nations.length,
+            wars:data.wars.filter(w=>w.status!=="peace").length,
+            actions:data.actions.filter(a=>["pending","active"].includes(a.status)).length,
+          }}
+        />
+      )}
+
       <main className="app-main" style={{ maxWidth:980, margin:"0 auto", padding:"1.5rem 1rem", width:"100%", flex:1 }}>
         {dbIssues.length > 0 && (
           <div style={{ ...card, border:"1px solid rgba(225,29,29,0.34)", background:"linear-gradient(180deg,rgba(62,12,12,0.88),rgba(17,9,9,0.92))", marginBottom:"1rem" }}>
@@ -2092,6 +2149,7 @@ export default function App() {
             gap:0.55rem!important;
             align-items:center!important;
           }
+          .staff-tools{top:104px!important;}
           .brand{grid-area:brand;min-width:0;}
           .brand-logo{width:32px!important;height:32px!important;}
           .brand-name{font-size:13px!important;letter-spacing:0.06em!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -2129,6 +2187,7 @@ export default function App() {
         }
         @media (max-width: 430px) {
           .app-header{min-height:108px!important;}
+          .staff-tools{top:108px!important;}
           .brand-name{font-size:12px!important;}
           .user-tools{max-width:44vw;}
           .user-tools button{padding:5px 7px!important;font-size:10.5px!important;}

@@ -48,6 +48,8 @@ create table if not exists war_participants (
 );
 
 alter table war_participants enable row level security;
+alter table wars add column if not exists ceasefire_days int;
+alter table wars add column if not exists ceasefire_until timestamptz;
 
 drop policy if exists "admin_manage_profiles" on profiles;
 drop policy if exists "admin_manage_nations" on nations;
