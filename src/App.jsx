@@ -75,8 +75,6 @@ create table if not exists nations (
   diplomatic_status text, bloc text,
   tiktok_username text,
   flag_url text,
-  flag_color1 text default '#c0392b',
-  flag_color2 text default '#f39c12',
   owner_id uuid references profiles(id) on delete set null,
   created_at timestamptz default now()
 );
@@ -313,6 +311,43 @@ const ensureProfile = async (user, preferredUsername) => {
 };
 
 // ─── STYLES ───────────────────────────────────────────────────────
+const escapeHtml = value => String(value || "")
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;")
+  .replace(/'/g, "&#39;");
+const safeUrl = value => {
+  const raw = String(value || "").trim();
+  return /^https?:\/\//i.test(raw) ? raw : "";
+};
+const renderRichText = value => {
+  let html = escapeHtml(value);
+  html = html
+    .replace(/\[b\]([\s\S]*?)\[\/b\]/gi, "<strong>$1</strong>")
+    .replace(/\[i\]([\s\S]*?)\[\/i\]/gi, "<em>$1</em>")
+    .replace(/\[u\]([\s\S]*?)\[\/u\]/gi, "<u>$1</u>")
+    .replace(/\[s\]([\s\S]*?)\[\/s\]/gi, "<s>$1</s>")
+    .replace(/\[quote\]([\s\S]*?)\[\/quote\]/gi, "<blockquote>$1</blockquote>")
+    .replace(/\[code\]([\s\S]*?)\[\/code\]/gi, "<pre><code>$1</code></pre>");
+  html = html.replace(/\[url=(.*?)\]([\s\S]*?)\[\/url\]/gi, (_, url, text) => {
+    const href = safeUrl(url);
+    return href ? `<a href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${text}</a>` : text;
+  });
+  html = html.replace(/\[url\]([\s\S]*?)\[\/url\]/gi, (_, url) => {
+    const href = safeUrl(url);
+    return href ? `<a href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(href)}</a>` : escapeHtml(url);
+  });
+  html = html.replace(/\[img\]([\s\S]*?)\[\/img\]/gi, (_, url) => {
+    const src = safeUrl(url);
+    return src ? `<img src="${escapeHtml(src)}" alt="" loading="lazy" />` : "";
+  });
+  html = html.replace(/&lt;(\/?)(b|strong|i|em|u|s|br|p|ul|ol|li|blockquote|code|pre)&gt;/gi, "<$1$2>");
+  return html;
+};
+const RichText = ({ children }) => (
+  <div className="rich-post" dangerouslySetInnerHTML={{ __html: renderRichText(children) }} />
+);
 const inp = { background:"rgba(255,255,255,0.055)", border:"1px solid rgba(21,96,181,0.42)", borderRadius:6, padding:"11px 13px", color:"#fff8e6", fontSize:16, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
 const ta  = { ...inp, resize:"vertical", minHeight:80 };
 const mkBtn = (v="gold") => ({
@@ -333,10 +368,9 @@ const Flag = ({ nation, size = 36 }) => {
         style={{ width:size, height:Math.round(size*0.65), objectFit:"cover", borderRadius:3, border:"1px solid rgba(255,255,255,0.1)", flexShrink:0 }} />
     );
   }
-  const c1 = nation?.flag_color1||"#c0392b", c2 = nation?.flag_color2||"#f39c12";
   const ab = nation?.name ? nation.name.slice(0,2).toUpperCase() : "??";
   return (
-    <div style={{ width:size, height:Math.round(size*0.65), flexShrink:0, background:`linear-gradient(135deg,${c1} 50%,${c2} 50%)`, borderRadius:3, border:"1px solid rgba(255,255,255,0.1)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*0.22, fontWeight:900, color:"#fff", textShadow:"0 1px 3px rgba(0,0,0,0.8)", userSelect:"none", letterSpacing:1 }}>{ab}</div>
+    <div style={{ width:size, height:Math.round(size*0.65), flexShrink:0, background:"rgba(255,255,255,0.06)", borderRadius:3, border:"1px solid rgba(255,255,255,0.12)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*0.22, fontWeight:900, color:"#8fa0bd", userSelect:"none", letterSpacing:1 }}>{ab}</div>
   );
 };
 
@@ -486,8 +520,12 @@ const FlagUploader = ({ nationId, currentUrl, onUploaded }) => {
 
   const upload = async (file) => {
     if (!file || !nationId) return;
+    if (!["image/jpeg","image/png"].includes(file.type)) {
+      alert("Please upload a JPEG or PNG file.");
+      return;
+    }
     setUploading(true);
-    const ext = file.name.split(".").pop();
+    const ext = file.type === "image/png" ? "png" : "jpg";
     const path = `${nationId}.${ext}`;
     const { error } = await supabase.storage.from("flags").upload(path, file, { upsert: true, contentType: file.type });
     if (!error) {
@@ -501,12 +539,12 @@ const FlagUploader = ({ nationId, currentUrl, onUploaded }) => {
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
-      {currentUrl && <img src={currentUrl} alt="flag" style={{ width:80, height:52, objectFit:"cover", borderRadius:4, border:"1px solid rgba(212,175,55,0.2)" }} />}
-      <input ref={ref} type="file" accept="image/*" style={{ display:"none" }} onChange={e=>upload(e.target.files[0])} />
+      {currentUrl && <img src={currentUrl} alt="Nation flag" style={{ width:96, height:64, objectFit:"cover", borderRadius:4, border:"1px solid rgba(212,175,55,0.2)" }} />}
+      <input ref={ref} type="file" accept="image/jpeg,image/png" style={{ display:"none" }} onChange={e=>upload(e.target.files[0])} />
       <button onClick={()=>ref.current.click()} style={{ ...mkBtn("ghost"), fontSize:11, alignSelf:"flex-start" }}>
-        {uploading?"Uploading":"Upload Flag Image"}
+        {uploading?"Uploading":"Upload JPEG/PNG Flag"}
       </button>
-      <p style={{ margin:0, fontSize:10, color:"#8fa0bd" }}>PNG, JPG, SVG - recommended 3:2 ratio</p>
+      <p style={{ margin:0, fontSize:10, color:"#8fa0bd" }}>JPEG or PNG only. Recommended 3:2 ratio.</p>
     </div>
   );
 };
@@ -1319,7 +1357,7 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
             <h3 style={{ margin:"0 0 0.75rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>New Thread in {view.board.name}</h3>
             <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
               <input placeholder="Thread title" value={threadForm.title} onChange={e=>setThreadForm({...threadForm,title:e.target.value})} style={inp} />
-              <textarea placeholder="Opening post" value={threadForm.body} onChange={e=>setThreadForm({...threadForm,body:e.target.value})} style={ta} />
+              <textarea placeholder="Opening post. BBCode is supported: [b], [i], [quote], [url], [img]. Basic HTML tags like <b> and <blockquote> are also allowed." value={threadForm.body} onChange={e=>setThreadForm({...threadForm,body:e.target.value})} style={ta} />
               <div style={{ display:"flex", gap:"0.5rem" }}>
                 <button onClick={submitThread} style={mkBtn()}>Post Thread</button>
                 <button onClick={()=>setShowNewThread(false)} style={mkBtn("ghost")}>Cancel</button>
@@ -1366,16 +1404,16 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
           {tPosts.map((p,i)=>{
             const pNation = nations.find(n=>n.id===p.nation_id);
             return (
-              <div className="post-card" key={p.id} style={{ ...card, borderLeft:i===0?"2px solid rgba(212,175,55,0.3)":undefined }}>
-                <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"0.75rem", flexWrap:"wrap" }}>
-                  {pNation ? <Flag nation={pNation} size={24} /> : <div style={{ width:24, height:16, background:"rgba(255,255,255,0.04)", borderRadius:2, flexShrink:0 }} />}
-                  <div style={{ flex:1 }}>
-                    <span style={{ fontSize:13, color:"#d4af37", fontWeight:700 }}>{pNation?.name||p.profiles?.username||"Unknown"}</span>
-                    {i===0 && <span style={{ fontSize:10, color:"#d4af37", border:"1px solid rgba(212,175,55,0.25)", borderRadius:3, padding:"1px 5px", marginLeft:"0.5rem" }}>OP</span>}
-                    <span style={{ fontSize:11, color:"#8fa0bd", marginLeft:"0.5rem" }}>{timeAgo(p.created_at)}</span>
-                  </div>
+              <div className="post-card forum-post-layout" key={p.id} style={{ ...card, borderLeft:i===0?"2px solid rgba(212,175,55,0.3)":undefined }}>
+                <aside className="post-author" style={{ width:150, flexShrink:0 }}>
+                  {pNation ? <Flag nation={pNation} size={96} /> : <div style={{ width:96, height:62, background:"rgba(255,255,255,0.04)", borderRadius:4 }} />}
+                  <div style={{ marginTop:"0.65rem", fontSize:13, color:"#d4af37", fontWeight:800, lineHeight:1.35 }}>{pNation?.name||p.profiles?.username||"Unknown"}</div>
+                  {i===0 && <div style={{ display:"inline-block", marginTop:"0.45rem", fontSize:10, color:"#d4af37", border:"1px solid rgba(212,175,55,0.25)", borderRadius:3, padding:"1px 5px" }}>OP</div>}
+                  <div style={{ marginTop:"0.45rem", fontSize:11, color:"#8fa0bd" }}>{timeAgo(p.created_at)}</div>
+                </aside>
+                <div className="post-body" style={{ flex:1, minWidth:0 }}>
+                  <RichText>{p.body}</RichText>
                 </div>
-                <p style={{ margin:0, color:"#d8c890", fontSize:13, lineHeight:1.85, whiteSpace:"pre-wrap" }}>{p.body}</p>
               </div>
             );
           })}
@@ -1383,7 +1421,7 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
         {profile && !view.thread.locked && (
           <div style={card}>
             <h3 style={{ margin:"0 0 0.75rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Post Reply</h3>
-            <textarea placeholder="Write your reply" value={replyBody} onChange={e=>setReplyBody(e.target.value)} style={ta} />
+            <textarea placeholder="Write your reply. BBCode is supported: [b], [i], [quote], [url], [img]. Basic HTML tags like <b> and <blockquote> are also allowed." value={replyBody} onChange={e=>setReplyBody(e.target.value)} style={ta} />
             <button onClick={submitReply} style={{ ...mkBtn(), marginTop:"0.6rem" }}>Post Reply</button>
           </div>
         )}
@@ -1396,7 +1434,7 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
 // ─── ADMIN ────────────────────────────────────────────────────────
 const Admin = ({ nations, profiles, onRefresh }) => {
   const [tab, setTab] = useState("add");
-  const blank = { name:"",government:"",ideology:"",population:"",gdp_usd:"",land_km2:"",army_rank:"",hdi:"",economy:"",bio:"",diplomatic_status:"",bloc:"",tiktok_username:"",flag_color1:"#c0392b",flag_color2:"#f39c12" };
+  const blank = { name:"",government:"",ideology:"",population:"",gdp_usd:"",land_km2:"",army_rank:"",hdi:"",economy:"",bio:"",diplomatic_status:"",bloc:"",tiktok_username:"" };
   const [nf, setNf] = useState(blank);
   const [editId, setEditId] = useState(null);
   const [assignNId, setAssignNId] = useState(""); const [assignPId, setAssignPId] = useState("");
@@ -1404,13 +1442,13 @@ const Admin = ({ nations, profiles, onRefresh }) => {
 
   const submitNation = async () => {
     if (!nf.name.trim()) return;
-    const payload = { name:nf.name, slug:slugify(nf.name), government:nf.government||null, ideology:nf.ideology||null, population:nf.population?parseInt(nf.population):null, gdp_usd:nf.gdp_usd?parseInt(nf.gdp_usd):null, land_km2:nf.land_km2?parseInt(nf.land_km2):null, army_rank:nf.army_rank?parseInt(nf.army_rank):null, hdi:nf.hdi?parseFloat(nf.hdi):null, economy:nf.economy||null, bio:nf.bio||null, diplomatic_status:nf.diplomatic_status||null, bloc:nf.bloc||null, tiktok_username:nf.tiktok_username||null, flag_color1:nf.flag_color1, flag_color2:nf.flag_color2 };
+    const payload = { name:nf.name, slug:slugify(nf.name), government:nf.government||null, ideology:nf.ideology||null, population:nf.population?parseInt(nf.population):null, gdp_usd:nf.gdp_usd?parseInt(nf.gdp_usd):null, land_km2:nf.land_km2?parseInt(nf.land_km2):null, army_rank:nf.army_rank?parseInt(nf.army_rank):null, hdi:nf.hdi?parseFloat(nf.hdi):null, economy:nf.economy||null, bio:nf.bio||null, diplomatic_status:nf.diplomatic_status||null, bloc:nf.bloc||null, tiktok_username:nf.tiktok_username||null };
     if (editId) { await supabase.from("nations").update(payload).eq("id",editId); setEditId(null); }
     else await supabase.from("nations").insert(payload);
     setNf(blank); onRefresh();
   };
 
-  const loadEdit = n => { setEditId(n.id); setNf({ name:n.name||"",government:n.government||"",ideology:n.ideology||"",population:n.population||"",gdp_usd:n.gdp_usd||"",land_km2:n.land_km2||"",army_rank:n.army_rank||"",hdi:n.hdi||"",economy:n.economy||"",bio:n.bio||"",diplomatic_status:n.diplomatic_status||"",bloc:n.bloc||"",tiktok_username:n.tiktok_username||"",flag_color1:n.flag_color1||"#c0392b",flag_color2:n.flag_color2||"#f39c12" }); setTab("add"); window.scrollTo(0,0); };
+  const loadEdit = n => { setEditId(n.id); setNf({ name:n.name||"",government:n.government||"",ideology:n.ideology||"",population:n.population||"",gdp_usd:n.gdp_usd||"",land_km2:n.land_km2||"",army_rank:n.army_rank||"",hdi:n.hdi||"",economy:n.economy||"",bio:n.bio||"",diplomatic_status:n.diplomatic_status||"",bloc:n.bloc||"",tiktok_username:n.tiktok_username||"" }); setTab("add"); window.scrollTo(0,0); };
 
   const fields = [["name","Nation Name *"],["government","Government"],["ideology","Ideology"],["population","Population"],["gdp_usd","GDP (USD number)"],["land_km2","Land km2"],["army_rank","Army Rank 0-11"],["hdi","HDI 0.00-1.00"],["economy","Economy Sectors"],["diplomatic_status","Diplomatic Status"],["bloc","Bloc / Alliance"],["tiktok_username","TikTok Username"]];
 
@@ -1431,13 +1469,7 @@ const Admin = ({ nations, profiles, onRefresh }) => {
               <input key={k} placeholder={l} value={nf[k]} onChange={e=>setNf({...nf,[k]:e.target.value})} style={{ ...inp, ...(k==="name"?{gridColumn:"1/-1"}:{}) }} />
             ))}
             <textarea placeholder="Nation bio or lore" value={nf.bio} onChange={e=>setNf({...nf,bio:e.target.value})} style={{ ...ta, gridColumn:"1/-1", minHeight:65 }} />
-            <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", flexWrap:"wrap", gridColumn:"1/-1" }}>
-              <span style={{ fontSize:12, color:"#b8c4d8" }}>Flag Colors:</span>
-              <label style={{ display:"flex", gap:"0.4rem", alignItems:"center", fontSize:12, color:"#b8c4d8" }}>Color 1 <input type="color" value={nf.flag_color1} onChange={e=>setNf({...nf,flag_color1:e.target.value})} style={{ width:36, height:26, border:"none", background:"none", cursor:"pointer" }} /></label>
-              <label style={{ display:"flex", gap:"0.4rem", alignItems:"center", fontSize:12, color:"#b8c4d8" }}>Color 2 <input type="color" value={nf.flag_color2} onChange={e=>setNf({...nf,flag_color2:e.target.value})} style={{ width:36, height:26, border:"none", background:"none", cursor:"pointer" }} /></label>
-              <Flag nation={{ name:nf.name, flag_color1:nf.flag_color1, flag_color2:nf.flag_color2 }} size={42} />
-              <span style={{ fontSize:11, color:"#8fa0bd" }}>Preview (players can upload real flag images)</span>
-            </div>
+            <p style={{ gridColumn:"1/-1", margin:"0.25rem 0 0", color:"#8fa0bd", fontSize:12 }}>Flags are uploaded by players as JPEG or PNG images from their nation profile.</p>
           </div>
           <div style={{ display:"flex", gap:"0.5rem", marginTop:"1rem" }}>
             <button onClick={submitNation} style={mkBtn()}>{editId?"Save Changes":"Add Nation"}</button>
@@ -1518,9 +1550,9 @@ export default function App() {
       supabase.from("nations").select("*, profiles(username)").order("name"),
       supabase.from("profiles").select("*").order("username"),
       supabase.from("news").select("*").order("created_at",{ascending:false}),
-      supabase.from("rp_posts").select("*, nations(name,flag_url,flag_color1,flag_color2), target_nation_id").order("created_at",{ascending:false}).limit(100),
-      supabase.from("canon_actions").select("*, nations(name,flag_url,flag_color1,flag_color2), action_updates(*, profiles(username))").order("created_at",{ascending:false}),
-      supabase.from("wars").select("*, aggressor:aggressor_id(name,flag_url,flag_color1,flag_color2), defender:defender_id(name,flag_url,flag_color1,flag_color2)").order("started_at",{ascending:false}),
+      supabase.from("rp_posts").select("*, nations(name,flag_url), target_nation_id").order("created_at",{ascending:false}).limit(100),
+      supabase.from("canon_actions").select("*, nations(name,flag_url), action_updates(*, profiles(username))").order("created_at",{ascending:false}),
+      supabase.from("wars").select("*, aggressor:aggressor_id(name,flag_url), defender:defender_id(name,flag_url)").order("started_at",{ascending:false}),
       supabase.from("alliances").select("*").order("created_at",{ascending:false}),
       supabase.from("alliance_members").select("*"),
       supabase.from("forum_boards").select("*").order("sort_order"),
@@ -1653,6 +1685,13 @@ export default function App() {
         button,input,textarea,select{font:inherit;}
         button{min-height:40px;}
         body{overflow-x:hidden;}
+        .rich-post{margin:0;color:#d8c890;font-size:13px;line-height:1.85;white-space:pre-wrap;overflow-wrap:anywhere;}
+        .rich-post blockquote{margin:0.75rem 0;padding:0.6rem 0.75rem;border-left:3px solid rgba(246,193,50,0.35);background:rgba(255,255,255,0.04);color:#f0dc8a;}
+        .rich-post pre{white-space:pre-wrap;overflow:auto;background:#030405;border:1px solid rgba(20,96,184,0.28);border-radius:6px;padding:0.75rem;color:#99dca7;}
+        .rich-post a{color:#6fb7ff;text-decoration:underline;}
+        .rich-post img{display:block;max-width:100%;height:auto;border-radius:6px;margin:0.75rem 0;border:1px solid rgba(255,255,255,0.12);}
+        .forum-post-layout{display:flex;gap:1.1rem;align-items:flex-start;}
+        .post-author{border-right:1px solid rgba(246,193,50,0.12);padding-right:1rem;}
         ::-webkit-scrollbar{width:4px;height:4px;}
         ::-webkit-scrollbar-track{background:#020305;}
         ::-webkit-scrollbar-thumb{background:rgba(246,193,50,0.28);border-radius:2px;}
@@ -1697,6 +1736,9 @@ export default function App() {
           .board-count{min-width:48px;}
           .thread-card{padding:0.85rem!important;gap:0.6rem!important;align-items:flex-start!important;}
           .post-card{padding:1rem!important;}
+          .forum-post-layout{display:block!important;}
+          .post-author{width:auto!important;border-right:none!important;border-bottom:1px solid rgba(246,193,50,0.12);padding:0 0 0.85rem!important;margin-bottom:0.85rem;display:grid;grid-template-columns:auto 1fr;column-gap:0.85rem;align-items:center;}
+          .post-author img,.post-author > div:first-child{grid-row:1 / span 3;}
         }
         @media (max-width: 430px) {
           .app-header{min-height:108px!important;}

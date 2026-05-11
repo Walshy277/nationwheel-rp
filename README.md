@@ -63,3 +63,17 @@ Publish directory: dist
 ```
 
 Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Netlify environment variables before deploying.
+
+## Forum Formatting
+
+Thread posts support safe BBCode:
+
+```text
+[b]bold[/b]
+[i]italic[/i]
+[quote]quoted text[/quote]
+[url=https://example.com]link text[/url]
+[img]https://example.com/image.png[/img]
+```
+
+A small safe HTML subset is also allowed for familiar tags such as `<b>`, `<i>`, `<blockquote>`, `<code>`, and lists. Script tags and arbitrary HTML attributes are escaped.
