@@ -50,6 +50,21 @@ create table if not exists war_participants (
 alter table war_participants enable row level security;
 alter table wars add column if not exists ceasefire_days int;
 alter table wars add column if not exists ceasefire_until timestamptz;
+alter table wars add column if not exists objective text;
+alter table wars add column if not exists casualties text;
+alter table wars add column if not exists result text;
+alter table alliances add column if not exists flag_url text;
+
+create table if not exists forum_reactions (
+  id uuid primary key default gen_random_uuid(),
+  post_id uuid references forum_posts(id) on delete cascade,
+  user_id uuid references profiles(id) on delete cascade,
+  emoji text not null,
+  created_at timestamptz default now(),
+  unique (post_id, user_id, emoji)
+);
+
+alter table forum_reactions enable row level security;
 
 drop policy if exists "admin_manage_profiles" on profiles;
 drop policy if exists "admin_manage_nations" on nations;
@@ -60,6 +75,9 @@ drop policy if exists "admin_manage_alliances" on alliances;
 drop policy if exists "admin_manage_alliance_members" on alliance_members;
 drop policy if exists "admin_manage_news" on news;
 drop policy if exists "admin_manage_forum_boards" on forum_boards;
+drop policy if exists "staff_manage_forum_threads" on forum_threads;
+drop policy if exists "staff_manage_forum_posts" on forum_posts;
+drop policy if exists "staff_manage_forum_reactions" on forum_reactions;
 
 create policy "admin_manage_profiles"
 on profiles for all
@@ -103,6 +121,21 @@ with check (public.is_lore_team(auth.uid()));
 
 create policy "admin_manage_forum_boards"
 on forum_boards for all
+using (public.is_lore_team(auth.uid()))
+with check (public.is_lore_team(auth.uid()));
+
+create policy "staff_manage_forum_threads"
+on forum_threads for all
+using (public.is_lore_team(auth.uid()))
+with check (public.is_lore_team(auth.uid()));
+
+create policy "staff_manage_forum_posts"
+on forum_posts for all
+using (public.is_lore_team(auth.uid()))
+with check (public.is_lore_team(auth.uid()));
+
+create policy "staff_manage_forum_reactions"
+on forum_reactions for all
 using (public.is_lore_team(auth.uid()))
 with check (public.is_lore_team(auth.uid()));
 

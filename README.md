@@ -57,6 +57,12 @@ To enable multi-nation and alliance wars on an existing database, run:
 supabase-war-participants-setup.sql
 ```
 
+To enable forum reactions, post editing, thread closing, and moderation policies on an existing database, run:
+
+```text
+supabase-forum-tools-setup.sql
+```
+
 The seed is generated from `-NW- World Database (2).xlsx` and `S2 Base (3).xlsx`. If those sheets are updated, regenerate the SQL with:
 
 ```powershell

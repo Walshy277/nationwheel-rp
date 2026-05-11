@@ -12,6 +12,10 @@ $$;
 
 alter table wars add column if not exists ceasefire_days int;
 alter table wars add column if not exists ceasefire_until timestamptz;
+alter table wars add column if not exists objective text;
+alter table wars add column if not exists casualties text;
+alter table wars add column if not exists result text;
+alter table alliances add column if not exists flag_url text;
 
 create table if not exists war_participants (
   id uuid primary key default gen_random_uuid(),

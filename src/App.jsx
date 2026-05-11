@@ -137,19 +137,26 @@ create table if not exists wars (
   aggressor_id uuid references nations(id) on delete cascade,
   defender_id uuid references nations(id) on delete cascade,
   name text, status text default 'active', casus_belli text, outcome text,
+  objective text, casualties text, result text,
   ceasefire_days int, ceasefire_until timestamptz,
   started_at timestamptz default now(), ended_at timestamptz
 );
 
 alter table wars add column if not exists ceasefire_days int;
 alter table wars add column if not exists ceasefire_until timestamptz;
+alter table wars add column if not exists objective text;
+alter table wars add column if not exists casualties text;
+alter table wars add column if not exists result text;
 
 create table if not exists alliances (
   id uuid primary key default gen_random_uuid(),
   name text not null, description text,
+  flag_url text,
   type text default 'alliance', status text default 'active',
   created_at timestamptz default now()
 );
+
+alter table alliances add column if not exists flag_url text;
 
 create table if not exists alliance_members (
   id uuid primary key default gen_random_uuid(),
@@ -199,6 +206,15 @@ create table if not exists forum_posts (
   created_at timestamptz default now()
 );
 
+create table if not exists forum_reactions (
+  id uuid primary key default gen_random_uuid(),
+  post_id uuid references forum_posts(id) on delete cascade,
+  user_id uuid references profiles(id) on delete cascade,
+  emoji text not null,
+  created_at timestamptz default now(),
+  unique (post_id, user_id, emoji)
+);
+
 -- RLS (explicit so Supabase can see it before you expose the API)
 alter table profiles enable row level security;
 alter table nations enable row level security;
@@ -213,6 +229,7 @@ alter table news enable row level security;
 alter table forum_boards enable row level security;
 alter table forum_threads enable row level security;
 alter table forum_posts enable row level security;
+alter table forum_reactions enable row level security;
 
 drop policy if exists "pub_read" on profiles;
 drop policy if exists "pub_read" on nations;
@@ -227,6 +244,7 @@ drop policy if exists "pub_read" on news;
 drop policy if exists "pub_read" on forum_boards;
 drop policy if exists "pub_read" on forum_threads;
 drop policy if exists "pub_read" on forum_posts;
+drop policy if exists "pub_read" on forum_reactions;
 create policy "pub_read" on profiles for select using (true);
 create policy "pub_read" on nations for select using (true);
 create policy "pub_read" on rp_posts for select using (true);
@@ -240,6 +258,7 @@ create policy "pub_read" on news for select using (true);
 create policy "pub_read" on forum_boards for select using (true);
 create policy "pub_read" on forum_threads for select using (true);
 create policy "pub_read" on forum_posts for select using (true);
+create policy "pub_read" on forum_reactions for select using (true);
 
 drop policy if exists "own_insert" on profiles;
 drop policy if exists "own_update" on profiles;
@@ -248,6 +267,12 @@ drop policy if exists "auth_insert_ca" on canon_actions;
 drop policy if exists "auth_insert_au" on action_updates;
 drop policy if exists "auth_insert_ft" on forum_threads;
 drop policy if exists "auth_insert_fp" on forum_posts;
+drop policy if exists "auth_insert_fr" on forum_reactions;
+drop policy if exists "own_update_ft" on forum_threads;
+drop policy if exists "own_delete_ft" on forum_threads;
+drop policy if exists "own_update_fp" on forum_posts;
+drop policy if exists "own_delete_fp" on forum_posts;
+drop policy if exists "own_delete_fr" on forum_reactions;
 drop policy if exists "auth_insert_wars" on wars;
 drop policy if exists "auth_insert_war_participants" on war_participants;
 create policy "own_insert" on profiles for insert with check (auth.uid()=id);
@@ -257,6 +282,12 @@ create policy "auth_insert_ca" on canon_actions for insert with check (auth.uid(
 create policy "auth_insert_au" on action_updates for insert with check (auth.uid()=author_id);
 create policy "auth_insert_ft" on forum_threads for insert with check (auth.uid()=author_id);
 create policy "auth_insert_fp" on forum_posts for insert with check (auth.uid()=author_id);
+create policy "auth_insert_fr" on forum_reactions for insert with check (auth.uid()=user_id);
+create policy "own_update_ft" on forum_threads for update using (auth.uid()=author_id);
+create policy "own_delete_ft" on forum_threads for delete using (auth.uid()=author_id);
+create policy "own_update_fp" on forum_posts for update using (auth.uid()=author_id);
+create policy "own_delete_fp" on forum_posts for delete using (auth.uid()=author_id);
+create policy "own_delete_fr" on forum_reactions for delete using (auth.uid()=user_id);
 create policy "auth_insert_wars" on wars for insert with check (auth.role()='authenticated');
 create policy "auth_insert_war_participants" on war_participants for insert with check (auth.role()='authenticated');
 
@@ -325,6 +356,9 @@ drop policy if exists "admin_manage_alliances" on alliances;
 drop policy if exists "admin_manage_alliance_members" on alliance_members;
 drop policy if exists "admin_manage_news" on news;
 drop policy if exists "admin_manage_forum_boards" on forum_boards;
+drop policy if exists "staff_manage_forum_threads" on forum_threads;
+drop policy if exists "staff_manage_forum_posts" on forum_posts;
+drop policy if exists "staff_manage_forum_reactions" on forum_reactions;
 create policy "admin_manage_profiles" on profiles for all using (public.is_admin(auth.uid())) with check (public.is_admin(auth.uid()));
 create policy "admin_manage_nations" on nations for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
 create policy "admin_manage_canon_actions" on canon_actions for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
@@ -334,6 +368,9 @@ create policy "admin_manage_alliances" on alliances for all using (public.is_lor
 create policy "admin_manage_alliance_members" on alliance_members for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
 create policy "admin_manage_news" on news for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
 create policy "admin_manage_forum_boards" on forum_boards for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
+create policy "staff_manage_forum_threads" on forum_threads for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
+create policy "staff_manage_forum_posts" on forum_posts for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
+create policy "staff_manage_forum_reactions" on forum_reactions for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
 
 insert into profiles (id, username, role)
 select u.id, split_part(u.email, '@', 1), 'admin'
@@ -629,6 +666,45 @@ const FlagUploader = ({ nationId, currentUrl, onUploaded }) => {
 };
 
 // ─── HOME ─────────────────────────────────────────────────────────
+const AllianceFlag = ({ alliance, size = 34 }) => {
+  if (alliance?.flag_url) {
+    return <img src={alliance.flag_url} alt={alliance.name} style={{ width:size, height:size, objectFit:"cover", borderRadius:4, border:"1px solid rgba(255,255,255,0.12)", flexShrink:0 }} />;
+  }
+  const ab = alliance?.name ? alliance.name.slice(0,2).toUpperCase() : "??";
+  return <div style={{ width:size, height:size, borderRadius:4, background:"rgba(52,152,219,0.12)", border:"1px solid rgba(52,152,219,0.24)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*0.26, fontWeight:900, color:"#6fb7ff", flexShrink:0 }}>{ab}</div>;
+};
+
+const AllianceFlagUploader = ({ allianceId, currentUrl, onUploaded }) => {
+  const [uploading, setUploading] = useState(false);
+  const ref = useRef();
+  const upload = async (file) => {
+    if (!file || !allianceId) return;
+    if (!["image/jpeg","image/png"].includes(file.type)) {
+      alert("Please upload a JPEG or PNG file.");
+      return;
+    }
+    setUploading(true);
+    const ext = file.type === "image/png" ? "png" : "jpg";
+    const path = `alliance-${allianceId}.${ext}`;
+    const { error } = await supabase.storage.from("flags").upload(path, file, { upsert:true, contentType:file.type });
+    if (error) alert(error.message);
+    else {
+      const { data } = supabase.storage.from("flags").getPublicUrl(path);
+      const url = data.publicUrl + "?t=" + Date.now();
+      const update = await supabase.from("alliances").update({ flag_url:url }).eq("id", allianceId);
+      if (update.error) alert(update.error.message);
+      else onUploaded(url);
+    }
+    setUploading(false);
+  };
+  return (
+    <span>
+      <input ref={ref} type="file" accept="image/jpeg,image/png" style={{ display:"none" }} onChange={e=>upload(e.target.files[0])} />
+      <button onClick={()=>ref.current.click()} style={{ ...mkBtn("ghost"), minHeight:28, padding:"4px 8px", fontSize:10 }}>{uploading ? "Uploading" : currentUrl ? "Change Flag" : "Upload Flag"}</button>
+    </span>
+  );
+};
+
 const ProfileMediaUploader = ({ profileId, field, currentUrl, label, onUploaded, ratio = "1 / 1" }) => {
   const [uploading, setUploading] = useState(false);
   const ref = useRef();
@@ -901,7 +977,6 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
             <h1 style={{ margin:"0 0 0.25rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:"clamp(1.5rem,3vw,2.2rem)", letterSpacing:"0.04em" }}>{nation.name}</h1>
             <p style={{ margin:"0 0 0.5rem", color:"#b7c6dc", fontSize:13 }}>{nation.government}{nation.ideology ? ` - ${nation.ideology}` : ""}</p>
             <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
-              {nation.tiktok_username && <span style={{ fontSize:11, color:"#a9b7cf" }}>TikTok: @{nation.tiktok_username}</span>}
           {(nation.owner || nation.profiles) && <span style={{ fontSize:11, color:"#a9b7cf" }}>Owner: {(nation.owner || nation.profiles).username}</span>}
               {nation.diplomatic_status && <span style={{ fontSize:11, color:"#d4af37", border:"1px solid rgba(212,175,55,0.25)", borderRadius:4, padding:"1px 8px" }}>{nation.diplomatic_status}</span>}
               {nation.bloc && <span style={{ fontSize:11, color:"#3498db", border:"1px solid rgba(52,152,219,0.25)", borderRadius:4, padding:"1px 8px" }}>{nation.bloc}</span>}
@@ -928,7 +1003,7 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
           {nation.bio && (
             <div style={{ ...card, gridColumn:"1/-1" }}>
               <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.06em", textTransform:"uppercase", marginBottom:"0.5rem" }}>Nation Profile</div>
-              <p style={{ margin:0, color:"#d7e2f2", lineHeight:1.85, fontSize:13 }}>{nation.bio}</p>
+              <RichText>{nation.bio}</RichText>
             </div>
           )}
         </div>
@@ -1033,12 +1108,6 @@ const ActionCard = ({ action, nations, expandable, isMod, onRefresh, profile }) 
       {(open || !expandable) && (
         <div style={{ marginTop:"1rem", paddingTop:"1rem", borderTop:"1px solid rgba(255,215,0,0.06)" }}>
           <p style={{ margin:"0 0 0.75rem", color:"#d7e2f2", fontSize:13, lineHeight:1.8 }}>{action.description}</p>
-          {action.tiktok_comment && (
-            <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(212,175,55,0.1)", borderRadius:6, padding:"0.7rem", marginBottom:"0.75rem" }}>
-              <div style={{ fontSize:10, color:"#8fa0bd", letterSpacing:"0.1em", marginBottom:3 }}>TIKTOK COMMENT</div>
-              <div style={{ fontSize:13, color:"#edf4ff", fontStyle:"italic" }}>{action.tiktok_comment}</div>
-            </div>
-          )}
           {action.lore_notes && (
             <div style={{ background:"rgba(52,152,219,0.04)", border:"1px solid rgba(52,152,219,0.12)", borderRadius:6, padding:"0.7rem", marginBottom:"0.75rem" }}>
               <div style={{ fontSize:10, color:"#3498db", letterSpacing:"0.1em", marginBottom:3 }}>LORE TEAM NOTES</div>
@@ -1096,6 +1165,8 @@ const WarCard = ({ war, nations, alliances = [], participants = [], isMod, onRef
   const hasParticipants = warParticipants.length > 0;
   const [addForm, setAddForm] = useState({ side:"attacker", type:"nation", id:"" });
   const [ceasefireDays, setCeasefireDays] = useState(war.ceasefire_days || 3);
+  const [editing, setEditing] = useState(false);
+  const [edit, setEdit] = useState({ name:war.name||"", casus_belli:war.casus_belli||"", objective:war.objective||"", casualties:war.casualties||"", result:war.result||war.outcome||"" });
 
   const addParticipant = async () => {
     if (!addForm.id) return;
@@ -1144,6 +1215,35 @@ const WarCard = ({ war, nations, alliances = [], participants = [], isMod, onRef
     await setWarStatus("ceasefire", { ceasefire_days:days, ceasefire_until:until, ended_at:null });
   };
 
+  const saveWar = async () => {
+    let { error } = await supabase.from("wars").update({
+      name:edit.name || null,
+      casus_belli:edit.casus_belli || null,
+      objective:edit.objective || null,
+      casualties:edit.casualties || null,
+      result:edit.result || null,
+      outcome:edit.result || null,
+    }).eq("id", war.id);
+    if (error && /objective|casualties|result|schema cache|column/i.test(error.message || "")) {
+      const retry = await supabase.from("wars").update({
+        name:edit.name || null,
+        casus_belli:edit.casus_belli || null,
+        outcome:[edit.objective && `Objective: ${edit.objective}`, edit.casualties && `Casualties: ${edit.casualties}`, edit.result && `Result: ${edit.result}`].filter(Boolean).join("\n") || null,
+      }).eq("id", war.id);
+      error = retry.error;
+      if (!error) alert("War saved using fallback fields. Run supabase-war-participants-setup.sql to enable structured objective, casualty, and result fields.");
+    }
+    if (error) alert(error.message);
+    else { setEditing(false); onRefresh(); }
+  };
+
+  const deleteWar = async () => {
+    if (!confirm("Delete this war?")) return;
+    const { error } = await supabase.from("wars").delete().eq("id", war.id);
+    if (error) alert(error.message);
+    else onRefresh();
+  };
+
   const Side = ({ title, color, fallback, items }) => (
     <div style={{ flex:1, minWidth:220 }}>
       <div style={{ fontSize:10, color:"#8fa0bd", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:"0.45rem" }}>{title}</div>
@@ -1173,6 +1273,13 @@ const WarCard = ({ war, nations, alliances = [], participants = [], isMod, onRef
       {!hasParticipants && <div style={{ marginTop:"0.55rem", fontSize:11, color:"#8fa0bd" }}>Legacy two-nation war. Lore team can add participants below to convert it.</div>}
       {war.name && <div style={{ fontFamily:"var(--display)", color:"#d7e2f2", fontSize:12, marginTop:"0.5rem", fontStyle:"italic" }}>"{war.name}"</div>}
       {war.casus_belli && <p style={{ margin:"0.4rem 0 0", color:"#9fb4d6", fontSize:12 }}>{war.casus_belli}</p>}
+      {(war.objective || war.casualties || war.result || (war.outcome && war.status !== "ceasefire")) && (
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:"0.55rem", marginTop:"0.7rem" }}>
+          {war.objective && <div><div style={{ fontSize:10, color:"#8fa0bd", textTransform:"uppercase" }}>Objective</div><div style={{ fontSize:12, color:"#d7e2f2" }}>{war.objective}</div></div>}
+          {war.casualties && <div><div style={{ fontSize:10, color:"#8fa0bd", textTransform:"uppercase" }}>Casualties</div><div style={{ fontSize:12, color:"#d7e2f2" }}>{war.casualties}</div></div>}
+          {(war.result || (war.outcome && war.status !== "ceasefire")) && <div><div style={{ fontSize:10, color:"#8fa0bd", textTransform:"uppercase" }}>Result</div><div style={{ fontSize:12, color:"#d7e2f2" }}>{war.result || war.outcome}</div></div>}
+        </div>
+      )}
       {war.status === "ceasefire" && (
         <p style={{ margin:"0.45rem 0 0", color:"#9fb4d6", fontSize:12 }}>
           {war.ceasefire_days || war.ceasefire_until
@@ -1205,7 +1312,19 @@ const WarCard = ({ war, nations, alliances = [], participants = [], isMod, onRef
             <input type="number" min="1" value={ceasefireDays} onChange={e=>setCeasefireDays(e.target.value)} style={{ ...inp, width:92, fontSize:12, padding:"7px 9px" }} />
             <button onClick={setCeasefire} style={{ ...mkBtn("blue"), fontSize:11 }}>Ceasefire Days</button>
             <button onClick={()=>setWarStatus("peace", { ended_at:new Date().toISOString(), ceasefire_days:null, ceasefire_until:null })} style={{ ...mkBtn("green"), fontSize:11 }}>Peace</button>
+            <button onClick={()=>setEditing(!editing)} style={{ ...mkBtn("ghost"), fontSize:11 }}>Edit War</button>
+            <button onClick={deleteWar} style={{ ...mkBtn("red"), fontSize:11 }}>Delete War</button>
           </div>
+          {editing && (
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:"0.5rem" }}>
+              <input placeholder="War name" value={edit.name} onChange={e=>setEdit({...edit,name:e.target.value})} style={inp} />
+              <input placeholder="War objective" value={edit.objective} onChange={e=>setEdit({...edit,objective:e.target.value})} style={inp} />
+              <input placeholder="Casualties" value={edit.casualties} onChange={e=>setEdit({...edit,casualties:e.target.value})} style={inp} />
+              <input placeholder="End result / outcome" value={edit.result} onChange={e=>setEdit({...edit,result:e.target.value})} style={inp} />
+              <textarea placeholder="Casus belli" value={edit.casus_belli} onChange={e=>setEdit({...edit,casus_belli:e.target.value})} style={{ ...ta, gridColumn:"1/-1", minHeight:60 }} />
+              <button onClick={saveWar} style={{ ...mkBtn(), justifySelf:"start" }}>Save War</button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -1225,7 +1344,7 @@ const Nations = ({ nations, posts, actions, wars, alliances, allianceMembers, pr
 
   const govs = [...new Set(nations.map(n=>n.government).filter(Boolean))].sort();
   let list = nations.filter(n =>
-    (!search || n.name.toLowerCase().includes(search.toLowerCase()) || (n.tiktok_username||"").toLowerCase().includes(search.toLowerCase())) &&
+    (!search || n.name.toLowerCase().includes(search.toLowerCase()) || (n.government||"").toLowerCase().includes(search.toLowerCase()) || (n.bloc||"").toLowerCase().includes(search.toLowerCase())) &&
     (!govFilter || n.government===govFilter)
   );
   list.sort((a,b)=>{
@@ -1243,7 +1362,7 @@ const Nations = ({ nations, posts, actions, wars, alliances, allianceMembers, pr
         <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:20, flex:1 }}>Nations Registry <span style={{ fontSize:13, color:"#8fa0bd" }}>({list.length}/{nations.length})</span></h2>
       </div>
       <div style={{ display:"flex", gap:"0.5rem", marginBottom:"1rem", flexWrap:"wrap" }}>
-        <input placeholder="Search name or TikTok" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inp, flex:1, minWidth:160, width:"auto" }} />
+        <input placeholder="Search nations, governments, blocs" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inp, flex:1, minWidth:160, width:"auto" }} />
         <select value={govFilter} onChange={e=>setGovFilter(e.target.value)} style={{ ...inp, width:"auto", minWidth:155 }}>
           <option value="">All Governments</option>
           {govs.map(g=><option key={g} value={g}>{g}</option>)}
@@ -1354,14 +1473,14 @@ const RPBoard = ({ posts, profile, userNation, nations, onRefresh }) => {
 const ActionsPage = ({ actions, profile, userNation, nations, isMod, onRefresh }) => {
   const [tab, setTab] = useState("active");
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title:"", description:"", tiktok_comment:"", size:"medium" });
+  const [form, setForm] = useState({ title:"", description:"", size:"medium" });
 
   const filtered = actions.filter(a=>tab==="active"?["pending","active"].includes(a.status):["complete","cancelled"].includes(a.status));
 
   const submit = async () => {
     if (!form.title.trim()||!form.description.trim()||!userNation) return;
     await supabase.from("canon_actions").insert({ nation_id:userNation.id, submitted_by:profile.id, ...form, estimated_days:ACTION_SIZES[form.size]?.days });
-    setForm({ title:"", description:"", tiktok_comment:"", size:"medium" }); setShowForm(false); onRefresh();
+    setForm({ title:"", description:"", size:"medium" }); setShowForm(false); onRefresh();
   };
 
   return (
@@ -1377,7 +1496,6 @@ const ActionsPage = ({ actions, profile, userNation, nations, isMod, onRefresh }
           <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
             <input placeholder="Action title (e.g. Construct orbital station above Aesyl)" value={form.title} onChange={e=>setForm({...form,title:e.target.value})} style={inp} />
             <textarea placeholder="Describe the action in full detail" value={form.description} onChange={e=>setForm({...form,description:e.target.value})} style={ta} />
-            <input placeholder="TikTok comment (paste original if applicable)" value={form.tiktok_comment} onChange={e=>setForm({...form,tiktok_comment:e.target.value})} style={inp} />
             <div>
               <div style={{ fontSize:10, color:"#8fa0bd", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:"0.4rem" }}>Action Size - determines canon duration</div>
               <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
@@ -1415,13 +1533,24 @@ const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, 
   const [tab, setTab] = useState("wars");
   const [showWarForm, setShowWarForm] = useState(false);
   const [showAllyForm, setShowAllyForm] = useState(false);
-  const [wf, setWf] = useState({ target_type:"nation", target_id:"", name:"", casus_belli:"" });
+  const [wf, setWf] = useState({ target_type:"nation", target_id:"", name:"", casus_belli:"", objective:"", casualties:"", result:"" });
   const [af, setAf] = useState({ name:"", description:"", type:"alliance" });
 
   const submitWar = async () => {
     if (!wf.target_id||!userNation) return;
     const legacyDefender = wf.target_type === "nation" ? wf.target_id : null;
-    const { data, error } = await supabase.from("wars").insert({ aggressor_id:userNation.id, defender_id:legacyDefender, name:wf.name, casus_belli:wf.casus_belli }).select().single();
+    let { data, error } = await supabase.from("wars").insert({ aggressor_id:userNation.id, defender_id:legacyDefender, name:wf.name, casus_belli:wf.casus_belli, objective:wf.objective||null, casualties:wf.casualties||null, result:wf.result||null, outcome:wf.result||null }).select().single();
+    if (error && /objective|casualties|result|schema cache|column/i.test(error.message || "")) {
+      const retry = await supabase.from("wars").insert({
+        aggressor_id:userNation.id,
+        defender_id:legacyDefender,
+        name:wf.name,
+        casus_belli:wf.casus_belli,
+        outcome:[wf.objective && `Objective: ${wf.objective}`, wf.casualties && `Casualties: ${wf.casualties}`, wf.result && `Result: ${wf.result}`].filter(Boolean).join("\n") || null,
+      }).select().single();
+      data = retry.data;
+      error = retry.error;
+    }
     if (error) {
       alert(error.message);
       return;
@@ -1432,7 +1561,7 @@ const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, 
     ];
     const inserted = await supabase.from("war_participants").insert(participants);
     if (inserted.error) alert(inserted.error.message);
-    setWf({target_type:"nation",target_id:"",name:"",casus_belli:""}); setShowWarForm(false); onRefresh();
+    setWf({target_type:"nation",target_id:"",name:"",casus_belli:"",objective:"",casualties:"",result:""}); setShowWarForm(false); onRefresh();
   };
   const submitAlly = async () => {
     if (!af.name.trim()) return;
@@ -1471,6 +1600,9 @@ const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, 
                     : alliances.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
                 <input placeholder="War name (optional)" value={wf.name} onChange={e=>setWf({...wf,name:e.target.value})} style={inp} />
+                <input placeholder="War objective" value={wf.objective} onChange={e=>setWf({...wf,objective:e.target.value})} style={inp} />
+                <input placeholder="Expected casualties / losses" value={wf.casualties} onChange={e=>setWf({...wf,casualties:e.target.value})} style={inp} />
+                <input placeholder="End result / terms (optional)" value={wf.result} onChange={e=>setWf({...wf,result:e.target.value})} style={inp} />
                 <textarea placeholder="Casus belli - justification for war" value={wf.casus_belli} onChange={e=>setWf({...wf,casus_belli:e.target.value})} style={{ ...ta, minHeight:60 }} />
                 <div style={{ display:"flex", gap:"0.5rem" }}>
                   <button onClick={submitWar} style={mkBtn("red")}>Declare War</button>
@@ -1508,11 +1640,28 @@ const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, 
             {alliances.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No alliances formed yet.</p>}
             {alliances.map(a=>{
               const members = allianceMembers.filter(m=>m.alliance_id===a.id).map(m=>nations.find(n=>n.id===m.nation_id)).filter(Boolean);
+              const editAlliance = async () => {
+                const name = prompt("Alliance name", a.name);
+                if (!name) return;
+                const description = prompt("Alliance description", a.description || "") ?? a.description;
+                const type = prompt("Alliance type", a.type || "alliance") || a.type;
+                const { error } = await supabase.from("alliances").update({ name, description, type }).eq("id", a.id);
+                if (error) alert(error.message); else onRefresh();
+              };
+              const deleteAlliance = async () => {
+                if (!confirm("Delete this alliance?")) return;
+                const { error } = await supabase.from("alliances").delete().eq("id", a.id);
+                if (error) alert(error.message); else onRefresh();
+              };
               return (
                 <div key={a.id} style={card}>
                   <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"0.75rem", flexWrap:"wrap" }}>
+                    <AllianceFlag alliance={a} size={38} />
                     <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:15, flex:1 }}>{a.name}</div>
                     <span style={{ fontSize:11, color:"#3498db", border:"1px solid rgba(52,152,219,0.25)", borderRadius:3, padding:"2px 8px" }}>{a.type?.toUpperCase()}</span>
+                    {isMod && <AllianceFlagUploader allianceId={a.id} currentUrl={a.flag_url} onUploaded={onRefresh} />}
+                    {isMod && <button onClick={editAlliance} style={{ ...mkBtn("ghost"), fontSize:11 }}>Edit</button>}
+                    {isMod && <button onClick={deleteAlliance} style={{ ...mkBtn("red"), fontSize:11 }}>Delete</button>}
                   </div>
                   {a.description && <p style={{ margin:"0 0 0.75rem", color:"#b8c4d8", fontSize:12 }}>{a.description}</p>}
                   <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center" }}>
@@ -1646,11 +1795,14 @@ const Leaderboards = ({ nations }) => {
 };
 
 // ─── FORUMS ───────────────────────────────────────────────────────
-const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefresh, onRequireAuth }) => {
+const Forums = ({ boards, threads, posts, reactions, profile, userNation, nations, isMod, onRefresh, onRequireAuth }) => {
   const [view, setView] = useState({ type:"boards" });
   const [threadForm, setThreadForm] = useState({ title:"", body:"" });
   const [replyBody, setReplyBody] = useState("");
   const [showNewThread, setShowNewThread] = useState(false);
+  const [editingPost, setEditingPost] = useState(null);
+  const [editBody, setEditBody] = useState("");
+  const reactEmojis = ["👍","❤️","😂","🔥","👀","🫡"];
 
   const submitThread = async () => {
     if (!threadForm.title.trim()||!threadForm.body.trim()||view.type!=="board") return;
@@ -1663,6 +1815,35 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
     if (!replyBody.trim()||view.type!=="thread") return;
     await supabase.from("forum_posts").insert({ thread_id:view.thread.id, author_id:profile.id, nation_id:userNation?.id||null, body:replyBody });
     setReplyBody(""); onRefresh();
+  };
+  const toggleReaction = async (postId, emoji) => {
+    if (!profile) return onRequireAuth();
+    const existing = reactions.find(r=>r.post_id===postId && r.user_id===profile.id && r.emoji===emoji);
+    const result = existing
+      ? await supabase.from("forum_reactions").delete().eq("id", existing.id)
+      : await supabase.from("forum_reactions").insert({ post_id:postId, user_id:profile.id, emoji });
+    if (result.error) alert(result.error.message); else onRefresh();
+  };
+  const savePost = async (postId) => {
+    const { error } = await supabase.from("forum_posts").update({ body:editBody }).eq("id", postId);
+    if (error) alert(error.message);
+    else { setEditingPost(null); setEditBody(""); onRefresh(); }
+  };
+  const deletePost = async (postId) => {
+    if (!confirm("Delete this post?")) return;
+    const { error } = await supabase.from("forum_posts").delete().eq("id", postId);
+    if (error) alert(error.message); else onRefresh();
+  };
+  const setThreadLocked = async (locked) => {
+    const { error } = await supabase.from("forum_threads").update({ locked }).eq("id", view.thread.id);
+    if (error) alert(error.message);
+    else { setView({ ...view, thread:{ ...view.thread, locked } }); onRefresh(); }
+  };
+  const deleteThread = async () => {
+    if (!confirm("Delete this thread and all posts?")) return;
+    const { error } = await supabase.from("forum_threads").delete().eq("id", view.thread.id);
+    if (error) alert(error.message);
+    else { setView({ type:"boards" }); onRefresh(); }
   };
 
   if (view.type==="boards") {
@@ -1756,10 +1937,15 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
   if (view.type==="thread") {
     const board = boards.find(b=>b.id===view.thread.board_id);
     const tPosts = posts.filter(p=>p.thread_id===view.thread.id);
+    const canManageThread = isMod || view.thread.author_id === profile?.id;
     return (
       <div>
         <button onClick={()=>setView({type:"board",board})} style={{ ...mkBtn("ghost"), marginBottom:"1rem", fontSize:12 }}>{board?.name}</button>
-        <h2 style={{ margin:"0 0 1.25rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:18, lineHeight:1.4 }}>{view.thread.title}</h2>
+        <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap", marginBottom:"1.25rem" }}>
+          <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:18, lineHeight:1.4, flex:1 }}>{view.thread.title}</h2>
+          {canManageThread && <button onClick={()=>setThreadLocked(!view.thread.locked)} style={{ ...mkBtn("ghost"), fontSize:11 }}>{view.thread.locked?"Open Thread":"Close Thread"}</button>}
+          {canManageThread && <button onClick={deleteThread} style={{ ...mkBtn("red"), fontSize:11 }}>Delete Thread</button>}
+        </div>
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem", marginBottom:"1.25rem" }}>
           {tPosts.map((p,i)=>{
             const pNation = nations.find(n=>n.id===p.nation_id);
@@ -1777,8 +1963,25 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
                   <div style={{ marginTop:"0.45rem", fontSize:11, color:"#8fa0bd" }}>{timeAgo(p.created_at)}</div>
                 </aside>
                 <div className="post-body" style={{ flex:1, minWidth:0 }}>
-                  <RichText>{p.body}</RichText>
+                  {editingPost===p.id ? (
+                    <div>
+                      <textarea value={editBody} onChange={e=>setEditBody(e.target.value)} style={{ ...ta, minHeight:120 }} />
+                      <div style={{ display:"flex", gap:"0.4rem", marginTop:"0.5rem" }}>
+                        <button onClick={()=>savePost(p.id)} style={{ ...mkBtn(), fontSize:11 }}>Save</button>
+                        <button onClick={()=>setEditingPost(null)} style={{ ...mkBtn("ghost"), fontSize:11 }}>Cancel</button>
+                      </div>
+                    </div>
+                  ) : <RichText>{p.body}</RichText>}
                   {p.profiles?.signature_url && <img className="post-signature" src={p.profiles.signature_url} alt="" />}
+                  <div style={{ display:"flex", gap:"0.35rem", flexWrap:"wrap", marginTop:"0.75rem", alignItems:"center" }}>
+                    {reactEmojis.map(e=>{
+                      const count = reactions.filter(r=>r.post_id===p.id && r.emoji===e).length;
+                      const active = reactions.some(r=>r.post_id===p.id && r.user_id===profile?.id && r.emoji===e);
+                      return <button key={e} onClick={()=>toggleReaction(p.id,e)} style={{ ...mkBtn(active?"gold":"ghost"), minHeight:28, padding:"3px 7px", fontSize:12 }}>{e}{count>0?` ${count}`:""}</button>;
+                    })}
+                    {(isMod || p.author_id===profile?.id) && <button onClick={()=>{setEditingPost(p.id);setEditBody(p.body);}} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Edit</button>}
+                    {(isMod || p.author_id===profile?.id) && <button onClick={()=>deletePost(p.id)} style={{ ...mkBtn("red"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Delete</button>}
+                  </div>
                 </div>
               </div>
             );
@@ -1800,7 +2003,7 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
 // ─── ADMIN ────────────────────────────────────────────────────────
 const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
   const [tab, setTab] = useState("add");
-  const blank = { name:"",government:"",ideology:"",population:"",gdp_usd:"",land_km2:"",army_rank:"",hdi:"",economy:"",bio:"",diplomatic_status:"",bloc:"",tiktok_username:"" };
+  const blank = { name:"",government:"",ideology:"",population:"",gdp_usd:"",land_km2:"",army_rank:"",hdi:"",economy:"",bio:"",diplomatic_status:"",bloc:"" };
   const [nf, setNf] = useState(blank);
   const [editId, setEditId] = useState(null);
   const [assignNId, setAssignNId] = useState(""); const [assignPId, setAssignPId] = useState("");
@@ -1808,13 +2011,13 @@ const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
 
   const submitNation = async () => {
     if (!nf.name.trim()) return;
-    const payload = { name:nf.name, slug:slugify(nf.name), government:nf.government||null, ideology:nf.ideology||null, population:nf.population?parseInt(nf.population):null, gdp_usd:nf.gdp_usd?parseInt(nf.gdp_usd):null, land_km2:nf.land_km2?parseInt(nf.land_km2):null, army_rank:nf.army_rank?parseInt(nf.army_rank):null, hdi:nf.hdi?parseFloat(nf.hdi):null, economy:nf.economy||null, bio:nf.bio||null, diplomatic_status:nf.diplomatic_status||null, bloc:nf.bloc||null, tiktok_username:nf.tiktok_username||null };
+    const payload = { name:nf.name, slug:slugify(nf.name), government:nf.government||null, ideology:nf.ideology||null, population:nf.population?parseInt(nf.population):null, gdp_usd:nf.gdp_usd?parseInt(nf.gdp_usd):null, land_km2:nf.land_km2?parseInt(nf.land_km2):null, army_rank:nf.army_rank?parseInt(nf.army_rank):null, hdi:nf.hdi?parseFloat(nf.hdi):null, economy:nf.economy||null, bio:nf.bio||null, diplomatic_status:nf.diplomatic_status||null, bloc:nf.bloc||null };
     if (editId) { await supabase.from("nations").update(payload).eq("id",editId); setEditId(null); }
     else await supabase.from("nations").insert(payload);
     setNf(blank); onRefresh();
   };
 
-  const loadEdit = n => { setEditId(n.id); setNf({ name:n.name||"",government:n.government||"",ideology:n.ideology||"",population:n.population||"",gdp_usd:n.gdp_usd||"",land_km2:n.land_km2||"",army_rank:n.army_rank||"",hdi:n.hdi||"",economy:n.economy||"",bio:n.bio||"",diplomatic_status:n.diplomatic_status||"",bloc:n.bloc||"",tiktok_username:n.tiktok_username||"" }); setTab("add"); window.scrollTo(0,0); };
+  const loadEdit = n => { setEditId(n.id); setNf({ name:n.name||"",government:n.government||"",ideology:n.ideology||"",population:n.population||"",gdp_usd:n.gdp_usd||"",land_km2:n.land_km2||"",army_rank:n.army_rank||"",hdi:n.hdi||"",economy:n.economy||"",bio:n.bio||"",diplomatic_status:n.diplomatic_status||"",bloc:n.bloc||"" }); setTab("add"); window.scrollTo(0,0); };
 
   const assignNation = async () => {
     if (!assignNId || !assignPId) return;
@@ -1828,7 +2031,7 @@ const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
     onRefresh();
   };
 
-  const fields = [["name","Nation Name *"],["government","Government"],["ideology","Ideology"],["population","Population"],["gdp_usd","GDP (USD number)"],["land_km2","Land km2"],["army_rank","Army Rank 0-11"],["hdi","HDI 0.00-1.00"],["economy","Economy Sectors"],["diplomatic_status","Diplomatic Status"],["bloc","Bloc / Alliance"],["tiktok_username","TikTok Username"]];
+  const fields = [["name","Nation Name *"],["government","Government"],["ideology","Ideology"],["population","Population"],["gdp_usd","GDP (USD number)"],["land_km2","Land km2"],["army_rank","Army Rank 0-11"],["hdi","HDI 0.00-1.00"],["economy","Economy Sectors"],["diplomatic_status","Diplomatic Status"],["bloc","Bloc / Alliance"]];
   const tabs = [["add",editId?"Edit Nation":"Add Nation"],["assign","Assign Nations"],...(isAdmin ? [["roles","Manage Roles"]] : []),["list","Nation List"]];
 
   return (
@@ -1935,7 +2138,7 @@ export default function App() {
   const [page, setPage] = useState("forums");
   const [showSetup, setShowSetup] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [data, setData] = useState({ nations:[], profiles:[], news:[], posts:[], actions:[], wars:[], warParticipants:[], alliances:[], allianceMembers:[], boards:[], threads:[], forumPosts:[] });
+  const [data, setData] = useState({ nations:[], profiles:[], news:[], posts:[], actions:[], wars:[], warParticipants:[], alliances:[], allianceMembers:[], boards:[], threads:[], forumPosts:[], forumReactions:[] });
   const [loading, setLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
   const [dbIssues, setDbIssues] = useState([]);
@@ -1958,7 +2161,7 @@ export default function App() {
       }
       return retry.data || [];
     };
-    const [nations, profiles, news, posts, actions, wars, warParticipants, alliances, allianceMembers, boards, threads, forumPosts] = await Promise.all([
+    const [nations, profiles, news, posts, actions, wars, warParticipants, alliances, allianceMembers, boards, threads, forumPosts, forumReactions] = await Promise.all([
       run("Nations", supabase.from("nations").select("*, owner:owner_id(username)").order("name"),
         () => supabase.from("nations").select("*").order("name")),
       supabase.from("profiles").select("*").order("username"),
@@ -1975,6 +2178,8 @@ export default function App() {
         error => isMissingOptionalProfileSchema(error) ? supabase.from("forum_threads").select("*, profiles(username)").order("created_at",{ascending:false}) : Promise.resolve({ data:null, error })),
       run("Forum posts", supabase.from("forum_posts").select("*, profiles(username,avatar_url,signature_url,bio)").order("created_at",{ascending:true}),
         error => isMissingOptionalProfileSchema(error) ? supabase.from("forum_posts").select("*, profiles(username)").order("created_at",{ascending:true}) : Promise.resolve({ data:null, error })),
+      run("Forum reactions", supabase.from("forum_reactions").select("*").order("created_at"),
+        error => /could not find|does not exist|schema cache/i.test(error.message || "") ? Promise.resolve({ data:[], error:null }) : Promise.resolve({ data:null, error })),
     ]);
     const unwrap = result => Array.isArray(result) ? result : (result.data || []);
     const plainWars = unwrap(wars);
@@ -1983,7 +2188,7 @@ export default function App() {
       ...w,
       war_participants: plainWarParticipants.filter(p => p.war_id === w.id),
     }));
-    setData({ nations, profiles:unwrap(profiles), news:unwrap(news), posts:unwrap(posts), actions:unwrap(actions), wars:warsWithParticipants, warParticipants:plainWarParticipants, alliances:unwrap(alliances), allianceMembers:unwrap(allianceMembers), boards:unwrap(boards), threads, forumPosts });
+    setData({ nations, profiles:unwrap(profiles), news:unwrap(news), posts:unwrap(posts), actions:unwrap(actions), wars:warsWithParticipants, warParticipants:plainWarParticipants, alliances:unwrap(alliances), allianceMembers:unwrap(allianceMembers), boards:unwrap(boards), threads, forumPosts, forumReactions });
     setDbIssues(issues);
     setLoading(false);
   }, []);
@@ -2112,7 +2317,7 @@ export default function App() {
               {page==="news"         && <NewsPage news={data.news} profile={profile} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="leaderboards" && <Leaderboards nations={data.nations} />}
               {page==="profile" && user && profile && <ProfilePage user={user} profile={profile} userNation={userNation} onProfileUpdate={updateProfile} />}
-              {page==="forums"       && <Forums boards={data.boards} threads={data.threads} posts={data.forumPosts} profile={profile} userNation={userNation} nations={data.nations} onRefresh={fetchAll} onRequireAuth={()=>navigate("auth")} />}
+              {page==="forums"       && <Forums boards={data.boards} threads={data.threads} posts={data.forumPosts} reactions={data.forumReactions} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} onRequireAuth={()=>navigate("auth")} />}
               {page==="auth"         && <Auth setupRequired={setupRequired} onAuth={(u,p)=>{setUser(u);if(p)setProfile(p);else ensureProfile(u).then(next=>{if(next)setProfile(next);}).catch(console.error);fetchAll();setPage("forums");}} />}
               {page==="admin" && isLoreTeam && <Admin nations={data.nations} profiles={data.profiles} onRefresh={fetchAll} isAdmin={isAdmin} />}
             </>
