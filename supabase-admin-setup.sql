@@ -7,8 +7,42 @@ as $$
   select exists(select 1 from public.profiles where id = uid and role = 'admin');
 $$;
 
+create or replace function public.is_lore_team(uid uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists(select 1 from public.profiles where id = uid and role in ('admin','lore','mod'));
+$$;
+
+create or replace function public.assign_nation_as_staff(target_profile uuid, target_nation uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_lore_team(auth.uid()) then
+    raise exception 'Only admin or lore team can assign nations';
+  end if;
+
+  update public.nations
+  set owner_id = target_profile
+  where id = target_nation;
+
+  update public.profiles
+  set nation_id = target_nation
+  where id = target_profile;
+end;
+$$;
+
 drop policy if exists "admin_manage_profiles" on profiles;
 drop policy if exists "admin_manage_nations" on nations;
+drop policy if exists "admin_manage_canon_actions" on canon_actions;
+drop policy if exists "admin_manage_wars" on wars;
+drop policy if exists "admin_manage_alliances" on alliances;
+drop policy if exists "admin_manage_alliance_members" on alliance_members;
 drop policy if exists "admin_manage_news" on news;
 drop policy if exists "admin_manage_forum_boards" on forum_boards;
 
@@ -19,18 +53,38 @@ with check (public.is_admin(auth.uid()));
 
 create policy "admin_manage_nations"
 on nations for all
-using (public.is_admin(auth.uid()))
-with check (public.is_admin(auth.uid()));
+using (public.is_lore_team(auth.uid()))
+with check (public.is_lore_team(auth.uid()));
+
+create policy "admin_manage_canon_actions"
+on canon_actions for all
+using (public.is_lore_team(auth.uid()))
+with check (public.is_lore_team(auth.uid()));
+
+create policy "admin_manage_wars"
+on wars for all
+using (public.is_lore_team(auth.uid()))
+with check (public.is_lore_team(auth.uid()));
+
+create policy "admin_manage_alliances"
+on alliances for all
+using (public.is_lore_team(auth.uid()))
+with check (public.is_lore_team(auth.uid()));
+
+create policy "admin_manage_alliance_members"
+on alliance_members for all
+using (public.is_lore_team(auth.uid()))
+with check (public.is_lore_team(auth.uid()));
 
 create policy "admin_manage_news"
 on news for all
-using (public.is_admin(auth.uid()))
-with check (public.is_admin(auth.uid()));
+using (public.is_lore_team(auth.uid()))
+with check (public.is_lore_team(auth.uid()));
 
 create policy "admin_manage_forum_boards"
 on forum_boards for all
-using (public.is_admin(auth.uid()))
-with check (public.is_admin(auth.uid()));
+using (public.is_lore_team(auth.uid()))
+with check (public.is_lore_team(auth.uid()));
 
 insert into profiles (id, username, role)
 select u.id, split_part(u.email, '@', 1), 'admin'

@@ -263,14 +263,52 @@ as $$
   select exists(select 1 from public.profiles where id = uid and role = 'admin');
 $$;
 
+create or replace function public.is_lore_team(uid uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists(select 1 from public.profiles where id = uid and role in ('admin','lore','mod'));
+$$;
+
+create or replace function public.assign_nation_as_staff(target_profile uuid, target_nation uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_lore_team(auth.uid()) then
+    raise exception 'Only admin or lore team can assign nations';
+  end if;
+
+  update public.nations
+  set owner_id = target_profile
+  where id = target_nation;
+
+  update public.profiles
+  set nation_id = target_nation
+  where id = target_profile;
+end;
+$$;
+
 drop policy if exists "admin_manage_profiles" on profiles;
 drop policy if exists "admin_manage_nations" on nations;
+drop policy if exists "admin_manage_canon_actions" on canon_actions;
+drop policy if exists "admin_manage_wars" on wars;
+drop policy if exists "admin_manage_alliances" on alliances;
+drop policy if exists "admin_manage_alliance_members" on alliance_members;
 drop policy if exists "admin_manage_news" on news;
 drop policy if exists "admin_manage_forum_boards" on forum_boards;
 create policy "admin_manage_profiles" on profiles for all using (public.is_admin(auth.uid())) with check (public.is_admin(auth.uid()));
-create policy "admin_manage_nations" on nations for all using (public.is_admin(auth.uid())) with check (public.is_admin(auth.uid()));
-create policy "admin_manage_news" on news for all using (public.is_admin(auth.uid())) with check (public.is_admin(auth.uid()));
-create policy "admin_manage_forum_boards" on forum_boards for all using (public.is_admin(auth.uid())) with check (public.is_admin(auth.uid()));
+create policy "admin_manage_nations" on nations for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
+create policy "admin_manage_canon_actions" on canon_actions for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
+create policy "admin_manage_wars" on wars for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
+create policy "admin_manage_alliances" on alliances for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
+create policy "admin_manage_alliance_members" on alliance_members for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
+create policy "admin_manage_news" on news for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
+create policy "admin_manage_forum_boards" on forum_boards for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
 
 insert into profiles (id, username, role)
 select u.id, split_part(u.email, '@', 1), 'admin'
@@ -1577,7 +1615,7 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
 };
 
 // ─── ADMIN ────────────────────────────────────────────────────────
-const Admin = ({ nations, profiles, onRefresh }) => {
+const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
   const [tab, setTab] = useState("add");
   const blank = { name:"",government:"",ideology:"",population:"",gdp_usd:"",land_km2:"",army_rank:"",hdi:"",economy:"",bio:"",diplomatic_status:"",bloc:"",tiktok_username:"" };
   const [nf, setNf] = useState(blank);
@@ -1595,13 +1633,26 @@ const Admin = ({ nations, profiles, onRefresh }) => {
 
   const loadEdit = n => { setEditId(n.id); setNf({ name:n.name||"",government:n.government||"",ideology:n.ideology||"",population:n.population||"",gdp_usd:n.gdp_usd||"",land_km2:n.land_km2||"",army_rank:n.army_rank||"",hdi:n.hdi||"",economy:n.economy||"",bio:n.bio||"",diplomatic_status:n.diplomatic_status||"",bloc:n.bloc||"",tiktok_username:n.tiktok_username||"" }); setTab("add"); window.scrollTo(0,0); };
 
+  const assignNation = async () => {
+    if (!assignNId || !assignPId) return;
+    const { error } = await supabase.rpc("assign_nation_as_staff", { target_profile: assignPId, target_nation: assignNId });
+    if (error) {
+      alert(error.message);
+      return;
+    }
+    setAssignNId("");
+    setAssignPId("");
+    onRefresh();
+  };
+
   const fields = [["name","Nation Name *"],["government","Government"],["ideology","Ideology"],["population","Population"],["gdp_usd","GDP (USD number)"],["land_km2","Land km2"],["army_rank","Army Rank 0-11"],["hdi","HDI 0.00-1.00"],["economy","Economy Sectors"],["diplomatic_status","Diplomatic Status"],["bloc","Bloc / Alliance"],["tiktok_username","TikTok Username"]];
+  const tabs = [["add",editId?"Edit Nation":"Add Nation"],["assign","Assign Nations"],...(isAdmin ? [["roles","Manage Roles"]] : []),["list","Nation List"]];
 
   return (
     <div>
-      <h2 style={{ margin:"0 0 1.25rem", fontFamily:"var(--display)", color:"#e74c3c", fontSize:20 }}>Admin Panel</h2>
+      <h2 style={{ margin:"0 0 1.25rem", fontFamily:"var(--display)", color:"#e74c3c", fontSize:20 }}>{isAdmin ? "Admin Panel" : "Lore Team Panel"}</h2>
       <div style={{ display:"flex", gap:"0.4rem", marginBottom:"1.25rem", flexWrap:"wrap" }}>
-        {[["add",editId?"Edit Nation":"Add Nation"],["assign","Assign Nations"],["roles","Manage Roles"],["list","Nation List"]].map(([t,l])=>(
+        {tabs.map(([t,l])=>(
           <button key={t} onClick={()=>setTab(t)} style={{ ...mkBtn(tab===t?"gold":"ghost"), fontSize:12 }}>{l}</button>
         ))}
       </div>
@@ -1634,11 +1685,11 @@ const Admin = ({ nations, profiles, onRefresh }) => {
             <option value="">Select player</option>
             {profiles.map(p=><option key={p.id} value={p.id}>@{p.username} {p.nation_id?"(has nation)":""}</option>)}
           </select>
-          <button onClick={async()=>{if(!assignNId||!assignPId)return;await supabase.from("nations").update({owner_id:assignPId}).eq("id",assignNId);await supabase.from("profiles").update({nation_id:assignNId}).eq("id",assignPId);setAssignNId("");setAssignPId("");onRefresh();}} style={mkBtn()}>Assign Nation</button>
+          <button onClick={assignNation} style={mkBtn()}>Assign Nation</button>
         </div>
       )}
 
-      {tab==="roles" && (
+      {isAdmin && tab==="roles" && (
         <div style={{ ...card, display:"flex", flexDirection:"column", gap:"0.75rem", maxWidth:480 }}>
           <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Assign Player Role</h3>
           <select value={roleId} onChange={e=>setRoleId(e.target.value)} style={inp}>
@@ -1647,7 +1698,8 @@ const Admin = ({ nations, profiles, onRefresh }) => {
           </select>
           <select value={role} onChange={e=>setRole(e.target.value)} style={inp}>
             <option value="player">Player</option>
-            <option value="mod">Mod (Lore Team)</option>
+            <option value="lore">Lore Team</option>
+            <option value="mod">Mod (Legacy Lore Team)</option>
             <option value="admin">Admin</option>
           </select>
           <button onClick={async()=>{if(!roleId)return;await supabase.from("profiles").update({role}).eq("id",roleId);setRoleId("");onRefresh();}} style={mkBtn()}>Set Role</button>
@@ -1738,7 +1790,7 @@ export default function App() {
 
   const userNation = profile?.nation_id ? data.nations.find(n=>n.id===profile.nation_id) : null;
   const isAdmin = profile?.role==="admin";
-  const isMod = ["mod","admin"].includes(profile?.role);
+  const isLoreTeam = ["lore","mod","admin"].includes(profile?.role);
 
   const nav = [
     {id:"forums",label:"Boards"},
@@ -1785,8 +1837,8 @@ export default function App() {
           {user ? <>
             {userNation && <><Flag nation={userNation} size={20} /><span style={{ fontSize:11, color:"#9fb4d6", maxWidth:70, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{userNation.name}</span></>}
             <button onClick={()=>navigate("profile")} style={{ background:"transparent", border:"none", padding:0, minHeight:0, color:"#9fb4d6", fontSize:11, cursor:"pointer" }}>@{profile?.username || user.email?.split("@")[0] || "profile"}</button>
-            {isMod && <span style={{ fontSize:9, color:"#3498db", border:"1px solid #3498db33", borderRadius:3, padding:"1px 5px", letterSpacing:"0.06em" }}>{profile?.role?.toUpperCase()}</span>}
-            {isAdmin && <button onClick={()=>navigate("admin")} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>Admin</button>}
+            {isLoreTeam && <span style={{ fontSize:9, color:"#3498db", border:"1px solid #3498db33", borderRadius:3, padding:"1px 5px", letterSpacing:"0.06em" }}>{profile?.role === "lore" ? "LORE" : profile?.role?.toUpperCase()}</span>}
+            {isLoreTeam && <button onClick={()=>navigate("admin")} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>{isAdmin ? "Admin" : "Lore"}</button>}
             <button onClick={()=>supabase.auth.signOut()} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>Sign Out</button>
           </> : (
             <button onClick={()=>navigate("auth")} style={{ ...mkBtn("gold"), padding:"4px 10px", fontSize:11 }}>Sign In</button>
@@ -1799,16 +1851,16 @@ export default function App() {
           ? <div style={{ textAlign:"center", padding:"5rem", color:"#8493ad", fontFamily:"var(--display)", letterSpacing:"0.2em", fontSize:13 }}>LOADING WORLD</div>
           : <>
               {page==="home"         && <Home nations={data.nations} news={data.news} actions={data.actions} wars={data.wars} />}
-              {page==="nations"      && <Nations nations={data.nations} posts={data.posts} actions={data.actions} wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} profile={profile} userNation={userNation} isMod={isMod} isAdmin={isAdmin} onRefresh={fetchAll} />}
+              {page==="nations"      && <Nations nations={data.nations} posts={data.posts} actions={data.actions} wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} profile={profile} userNation={userNation} isMod={isLoreTeam} isAdmin={isAdmin} onRefresh={fetchAll} />}
               {page==="rp"           && <RPBoard posts={data.posts} profile={profile} userNation={userNation} nations={data.nations} onRefresh={fetchAll} />}
-              {page==="actions"      && <ActionsPage actions={data.actions} profile={profile} userNation={userNation} nations={data.nations} isMod={isMod} onRefresh={fetchAll} />}
-              {page==="wars"         && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} nations={data.nations} profile={profile} userNation={userNation} isMod={isMod} onRefresh={fetchAll} />}
-              {page==="news"         && <NewsPage news={data.news} profile={profile} isMod={isMod} onRefresh={fetchAll} />}
+              {page==="actions"      && <ActionsPage actions={data.actions} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} />}
+              {page==="wars"         && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} nations={data.nations} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} />}
+              {page==="news"         && <NewsPage news={data.news} profile={profile} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="leaderboards" && <Leaderboards nations={data.nations} />}
               {page==="profile" && user && profile && <ProfilePage user={user} profile={profile} userNation={userNation} onProfileUpdate={updateProfile} />}
               {page==="forums"       && <Forums boards={data.boards} threads={data.threads} posts={data.forumPosts} profile={profile} userNation={userNation} nations={data.nations} onRefresh={fetchAll} onRequireAuth={()=>navigate("auth")} />}
               {page==="auth"         && <Auth setupRequired={setupRequired} onAuth={(u,p)=>{setUser(u);if(p)setProfile(p);else ensureProfile(u).then(next=>{if(next)setProfile(next);}).catch(console.error);fetchAll();setPage("forums");}} />}
-              {page==="admin" && isAdmin && <Admin nations={data.nations} profiles={data.profiles} onRefresh={fetchAll} />}
+              {page==="admin" && isLoreTeam && <Admin nations={data.nations} profiles={data.profiles} onRefresh={fetchAll} isAdmin={isAdmin} />}
             </>
         }
       </main>
