@@ -49,20 +49,34 @@ const SQL = `-- Run once in Supabase SQL Editor
 
 -- Enable storage
 insert into storage.buckets (id, name, public) values ('flags', 'flags', true) on conflict do nothing;
+insert into storage.buckets (id, name, public) values ('profile-media', 'profile-media', true) on conflict do nothing;
 drop policy if exists "Public flag read" on storage.objects;
 drop policy if exists "Auth flag upload" on storage.objects;
 drop policy if exists "Auth flag update" on storage.objects;
+drop policy if exists "Public profile media read" on storage.objects;
+drop policy if exists "Auth profile media upload" on storage.objects;
+drop policy if exists "Auth profile media update" on storage.objects;
 create policy "Public flag read" on storage.objects for select using (bucket_id = 'flags');
 create policy "Auth flag upload" on storage.objects for insert with check (bucket_id = 'flags' AND auth.role() = 'authenticated');
 create policy "Auth flag update" on storage.objects for update using (bucket_id = 'flags' AND auth.role() = 'authenticated');
+create policy "Public profile media read" on storage.objects for select using (bucket_id = 'profile-media');
+create policy "Auth profile media upload" on storage.objects for insert with check (bucket_id = 'profile-media' AND auth.role() = 'authenticated' AND (storage.foldername(name))[1] = auth.uid()::text);
+create policy "Auth profile media update" on storage.objects for update using (bucket_id = 'profile-media' AND auth.role() = 'authenticated' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 create table if not exists profiles (
   id uuid primary key references auth.users on delete cascade,
   username text unique not null,
   role text default 'player',
   nation_id uuid,
+  avatar_url text,
+  signature_url text,
+  bio text,
   created_at timestamptz default now()
 );
+
+alter table profiles add column if not exists avatar_url text;
+alter table profiles add column if not exists signature_url text;
+alter table profiles add column if not exists bio text;
 
 create table if not exists nations (
   id uuid primary key default gen_random_uuid(),
@@ -397,7 +411,7 @@ const SetupModal = ({ onClose }) => {
           <li>Paste into <code style={{color:"#d4af37",fontSize:11}}>VITE_SUPABASE_URL</code> / <code style={{color:"#d4af37",fontSize:11}}>VITE_SUPABASE_ANON_KEY</code> in <code style={{color:"#d4af37",fontSize:11}}>.env.local</code></li>
           <li>SQL Editor &gt; paste SQL below &gt; Run. The RLS warning is expected for table creation; this SQL explicitly enables RLS and adds policies before the app uses the tables.</li>
           <li>Authentication, Providers, then enable <strong style={{color:"#f7f0dc"}}>Email</strong></li>
-          <li>Storage: check the <strong style={{color:"#f7f0dc"}}>flags</strong> bucket was created, or create it manually and set it to Public</li>
+          <li>Storage: check the <strong style={{color:"#f7f0dc"}}>flags</strong> and <strong style={{color:"#f7f0dc"}}>profile-media</strong> buckets were created, or create them manually and set them to Public</li>
           <li>The SQL promotes the first registered user to <code style={{color:"#d4af37",fontSize:11}}>admin</code></li>
           <li>Deploy to <a href="https://vercel.com" target="_blank" rel="noreferrer" style={{color:"#d4af37"}}>Vercel</a> or <a href="https://netlify.com" target="_blank" rel="noreferrer" style={{color:"#d4af37"}}>Netlify</a> (both free)</li>
         </ol>
@@ -550,6 +564,131 @@ const FlagUploader = ({ nationId, currentUrl, onUploaded }) => {
 };
 
 // ─── HOME ─────────────────────────────────────────────────────────
+const ProfileMediaUploader = ({ profileId, field, currentUrl, label, onUploaded, ratio = "1 / 1" }) => {
+  const [uploading, setUploading] = useState(false);
+  const ref = useRef();
+
+  const upload = async (file) => {
+    if (!file || !profileId) return;
+    if (!["image/jpeg","image/png"].includes(file.type)) {
+      alert("Please upload a JPEG or PNG file.");
+      return;
+    }
+    setUploading(true);
+    const ext = file.type === "image/png" ? "png" : "jpg";
+    const path = `${profileId}/${field}.${ext}`;
+    const { error } = await supabase.storage.from("profile-media").upload(path, file, { upsert: true, contentType: file.type });
+    if (error) {
+      alert(error.message);
+      setUploading(false);
+      return;
+    }
+    const { data } = supabase.storage.from("profile-media").getPublicUrl(path);
+    const url = data.publicUrl + "?t=" + Date.now();
+    const update = await supabase.from("profiles").update({ [field]: url }).eq("id", profileId).select("*").single();
+    if (update.error) alert(update.error.message);
+    else onUploaded(update.data);
+    setUploading(false);
+  };
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:"0.55rem" }}>
+      {currentUrl ? (
+        <img src={currentUrl} alt={label} style={{ width:"100%", maxWidth:field==="avatar_url"?120:360, aspectRatio:ratio, objectFit:"cover", borderRadius:field==="avatar_url"?"50%":6, border:"1px solid rgba(246,193,50,0.2)" }} />
+      ) : (
+        <div style={{ width:field==="avatar_url"?120:"100%", maxWidth:field==="avatar_url"?120:360, aspectRatio:ratio, borderRadius:field==="avatar_url"?"50%":6, border:"1px dashed rgba(246,193,50,0.24)", background:"rgba(255,255,255,0.035)", display:"flex", alignItems:"center", justifyContent:"center", color:"#8fa0bd", fontSize:12 }}>{label}</div>
+      )}
+      <input ref={ref} type="file" accept="image/jpeg,image/png" style={{ display:"none" }} onChange={e=>upload(e.target.files[0])} />
+      <button onClick={()=>ref.current.click()} disabled={uploading} style={{ ...mkBtn("ghost"), alignSelf:"flex-start", fontSize:11 }}>
+        {uploading ? "Uploading" : `Upload ${label}`}
+      </button>
+    </div>
+  );
+};
+
+const ProfilePage = ({ user, profile, userNation, onProfileUpdate }) => {
+  const [form, setForm] = useState({ username:profile?.username||"", bio:profile?.bio||"" });
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    setForm({ username:profile?.username||"", bio:profile?.bio||"" });
+  }, [profile?.username, profile?.bio]);
+
+  const save = async () => {
+    if (!profile) return;
+    const username = form.username.trim();
+    if (!username) {
+      setMsg("Username is required.");
+      return;
+    }
+    setSaving(true);
+    setMsg("");
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ username, bio:form.bio.trim() || null })
+      .eq("id", profile.id)
+      .select("*")
+      .single();
+    if (error) setMsg(error.message);
+    else {
+      onProfileUpdate(data);
+      setMsg("Profile saved.");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+      <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", flexWrap:"wrap" }}>
+        <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:20, flex:1 }}>Profile</h2>
+        {userNation && <NationPill nation={userNation} />}
+      </div>
+
+      <div className="profile-grid" style={{ display:"grid", gridTemplateColumns:"minmax(0, 1fr) 320px", gap:"1rem", alignItems:"start" }}>
+        <div style={{ ...card, display:"flex", flexDirection:"column", gap:"0.8rem" }}>
+          <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#f0dc8a", fontSize:15 }}>Account Details</h3>
+          <label style={{ display:"flex", flexDirection:"column", gap:"0.35rem", color:"#8fa0bd", fontSize:12 }}>
+            Username
+            <input value={form.username} onChange={e=>setForm({...form,username:e.target.value})} style={inp} />
+          </label>
+          <label style={{ display:"flex", flexDirection:"column", gap:"0.35rem", color:"#8fa0bd", fontSize:12 }}>
+            Bio
+            <textarea value={form.bio} onChange={e=>setForm({...form,bio:e.target.value})} placeholder="Short public profile bio" style={{ ...ta, minHeight:130 }} />
+          </label>
+          <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+            <button onClick={save} disabled={saving} style={mkBtn()}>{saving ? "Saving" : "Save Profile"}</button>
+            {msg && <span style={{ fontSize:12, color:msg==="Profile saved."?"#2ecc71":"#e74c3c" }}>{msg}</span>}
+          </div>
+        </div>
+
+        <aside style={{ ...card, display:"flex", flexDirection:"column", gap:"1rem" }}>
+          <div>
+            <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"0.6rem" }}>Avatar</div>
+            <ProfileMediaUploader profileId={profile.id} field="avatar_url" currentUrl={profile.avatar_url} label="Avatar" onUploaded={onProfileUpdate} />
+          </div>
+          <div>
+            <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"0.6rem" }}>Forum Signature</div>
+            <ProfileMediaUploader profileId={profile.id} field="signature_url" currentUrl={profile.signature_url} label="Signature" onUploaded={onProfileUpdate} ratio="5 / 1" />
+          </div>
+        </aside>
+      </div>
+
+      <div className="profile-preview" style={card}>
+        <div style={{ display:"flex", gap:"1rem", alignItems:"flex-start", flexWrap:"wrap" }}>
+          {profile.avatar_url ? <img src={profile.avatar_url} alt="" style={{ width:92, height:92, borderRadius:"50%", objectFit:"cover", border:"1px solid rgba(246,193,50,0.22)" }} /> : <div style={{ width:92, height:92, borderRadius:"50%", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(246,193,50,0.18)" }} />}
+          <div style={{ flex:1, minWidth:180 }}>
+            <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:18, fontWeight:800 }}>@{profile.username}</div>
+            <div style={{ color:"#8fa0bd", fontSize:12, marginTop:2 }}>{profile.role || "player"}{user?.email ? ` - ${user.email}` : ""}</div>
+            {profile.bio && <p style={{ margin:"0.75rem 0 0", color:"#d8c890", lineHeight:1.75, fontSize:13, whiteSpace:"pre-wrap" }}>{profile.bio}</p>}
+            {profile.signature_url && <img src={profile.signature_url} alt="" style={{ marginTop:"0.85rem", maxWidth:"100%", maxHeight:110, objectFit:"contain", borderTop:"1px solid rgba(246,193,50,0.12)", paddingTop:"0.75rem" }} />}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Home = ({ nations, news, actions, wars }) => {
   const topGDP = [...nations].sort((a,b)=>(b.gdp_usd||0)-(a.gdp_usd||0)).slice(0,5);
   const activeWars = wars.filter(w=>w.status==="active");
@@ -1403,16 +1542,22 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem", marginBottom:"1.25rem" }}>
           {tPosts.map((p,i)=>{
             const pNation = nations.find(n=>n.id===p.nation_id);
+            const authorAvatar = p.profiles?.avatar_url;
+            const authorName = p.profiles?.username || "Unknown";
             return (
               <div className="post-card forum-post-layout" key={p.id} style={{ ...card, borderLeft:i===0?"2px solid rgba(212,175,55,0.3)":undefined }}>
                 <aside className="post-author" style={{ width:150, flexShrink:0 }}>
-                  {pNation ? <Flag nation={pNation} size={96} /> : <div style={{ width:96, height:62, background:"rgba(255,255,255,0.04)", borderRadius:4 }} />}
-                  <div style={{ marginTop:"0.65rem", fontSize:13, color:"#d4af37", fontWeight:800, lineHeight:1.35 }}>{pNation?.name||p.profiles?.username||"Unknown"}</div>
+                  {authorAvatar
+                    ? <img src={authorAvatar} alt="" style={{ width:96, height:96, borderRadius:"50%", objectFit:"cover", border:"1px solid rgba(246,193,50,0.2)" }} />
+                    : pNation ? <Flag nation={pNation} size={96} /> : <div style={{ width:96, height:96, background:"rgba(255,255,255,0.04)", borderRadius:"50%" }} />}
+                  <div style={{ marginTop:"0.65rem", fontSize:13, color:"#d4af37", fontWeight:800, lineHeight:1.35 }}>@{authorName}</div>
+                  {pNation && <div style={{ marginTop:"0.25rem", fontSize:11, color:"#8fa0bd", lineHeight:1.35 }}>{pNation.name}</div>}
                   {i===0 && <div style={{ display:"inline-block", marginTop:"0.45rem", fontSize:10, color:"#d4af37", border:"1px solid rgba(212,175,55,0.25)", borderRadius:3, padding:"1px 5px" }}>OP</div>}
                   <div style={{ marginTop:"0.45rem", fontSize:11, color:"#8fa0bd" }}>{timeAgo(p.created_at)}</div>
                 </aside>
                 <div className="post-body" style={{ flex:1, minWidth:0 }}>
                   <RichText>{p.body}</RichText>
+                  {p.profiles?.signature_url && <img className="post-signature" src={p.profiles.signature_url} alt="" />}
                 </div>
               </div>
             );
@@ -1556,8 +1701,8 @@ export default function App() {
       supabase.from("alliances").select("*").order("created_at",{ascending:false}),
       supabase.from("alliance_members").select("*"),
       supabase.from("forum_boards").select("*").order("sort_order"),
-      supabase.from("forum_threads").select("*, profiles(username)").order("created_at",{ascending:false}),
-      supabase.from("forum_posts").select("*, profiles(username)").order("created_at",{ascending:true}),
+      supabase.from("forum_threads").select("*, profiles(username,avatar_url)").order("created_at",{ascending:false}),
+      supabase.from("forum_posts").select("*, profiles(username,avatar_url,signature_url,bio)").order("created_at",{ascending:true}),
     ]);
     setData({ nations:nations.data||[], profiles:profiles.data||[], news:news.data||[], posts:posts.data||[], actions:actions.data||[], wars:wars.data||[], alliances:alliances.data||[], allianceMembers:allianceMembers.data||[], boards:boards.data||[], threads:threads.data||[], forumPosts:forumPosts.data||[] });
     setLoading(false);
@@ -1597,18 +1742,26 @@ export default function App() {
 
   const nav = [
     {id:"forums",label:"Boards"},
+    {id:"nations",label:"Nations"},
+    {id:"leaderboards",label:"Leaderboards"},
+    {id:"news",label:"News"},
     ...(user ? [
+      {id:"profile",label:"Profile"},
       {id:"rp",label:"Dispatches"},
       {id:"actions",label:"Actions"},
       {id:"wars",label:"Wars and Alliances"},
-      {id:"nations",label:"Nations"},
-      {id:"news",label:"News"},
-      {id:"leaderboards",label:"Leaderboards"},
       {id:"home",label:"Overview"},
     ] : []),
   ];
 
   const navigate = (id) => { setPage(id); setMenuOpen(false); };
+  const updateProfile = (nextProfile) => {
+    setProfile(nextProfile);
+    setData(prev => ({
+      ...prev,
+      profiles: prev.profiles.map(p => p.id === nextProfile.id ? nextProfile : p),
+    }));
+  };
 
   return (
     <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column" }}>
@@ -1631,7 +1784,7 @@ export default function App() {
         <div className="user-tools" style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexShrink:0 }}>
           {user ? <>
             {userNation && <><Flag nation={userNation} size={20} /><span style={{ fontSize:11, color:"#9fb4d6", maxWidth:70, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{userNation.name}</span></>}
-            <span style={{ fontSize:11, color:"#9fb4d6" }}>@{profile?.username}</span>
+            <button onClick={()=>navigate("profile")} style={{ background:"transparent", border:"none", padding:0, minHeight:0, color:"#9fb4d6", fontSize:11, cursor:"pointer" }}>@{profile?.username || user.email?.split("@")[0] || "profile"}</button>
             {isMod && <span style={{ fontSize:9, color:"#3498db", border:"1px solid #3498db33", borderRadius:3, padding:"1px 5px", letterSpacing:"0.06em" }}>{profile?.role?.toUpperCase()}</span>}
             {isAdmin && <button onClick={()=>navigate("admin")} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>Admin</button>}
             <button onClick={()=>supabase.auth.signOut()} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>Sign Out</button>
@@ -1652,6 +1805,7 @@ export default function App() {
               {page==="wars"         && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} nations={data.nations} profile={profile} userNation={userNation} isMod={isMod} onRefresh={fetchAll} />}
               {page==="news"         && <NewsPage news={data.news} profile={profile} isMod={isMod} onRefresh={fetchAll} />}
               {page==="leaderboards" && <Leaderboards nations={data.nations} />}
+              {page==="profile" && user && profile && <ProfilePage user={user} profile={profile} userNation={userNation} onProfileUpdate={updateProfile} />}
               {page==="forums"       && <Forums boards={data.boards} threads={data.threads} posts={data.forumPosts} profile={profile} userNation={userNation} nations={data.nations} onRefresh={fetchAll} onRequireAuth={()=>navigate("auth")} />}
               {page==="auth"         && <Auth setupRequired={setupRequired} onAuth={(u,p)=>{setUser(u);if(p)setProfile(p);else ensureProfile(u).then(next=>{if(next)setProfile(next);}).catch(console.error);fetchAll();setPage("forums");}} />}
               {page==="admin" && isAdmin && <Admin nations={data.nations} profiles={data.profiles} onRefresh={fetchAll} />}
@@ -1690,6 +1844,7 @@ export default function App() {
         .rich-post pre{white-space:pre-wrap;overflow:auto;background:#030405;border:1px solid rgba(20,96,184,0.28);border-radius:6px;padding:0.75rem;color:#99dca7;}
         .rich-post a{color:#6fb7ff;text-decoration:underline;}
         .rich-post img{display:block;max-width:100%;height:auto;border-radius:6px;margin:0.75rem 0;border:1px solid rgba(255,255,255,0.12);}
+        .post-signature{display:block;max-width:100%;max-height:120px;object-fit:contain;margin-top:1rem;padding-top:0.85rem;border-top:1px solid rgba(246,193,50,0.12);}
         .forum-post-layout{display:flex;gap:1.1rem;align-items:flex-start;}
         .post-author{border-right:1px solid rgba(246,193,50,0.12);padding-right:1rem;}
         ::-webkit-scrollbar{width:4px;height:4px;}
@@ -1739,6 +1894,7 @@ export default function App() {
           .forum-post-layout{display:block!important;}
           .post-author{width:auto!important;border-right:none!important;border-bottom:1px solid rgba(246,193,50,0.12);padding:0 0 0.85rem!important;margin-bottom:0.85rem;display:grid;grid-template-columns:auto 1fr;column-gap:0.85rem;align-items:center;}
           .post-author img,.post-author > div:first-child{grid-row:1 / span 3;}
+          .profile-grid{grid-template-columns:1fr!important;}
         }
         @media (max-width: 430px) {
           .app-header{min-height:108px!important;}

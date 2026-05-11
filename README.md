@@ -45,6 +45,12 @@ To import the known canon nations from the spreadsheet sources, run:
 supabase-nation-seed.sql
 ```
 
+To add profile avatars, signatures, and bios to an existing database, run:
+
+```text
+supabase-profile-setup.sql
+```
+
 The seed is generated from `-NW- World Database (2).xlsx` and `S2 Base (3).xlsx`. If those sheets are updated, regenerate the SQL with:
 
 ```powershell
