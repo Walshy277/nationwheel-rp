@@ -153,6 +153,16 @@ create table if not exists alliance_members (
   nation_id uuid references nations(id) on delete cascade
 );
 
+create table if not exists war_participants (
+  id uuid primary key default gen_random_uuid(),
+  war_id uuid references wars(id) on delete cascade,
+  side text not null check (side in ('attacker','defender')),
+  nation_id uuid references nations(id) on delete cascade,
+  alliance_id uuid references alliances(id) on delete cascade,
+  created_at timestamptz default now(),
+  check (nation_id is not null or alliance_id is not null)
+);
+
 create table if not exists news (
   id uuid primary key default gen_random_uuid(),
   author_id uuid references profiles(id) on delete cascade,
@@ -192,6 +202,7 @@ alter table rp_posts enable row level security;
 alter table canon_actions enable row level security;
 alter table action_updates enable row level security;
 alter table wars enable row level security;
+alter table war_participants enable row level security;
 alter table alliances enable row level security;
 alter table alliance_members enable row level security;
 alter table news enable row level security;
@@ -205,6 +216,7 @@ drop policy if exists "pub_read" on rp_posts;
 drop policy if exists "pub_read" on canon_actions;
 drop policy if exists "pub_read" on action_updates;
 drop policy if exists "pub_read" on wars;
+drop policy if exists "pub_read" on war_participants;
 drop policy if exists "pub_read" on alliances;
 drop policy if exists "pub_read" on alliance_members;
 drop policy if exists "pub_read" on news;
@@ -217,6 +229,7 @@ create policy "pub_read" on rp_posts for select using (true);
 create policy "pub_read" on canon_actions for select using (true);
 create policy "pub_read" on action_updates for select using (true);
 create policy "pub_read" on wars for select using (true);
+create policy "pub_read" on war_participants for select using (true);
 create policy "pub_read" on alliances for select using (true);
 create policy "pub_read" on alliance_members for select using (true);
 create policy "pub_read" on news for select using (true);
@@ -231,6 +244,8 @@ drop policy if exists "auth_insert_ca" on canon_actions;
 drop policy if exists "auth_insert_au" on action_updates;
 drop policy if exists "auth_insert_ft" on forum_threads;
 drop policy if exists "auth_insert_fp" on forum_posts;
+drop policy if exists "auth_insert_wars" on wars;
+drop policy if exists "auth_insert_war_participants" on war_participants;
 create policy "own_insert" on profiles for insert with check (auth.uid()=id);
 create policy "own_update" on profiles for update using (auth.uid()=id);
 create policy "auth_insert_rp" on rp_posts for insert with check (auth.uid()=author_id);
@@ -238,6 +253,8 @@ create policy "auth_insert_ca" on canon_actions for insert with check (auth.uid(
 create policy "auth_insert_au" on action_updates for insert with check (auth.uid()=author_id);
 create policy "auth_insert_ft" on forum_threads for insert with check (auth.uid()=author_id);
 create policy "auth_insert_fp" on forum_posts for insert with check (auth.uid()=author_id);
+create policy "auth_insert_wars" on wars for insert with check (auth.role()='authenticated');
+create policy "auth_insert_war_participants" on war_participants for insert with check (auth.role()='authenticated');
 
 -- Seed forum boards
 insert into forum_boards (name,description,slug,icon,sort_order) values
@@ -299,6 +316,7 @@ drop policy if exists "admin_manage_profiles" on profiles;
 drop policy if exists "admin_manage_nations" on nations;
 drop policy if exists "admin_manage_canon_actions" on canon_actions;
 drop policy if exists "admin_manage_wars" on wars;
+drop policy if exists "admin_manage_war_participants" on war_participants;
 drop policy if exists "admin_manage_alliances" on alliances;
 drop policy if exists "admin_manage_alliance_members" on alliance_members;
 drop policy if exists "admin_manage_news" on news;
@@ -307,6 +325,7 @@ create policy "admin_manage_profiles" on profiles for all using (public.is_admin
 create policy "admin_manage_nations" on nations for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
 create policy "admin_manage_canon_actions" on canon_actions for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
 create policy "admin_manage_wars" on wars for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
+create policy "admin_manage_war_participants" on war_participants for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
 create policy "admin_manage_alliances" on alliances for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
 create policy "admin_manage_alliance_members" on alliance_members for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
 create policy "admin_manage_news" on news for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
@@ -839,8 +858,12 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
   const [tab, setTab] = useState("overview");
   const nPosts = posts.filter(p => p.nation_id === nation.id);
   const nActions = actions.filter(a => a.nation_id === nation.id);
-  const nWars = wars.filter(w => w.aggressor_id === nation.id || w.defender_id === nation.id);
   const nAllyIds = allianceMembers.filter(m => m.nation_id === nation.id).map(m => m.alliance_id);
+  const nWars = wars.filter(w =>
+    w.aggressor_id === nation.id ||
+    w.defender_id === nation.id ||
+    w.war_participants?.some(p => p.nation_id === nation.id || nAllyIds.includes(p.alliance_id))
+  );
   const nAlliances = alliances.filter(a => nAllyIds.includes(a.id));
   const isOwner = profile?.nation_id === nation.id;
 
@@ -924,7 +947,7 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
       {tab==="wars" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
           {nWars.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No wars on record.</p>}
-          {nWars.map(w=><WarCard key={w.id} war={w} nations={nations} />)}
+          {nWars.map(w=><WarCard key={w.id} war={w} nations={nations} alliances={alliances} participants={w.war_participants || []} />)}
         </div>
       )}
 
@@ -1047,31 +1070,102 @@ const ActionCard = ({ action, nations, expandable, isMod, onRefresh, profile }) 
   );
 };
 
-const WarCard = ({ war, nations, isMod, onRefresh }) => {
+const WarParticipantPill = ({ participant, nations, alliances }) => {
+  const nation = participant.nation_id ? nations.find(n=>n.id===participant.nation_id) : null;
+  const alliance = participant.alliance_id ? alliances.find(a=>a.id===participant.alliance_id) : null;
+  if (nation) return <NationPill nation={nation} />;
+  if (alliance) return (
+    <span style={{ display:"inline-flex", alignItems:"center", gap:5, background:"rgba(52,152,219,0.09)", border:"1px solid rgba(52,152,219,0.22)", borderRadius:4, padding:"4px 8px" }}>
+      <span style={{ color:"#6fb7ff", fontSize:12, fontWeight:800 }}>{alliance.name}</span>
+      <span style={{ color:"#8fa0bd", fontSize:10 }}>{alliance.type}</span>
+    </span>
+  );
+  return null;
+};
+
+const WarCard = ({ war, nations, alliances = [], participants = [], isMod, onRefresh }) => {
   const agg = nations?.find(n=>n.id===war.aggressor_id) || war.aggressor;
   const def = nations?.find(n=>n.id===war.defender_id) || war.defender;
+  const warParticipants = participants.filter(p=>p.war_id===war.id);
+  const attackers = warParticipants.filter(p=>p.side==="attacker");
+  const defenders = warParticipants.filter(p=>p.side==="defender");
+  const hasParticipants = warParticipants.length > 0;
+  const [addForm, setAddForm] = useState({ side:"attacker", type:"nation", id:"" });
+
+  const addParticipant = async () => {
+    if (!addForm.id) return;
+    const payload = {
+      war_id: war.id,
+      side: addForm.side,
+      nation_id: addForm.type==="nation" ? addForm.id : null,
+      alliance_id: addForm.type==="alliance" ? addForm.id : null,
+    };
+    const { error } = await supabase.from("war_participants").insert(payload);
+    if (error) alert(error.message);
+    else {
+      setAddForm({ ...addForm, id:"" });
+      onRefresh();
+    }
+  };
+
+  const removeParticipant = async (id) => {
+    const { error } = await supabase.from("war_participants").delete().eq("id", id);
+    if (error) alert(error.message);
+    else onRefresh();
+  };
+
+  const Side = ({ title, color, fallback, items }) => (
+    <div style={{ flex:1, minWidth:220 }}>
+      <div style={{ fontSize:10, color:"#8fa0bd", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:"0.45rem" }}>{title}</div>
+      <div style={{ display:"flex", gap:"0.45rem", flexWrap:"wrap", alignItems:"center" }}>
+        {items.length > 0
+          ? items.map(p=>(
+            <span key={p.id} style={{ display:"inline-flex", alignItems:"center", gap:5 }}>
+              <WarParticipantPill participant={p} nations={nations} alliances={alliances} />
+              {isMod && <button onClick={()=>removeParticipant(p.id)} style={{ ...mkBtn("ghost"), minHeight:24, padding:"1px 6px", fontSize:10 }}>Remove</button>}
+            </span>
+          ))
+          : fallback && <span style={{ fontFamily:"var(--display)", color, fontSize:13 }}>{fallback}</span>}
+      </div>
+    </div>
+  );
+
   return (
     <div style={{ ...card, border:`1px solid ${WAR_COL[war.status]||"#d4af37"}25` }}>
-      <div style={{ display:"flex", gap:"1rem", alignItems:"center", flexWrap:"wrap" }}>
-        <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
-          <Flag nation={agg} size={26} />
-          <span style={{ fontFamily:"var(--display)", color:"#e74c3c", fontSize:13 }}>{agg?.name||"?"}</span>
-        </div>
-        <span style={{ color:"#8493ad", fontFamily:"var(--display)", fontSize:18 }}>vs</span>
-        <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
-          <Flag nation={def} size={26} />
-          <span style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:13 }}>{def?.name||"?"}</span>
-        </div>
-        <div style={{ marginLeft:"auto" }}>
+      <div style={{ display:"flex", gap:"1rem", alignItems:"flex-start", flexWrap:"wrap" }}>
+        <Side title="Attackers" color="#e74c3c" fallback={agg?.name||"?"} items={attackers} />
+        <span style={{ color:"#8493ad", fontFamily:"var(--display)", fontSize:18, alignSelf:"center" }}>vs</span>
+        <Side title="Defenders" color="#d4af37" fallback={def?.name||"?"} items={defenders} />
+        <div style={{ marginLeft:"auto", alignSelf:"center" }}>
           <span style={{ fontSize:10, fontWeight:800, color:WAR_COL[war.status], border:`1px solid ${WAR_COL[war.status]}`, borderRadius:3, padding:"2px 7px" }}>{war.status?.toUpperCase()}</span>
         </div>
       </div>
+      {!hasParticipants && <div style={{ marginTop:"0.55rem", fontSize:11, color:"#8fa0bd" }}>Legacy two-nation war. Lore team can add participants below to convert it.</div>}
       {war.name && <div style={{ fontFamily:"var(--display)", color:"#d7e2f2", fontSize:12, marginTop:"0.5rem", fontStyle:"italic" }}>"{war.name}"</div>}
       {war.casus_belli && <p style={{ margin:"0.4rem 0 0", color:"#9fb4d6", fontSize:12 }}>{war.casus_belli}</p>}
       {isMod && (
-        <div style={{ marginTop:"0.75rem", display:"flex", gap:"0.4rem" }}>
-          {war.status==="active" && <button onClick={async()=>{await supabase.from("wars").update({status:"frozen"}).eq("id",war.id);onRefresh();}} style={{ ...mkBtn("blue"), fontSize:11 }}>Freeze</button>}
-          {["active","frozen"].includes(war.status) && <button onClick={async()=>{await supabase.from("wars").update({status:"peace",ended_at:new Date().toISOString()}).eq("id",war.id);onRefresh();}} style={{ ...mkBtn("ghost"), fontSize:11 }}>Set Peace</button>}
+        <div style={{ marginTop:"0.9rem", display:"flex", flexDirection:"column", gap:"0.55rem" }}>
+          <div className="war-participant-form" style={{ display:"grid", gridTemplateColumns:"120px 120px minmax(180px,1fr) auto", gap:"0.45rem", alignItems:"center" }}>
+            <select value={addForm.side} onChange={e=>setAddForm({...addForm,side:e.target.value})} style={{ ...inp, fontSize:12 }}>
+              <option value="attacker">Attacker</option>
+              <option value="defender">Defender</option>
+            </select>
+            <select value={addForm.type} onChange={e=>setAddForm({...addForm,type:e.target.value,id:""})} style={{ ...inp, fontSize:12 }}>
+              <option value="nation">Nation</option>
+              <option value="alliance">Alliance</option>
+            </select>
+            <select value={addForm.id} onChange={e=>setAddForm({...addForm,id:e.target.value})} style={{ ...inp, fontSize:12 }}>
+              <option value="">Select {addForm.type}</option>
+              {addForm.type==="nation"
+                ? nations.map(n=><option key={n.id} value={n.id}>{n.name}</option>)
+                : alliances.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+            <button onClick={addParticipant} style={{ ...mkBtn("ghost"), fontSize:11 }}>Add</button>
+          </div>
+          <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
+            {war.status==="active" && <button onClick={async()=>{await supabase.from("wars").update({status:"frozen"}).eq("id",war.id);onRefresh();}} style={{ ...mkBtn("blue"), fontSize:11 }}>Freeze</button>}
+            {["active","frozen"].includes(war.status) && <button onClick={async()=>{await supabase.from("wars").update({status:"peace",ended_at:new Date().toISOString()}).eq("id",war.id);onRefresh();}} style={{ ...mkBtn("ghost"), fontSize:11 }}>Set Peace</button>}
+          </div>
         </div>
       )}
     </div>
@@ -1277,17 +1371,28 @@ const ActionsPage = ({ actions, profile, userNation, nations, isMod, onRefresh }
 };
 
 // ─── WARS & ALLIANCES ─────────────────────────────────────────────
-const WarsPage = ({ wars, alliances, allianceMembers, nations, profile, userNation, isMod, onRefresh }) => {
+const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, profile, userNation, isMod, onRefresh }) => {
   const [tab, setTab] = useState("wars");
   const [showWarForm, setShowWarForm] = useState(false);
   const [showAllyForm, setShowAllyForm] = useState(false);
-  const [wf, setWf] = useState({ defender_id:"", name:"", casus_belli:"" });
+  const [wf, setWf] = useState({ target_type:"nation", target_id:"", name:"", casus_belli:"" });
   const [af, setAf] = useState({ name:"", description:"", type:"alliance" });
 
   const submitWar = async () => {
-    if (!wf.defender_id||!userNation) return;
-    await supabase.from("wars").insert({ aggressor_id:userNation.id, defender_id:wf.defender_id, name:wf.name, casus_belli:wf.casus_belli });
-    setWf({defender_id:"",name:"",casus_belli:""}); setShowWarForm(false); onRefresh();
+    if (!wf.target_id||!userNation) return;
+    const legacyDefender = wf.target_type === "nation" ? wf.target_id : null;
+    const { data, error } = await supabase.from("wars").insert({ aggressor_id:userNation.id, defender_id:legacyDefender, name:wf.name, casus_belli:wf.casus_belli }).select().single();
+    if (error) {
+      alert(error.message);
+      return;
+    }
+    const participants = [
+      { war_id:data.id, side:"attacker", nation_id:userNation.id, alliance_id:null },
+      { war_id:data.id, side:"defender", nation_id:wf.target_type==="nation" ? wf.target_id : null, alliance_id:wf.target_type==="alliance" ? wf.target_id : null },
+    ];
+    const inserted = await supabase.from("war_participants").insert(participants);
+    if (inserted.error) alert(inserted.error.message);
+    setWf({target_type:"nation",target_id:"",name:"",casus_belli:""}); setShowWarForm(false); onRefresh();
   };
   const submitAlly = async () => {
     if (!af.name.trim()) return;
@@ -1315,9 +1420,15 @@ const WarsPage = ({ wars, alliances, allianceMembers, nations, profile, userNati
             <div style={{ ...card, border:"1px solid rgba(231,76,60,0.25)", marginBottom:"1rem" }}>
               <h3 style={{ margin:"0 0 1rem", fontFamily:"var(--display)", color:"#e74c3c", fontSize:14 }}>Declare War - {userNation?.name}</h3>
               <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
-                <select value={wf.defender_id} onChange={e=>setWf({...wf,defender_id:e.target.value})} style={inp}>
-                  <option value="">Select target nation</option>
-                  {nations.filter(n=>n.id!==userNation?.id).map(n=><option key={n.id} value={n.id}>{n.name}</option>)}
+                <select value={wf.target_type} onChange={e=>setWf({...wf,target_type:e.target.value,target_id:""})} style={inp}>
+                  <option value="nation">Target nation</option>
+                  <option value="alliance">Target alliance</option>
+                </select>
+                <select value={wf.target_id} onChange={e=>setWf({...wf,target_id:e.target.value})} style={inp}>
+                  <option value="">Select target {wf.target_type}</option>
+                  {wf.target_type==="nation"
+                    ? nations.filter(n=>n.id!==userNation?.id).map(n=><option key={n.id} value={n.id}>{n.name}</option>)
+                    : alliances.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
                 <input placeholder="War name (optional)" value={wf.name} onChange={e=>setWf({...wf,name:e.target.value})} style={inp} />
                 <textarea placeholder="Casus belli - justification for war" value={wf.casus_belli} onChange={e=>setWf({...wf,casus_belli:e.target.value})} style={{ ...ta, minHeight:60 }} />
@@ -1330,7 +1441,7 @@ const WarsPage = ({ wars, alliances, allianceMembers, nations, profile, userNati
           )}
           <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
             {wars.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>The world is at peace for now.</p>}
-            {wars.map(w=><WarCard key={w.id} war={w} nations={nations} isMod={isMod} onRefresh={onRefresh} />)}
+            {wars.map(w=><WarCard key={w.id} war={w} nations={nations} alliances={alliances} participants={warParticipants} isMod={isMod} onRefresh={onRefresh} />)}
           </div>
         </div>
       )}
@@ -1766,7 +1877,7 @@ export default function App() {
   const [page, setPage] = useState("forums");
   const [showSetup, setShowSetup] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [data, setData] = useState({ nations:[], profiles:[], news:[], posts:[], actions:[], wars:[], alliances:[], allianceMembers:[], boards:[], threads:[], forumPosts:[] });
+  const [data, setData] = useState({ nations:[], profiles:[], news:[], posts:[], actions:[], wars:[], warParticipants:[], alliances:[], allianceMembers:[], boards:[], threads:[], forumPosts:[] });
   const [loading, setLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
   const [dbIssues, setDbIssues] = useState([]);
@@ -1789,7 +1900,7 @@ export default function App() {
       }
       return retry.data || [];
     };
-    const [nations, profiles, news, posts, actions, wars, alliances, allianceMembers, boards, threads, forumPosts] = await Promise.all([
+    const [nations, profiles, news, posts, actions, wars, warParticipants, alliances, allianceMembers, boards, threads, forumPosts] = await Promise.all([
       run("Nations", supabase.from("nations").select("*, owner:owner_id(username)").order("name"),
         () => supabase.from("nations").select("*").order("name")),
       supabase.from("profiles").select("*").order("username"),
@@ -1797,6 +1908,8 @@ export default function App() {
       supabase.from("rp_posts").select("*, nations(name,flag_url), target_nation_id").order("created_at",{ascending:false}).limit(100),
       supabase.from("canon_actions").select("*, nations(name,flag_url), action_updates(*, profiles(username))").order("created_at",{ascending:false}),
       supabase.from("wars").select("*, aggressor:aggressor_id(name,flag_url), defender:defender_id(name,flag_url)").order("started_at",{ascending:false}),
+      run("War participants", supabase.from("war_participants").select("*").order("created_at"),
+        error => /could not find|does not exist|schema cache/i.test(error.message || "") ? Promise.resolve({ data:[], error:null }) : Promise.resolve({ data:null, error })),
       supabase.from("alliances").select("*").order("created_at",{ascending:false}),
       supabase.from("alliance_members").select("*"),
       supabase.from("forum_boards").select("*").order("sort_order"),
@@ -1806,7 +1919,13 @@ export default function App() {
         error => isMissingOptionalProfileSchema(error) ? supabase.from("forum_posts").select("*, profiles(username)").order("created_at",{ascending:true}) : Promise.resolve({ data:null, error })),
     ]);
     const unwrap = result => Array.isArray(result) ? result : (result.data || []);
-    setData({ nations, profiles:unwrap(profiles), news:unwrap(news), posts:unwrap(posts), actions:unwrap(actions), wars:unwrap(wars), alliances:unwrap(alliances), allianceMembers:unwrap(allianceMembers), boards:unwrap(boards), threads, forumPosts });
+    const plainWars = unwrap(wars);
+    const plainWarParticipants = warParticipants;
+    const warsWithParticipants = plainWars.map(w => ({
+      ...w,
+      war_participants: plainWarParticipants.filter(p => p.war_id === w.id),
+    }));
+    setData({ nations, profiles:unwrap(profiles), news:unwrap(news), posts:unwrap(posts), actions:unwrap(actions), wars:warsWithParticipants, warParticipants:plainWarParticipants, alliances:unwrap(alliances), allianceMembers:unwrap(allianceMembers), boards:unwrap(boards), threads, forumPosts });
     setDbIssues(issues);
     setLoading(false);
   }, []);
@@ -1917,7 +2036,7 @@ export default function App() {
               {page==="nations"      && <Nations nations={data.nations} posts={data.posts} actions={data.actions} wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} profile={profile} userNation={userNation} isMod={isLoreTeam} isAdmin={isAdmin} onRefresh={fetchAll} />}
               {page==="rp"           && <RPBoard posts={data.posts} profile={profile} userNation={userNation} nations={data.nations} onRefresh={fetchAll} />}
               {page==="actions"      && <ActionsPage actions={data.actions} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} />}
-              {page==="wars"         && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} nations={data.nations} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} />}
+              {page==="wars"         && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="news"         && <NewsPage news={data.news} profile={profile} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="leaderboards" && <Leaderboards nations={data.nations} />}
               {page==="profile" && user && profile && <ProfilePage user={user} profile={profile} userNation={userNation} onProfileUpdate={updateProfile} />}
@@ -2006,6 +2125,7 @@ export default function App() {
           .post-author{width:auto!important;border-right:none!important;border-bottom:1px solid rgba(20,96,184,0.16);padding:0 0 0.85rem!important;margin-bottom:0.85rem;display:grid;grid-template-columns:auto 1fr;column-gap:0.85rem;align-items:center;}
           .post-author img,.post-author > div:first-child{grid-row:1 / span 3;}
           .profile-grid{grid-template-columns:1fr!important;}
+          .war-participant-form{grid-template-columns:1fr!important;}
         }
         @media (max-width: 430px) {
           .app-header{min-height:108px!important;}

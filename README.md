@@ -51,6 +51,12 @@ To add profile avatars, signatures, and bios to an existing database, run:
 supabase-profile-setup.sql
 ```
 
+To enable multi-nation and alliance wars on an existing database, run:
+
+```text
+supabase-war-participants-setup.sql
+```
+
 The seed is generated from `-NW- World Database (2).xlsx` and `S2 Base (3).xlsx`. If those sheets are updated, regenerate the SQL with:
 
 ```powershell

@@ -37,10 +37,23 @@ begin
 end;
 $$;
 
+create table if not exists war_participants (
+  id uuid primary key default gen_random_uuid(),
+  war_id uuid references wars(id) on delete cascade,
+  side text not null check (side in ('attacker','defender')),
+  nation_id uuid references nations(id) on delete cascade,
+  alliance_id uuid references alliances(id) on delete cascade,
+  created_at timestamptz default now(),
+  check (nation_id is not null or alliance_id is not null)
+);
+
+alter table war_participants enable row level security;
+
 drop policy if exists "admin_manage_profiles" on profiles;
 drop policy if exists "admin_manage_nations" on nations;
 drop policy if exists "admin_manage_canon_actions" on canon_actions;
 drop policy if exists "admin_manage_wars" on wars;
+drop policy if exists "admin_manage_war_participants" on war_participants;
 drop policy if exists "admin_manage_alliances" on alliances;
 drop policy if exists "admin_manage_alliance_members" on alliance_members;
 drop policy if exists "admin_manage_news" on news;
@@ -63,6 +76,11 @@ with check (public.is_lore_team(auth.uid()));
 
 create policy "admin_manage_wars"
 on wars for all
+using (public.is_lore_team(auth.uid()))
+with check (public.is_lore_team(auth.uid()));
+
+create policy "admin_manage_war_participants"
+on war_participants for all
 using (public.is_lore_team(auth.uid()))
 with check (public.is_lore_team(auth.uid()));
 
