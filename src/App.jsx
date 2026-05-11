@@ -356,13 +356,13 @@ const SetupModal = ({ onClose }) => {
           <h2 style={{ margin:0, color:"#f6c132", fontFamily:"var(--display)" }}>Supabase Setup</h2>
           <button onClick={onClose} style={{ ...mkBtn("ghost"), padding:"4px 10px" }}>Close</button>
         </div>
-        <ol style={{ color:"#a89060", lineHeight:2.2, paddingLeft:"1.2rem", fontSize:13 }}>
+        <ol style={{ color:"#d8c890", lineHeight:2.2, paddingLeft:"1.2rem", fontSize:13 }}>
           <li>Go to <a href="https://supabase.com" target="_blank" rel="noreferrer" style={{color:"#d4af37"}}>supabase.com</a>, then create a free project</li>
-          <li>Settings, API, then copy <strong style={{color:"#f0e6c8"}}>Project URL</strong> and <strong style={{color:"#f0e6c8"}}>anon key</strong></li>
+          <li>Settings, API, then copy <strong style={{color:"#f7f0dc"}}>Project URL</strong> and <strong style={{color:"#f7f0dc"}}>anon key</strong></li>
           <li>Paste into <code style={{color:"#d4af37",fontSize:11}}>VITE_SUPABASE_URL</code> / <code style={{color:"#d4af37",fontSize:11}}>VITE_SUPABASE_ANON_KEY</code> in <code style={{color:"#d4af37",fontSize:11}}>.env.local</code></li>
           <li>SQL Editor &gt; paste SQL below &gt; Run. The RLS warning is expected for table creation; this SQL explicitly enables RLS and adds policies before the app uses the tables.</li>
-          <li>Authentication, Providers, then enable <strong style={{color:"#f0e6c8"}}>Email</strong></li>
-          <li>Storage: check the <strong style={{color:"#f0e6c8"}}>flags</strong> bucket was created, or create it manually and set it to Public</li>
+          <li>Authentication, Providers, then enable <strong style={{color:"#f7f0dc"}}>Email</strong></li>
+          <li>Storage: check the <strong style={{color:"#f7f0dc"}}>flags</strong> bucket was created, or create it manually and set it to Public</li>
           <li>The SQL promotes the first registered user to <code style={{color:"#d4af37",fontSize:11}}>admin</code></li>
           <li>Deploy to <a href="https://vercel.com" target="_blank" rel="noreferrer" style={{color:"#d4af37"}}>Vercel</a> or <a href="https://netlify.com" target="_blank" rel="noreferrer" style={{color:"#d4af37"}}>Netlify</a> (both free)</li>
         </ol>
@@ -414,10 +414,11 @@ const Auth = ({ onAuth, setupRequired }) => {
     <>
       {showSetup && <SetupModal onClose={()=>setShowSetup(false)} />}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=IM+Fell+English:ital@0;1&display=swap');
-        :root { --display:'Cinzel',serif; --body:'IM Fell English',Georgia,serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cinzel:wght@700;900&display=swap');
+        :root { --display:'Inter',Arial,sans-serif; --brand:'Cinzel',Georgia,serif; --body:'Inter',Arial,sans-serif; }
         *,*::before,*::after{box-sizing:border-box;}
         body {
+          font-family: var(--body);
           background: #020305;
           background-image:
             radial-gradient(circle at 18% 12%,rgba(225,29,29,0.18) 0%,transparent 30%),
@@ -436,7 +437,7 @@ const Auth = ({ onAuth, setupRequired }) => {
         <div style={{ width:"100%", maxWidth:400 }}>
           <div style={{ textAlign:"center", marginBottom:"2rem" }}>
             <img src={LOGO_SRC} alt="Nationwheel" style={{ width:150, height:150, objectFit:"cover", borderRadius:"50%", border:"2px solid rgba(246,193,50,0.38)", boxShadow:"0 0 0 6px rgba(20,96,184,0.14), 0 22px 55px rgba(0,0,0,0.55)" }} />
-            <h1 style={{ fontFamily:"var(--display)", fontSize:"clamp(2rem,6vw,3rem)", color:"#fff8e6", margin:"0.9rem 0 0", letterSpacing:"0.08em", textShadow:"0 0 34px rgba(246,193,50,0.22)" }}>NATIONWHEEL</h1>
+            <h1 style={{ fontFamily:"var(--brand)", fontSize:"clamp(2rem,6vw,3rem)", color:"#fff8e6", margin:"0.9rem 0 0", letterSpacing:"0.08em", textShadow:"0 0 34px rgba(246,193,50,0.22)" }}>NATIONWHEEL</h1>
             <p style={{ color:"#f6c132", marginTop:"0.35rem", fontSize:11, letterSpacing:"0.18em", textTransform:"uppercase" }}>Geopolitical Roleplay World</p>
           </div>
           <div style={{ ...card, border:"1px solid rgba(246,193,50,0.22)" }}>
@@ -496,7 +497,7 @@ const FlagUploader = ({ nationId, currentUrl, onUploaded }) => {
       <button onClick={()=>ref.current.click()} style={{ ...mkBtn("ghost"), fontSize:11, alignSelf:"flex-start" }}>
         {uploading?"Uploading":"Upload Flag Image"}
       </button>
-      <p style={{ margin:0, fontSize:10, color:"#4a3820" }}>PNG, JPG, SVG - recommended 3:2 ratio</p>
+      <p style={{ margin:0, fontSize:10, color:"#8fa0bd" }}>PNG, JPG, SVG - recommended 3:2 ratio</p>
     </div>
   );
 };
@@ -515,14 +516,14 @@ const Home = ({ nations, news, actions, wars }) => {
         <div style={{ position:"absolute", top:-60, right:-60, width:220, height:220, background:"radial-gradient(circle,rgba(212,175,55,0.07),transparent 70%)", pointerEvents:"none", borderRadius:"50%" }} />
         <div style={{ display:"flex", gap:"2.5rem", flexWrap:"wrap", alignItems:"center" }}>
           <div style={{ flex:1, minWidth:180 }}>
-            <p style={{ margin:"0 0 0.3rem", fontSize:10, letterSpacing:"0.25em", color:"#4a3820", textTransform:"uppercase" }}>Season 1 - Living World</p>
+            <p style={{ margin:"0 0 0.3rem", fontSize:11, letterSpacing:"0.12em", color:"#8fa0bd", textTransform:"uppercase" }}>Season 1 - Living World</p>
             <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:"clamp(1.4rem,3vw,2rem)" }}>World at a Glance</h2>
           </div>
           <div style={{ display:"flex", gap:"2rem", flexWrap:"wrap" }}>
             {[{l:"Nations",v:nations.length},{l:"Active Wars",v:activeWars.length,c:activeWars.length>0?"#e74c3c":undefined},{l:"Active Actions",v:activeActions.length}].map(s=>(
               <div key={s.l} style={{ textAlign:"center" }}>
                 <div style={{ fontFamily:"var(--display)", fontSize:"clamp(1.8rem,3.5vw,2.4rem)", color:s.c||"#d4af37", lineHeight:1 }}>{s.v}</div>
-                <div style={{ fontSize:10, color:"#4a3820", letterSpacing:"0.12em", marginTop:3, textTransform:"uppercase" }}>{s.l}</div>
+                <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.06em", marginTop:3, textTransform:"uppercase" }}>{s.l}</div>
               </div>
             ))}
           </div>
@@ -535,9 +536,9 @@ const Home = ({ nations, news, actions, wars }) => {
             <div key={n.id} style={{ padding:"0.65rem 0", borderBottom:"1px solid rgba(255,215,0,0.05)" }}>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
                 <span style={{ fontSize:10, fontWeight:800, color:"#0a0806", background:NEWS_COL[n.category]||"#d4af37", borderRadius:3, padding:"1px 6px", letterSpacing:"0.04em" }}>{n.category?.toUpperCase()}</span>
-                <span style={{ fontSize:11, color:"#4a3820" }}>{timeAgo(n.created_at)}</span>
+                <span style={{ fontSize:11, color:"#8fa0bd" }}>{timeAgo(n.created_at)}</span>
               </div>
-              <div style={{ fontSize:13, color:"#c8b068", fontWeight:700, marginTop:3 }}>{n.title}</div>
+              <div style={{ fontSize:13, color:"#f0dc8a", fontWeight:700, marginTop:3 }}>{n.title}</div>
             </div>
           ))}
         </Section>
@@ -547,8 +548,8 @@ const Home = ({ nations, news, actions, wars }) => {
             <div key={a.id} style={{ padding:"0.6rem 0", borderBottom:"1px solid rgba(255,215,0,0.05)", display:"flex", gap:"0.5rem", alignItems:"center" }}>
               <span style={{ fontSize:10, fontWeight:800, color:"#0a0806", background:ACTION_SIZES[a.size]?.color||"#d4af37", borderRadius:3, padding:"1px 6px" }}>{a.size?.toUpperCase()}</span>
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:13, color:"#c8b068", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{a.title}</div>
-                <div style={{ fontSize:11, color:"#4a3820" }}>{a.nations?.name}</div>
+                <div style={{ fontSize:13, color:"#f0dc8a", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{a.title}</div>
+                <div style={{ fontSize:11, color:"#8fa0bd" }}>{a.nations?.name}</div>
               </div>
             </div>
           ))}
@@ -558,9 +559,9 @@ const Home = ({ nations, news, actions, wars }) => {
           {activeWars.map(w=>(
             <div key={w.id} style={{ padding:"0.6rem 0", borderBottom:"1px solid rgba(255,215,0,0.05)", fontSize:13 }}>
               <span style={{ color:"#e74c3c", fontWeight:700 }}>{w.aggressor?.name||"?"}</span>
-              <span style={{ color:"#4a3820", margin:"0 0.5rem" }}>vs</span>
-              <span style={{ color:"#c8b068", fontWeight:700 }}>{w.defender?.name||"?"}</span>
-              {w.name && <div style={{ fontSize:11, color:"#5a4830", fontStyle:"italic" }}>"{w.name}"</div>}
+              <span style={{ color:"#8fa0bd", margin:"0 0.5rem" }}>vs</span>
+              <span style={{ color:"#f0dc8a", fontWeight:700 }}>{w.defender?.name||"?"}</span>
+              {w.name && <div style={{ fontSize:11, color:"#a9b7cf", fontStyle:"italic" }}>"{w.name}"</div>}
             </div>
           ))}
         </Section>
@@ -568,9 +569,9 @@ const Home = ({ nations, news, actions, wars }) => {
         <Section title="Top GDP Nations" empty="No nation data.">
           {topGDP.map((n,i)=>(
             <div key={n.id} style={{ display:"flex", gap:"0.75rem", alignItems:"center", padding:"0.45rem 0", borderBottom:"1px solid rgba(255,215,0,0.05)" }}>
-              <span style={{ fontFamily:"var(--display)", color:i===0?"#d4af37":i<3?"#a89060":"#3a3020", fontSize:13, width:20, textAlign:"center" }}>#{i+1}</span>
+              <span style={{ fontFamily:"var(--display)", color:i===0?"#d4af37":i<3?"#d8c890":"#8493ad", fontSize:13, width:20, textAlign:"center" }}>#{i+1}</span>
               <Flag nation={n} size={24} />
-              <span style={{ flex:1, fontSize:13, color:"#c8b068" }}>{n.name}</span>
+              <span style={{ flex:1, fontSize:13, color:"#f0dc8a" }}>{n.name}</span>
               <span style={{ fontSize:12, color:"#d4af37", fontWeight:700 }}>{fmtGDP(n.gdp_usd)}</span>
             </div>
           ))}
@@ -584,8 +585,8 @@ const Section = ({ title, children, empty }) => (
   <div style={card}>
     <h3 style={{ margin:"0 0 0.9rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14, letterSpacing:"0.05em" }}>{title}</h3>
     {children && Array.isArray(children) && children.length === 0
-      ? <p style={{ color:"#3a3020", fontSize:13, margin:0, fontStyle:"italic" }}>{empty}</p>
-      : children || <p style={{ color:"#3a3020", fontSize:13, margin:0, fontStyle:"italic" }}>{empty}</p>}
+      ? <p style={{ color:"#8493ad", fontSize:13, margin:0, fontStyle:"italic" }}>{empty}</p>
+      : children || <p style={{ color:"#8493ad", fontSize:13, margin:0, fontStyle:"italic" }}>{empty}</p>}
   </div>
 );
 
@@ -627,10 +628,10 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
           </div>
           <div style={{ flex:1, minWidth:200 }}>
             <h1 style={{ margin:"0 0 0.25rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:"clamp(1.5rem,3vw,2.2rem)", letterSpacing:"0.04em" }}>{nation.name}</h1>
-            <p style={{ margin:"0 0 0.5rem", color:"#7a6040", fontSize:13 }}>{nation.government}{nation.ideology ? ` - ${nation.ideology}` : ""}</p>
+            <p style={{ margin:"0 0 0.5rem", color:"#c7b783", fontSize:13 }}>{nation.government}{nation.ideology ? ` - ${nation.ideology}` : ""}</p>
             <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
-              {nation.tiktok_username && <span style={{ fontSize:11, color:"#5a4830" }}>TikTok: @{nation.tiktok_username}</span>}
-          {nation.profiles && <span style={{ fontSize:11, color:"#5a4830" }}>Owner: {nation.profiles.username}</span>}
+              {nation.tiktok_username && <span style={{ fontSize:11, color:"#a9b7cf" }}>TikTok: @{nation.tiktok_username}</span>}
+          {nation.profiles && <span style={{ fontSize:11, color:"#a9b7cf" }}>Owner: {nation.profiles.username}</span>}
               {nation.diplomatic_status && <span style={{ fontSize:11, color:"#d4af37", border:"1px solid rgba(212,175,55,0.25)", borderRadius:4, padding:"1px 8px" }}>{nation.diplomatic_status}</span>}
               {nation.bloc && <span style={{ fontSize:11, color:"#3498db", border:"1px solid rgba(52,152,219,0.25)", borderRadius:4, padding:"1px 8px" }}>{nation.bloc}</span>}
             </div>
@@ -649,14 +650,14 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:"0.65rem" }}>
           {stats.map(([l,v])=>(
             <div key={l} style={{ ...card, padding:"1rem" }}>
-              <div style={{ fontSize:10, color:"#4a3820", letterSpacing:"0.12em", textTransform:"uppercase", marginBottom:4 }}>{l}</div>
+              <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.06em", textTransform:"uppercase", marginBottom:4 }}>{l}</div>
               <div style={{ fontFamily:"var(--display)", fontSize:"1.15rem", color:"#d4af37" }}>{v}</div>
             </div>
           ))}
           {nation.bio && (
             <div style={{ ...card, gridColumn:"1/-1" }}>
-              <div style={{ fontSize:10, color:"#4a3820", letterSpacing:"0.12em", textTransform:"uppercase", marginBottom:"0.5rem" }}>Nation Profile</div>
-              <p style={{ margin:0, color:"#a89060", lineHeight:1.85, fontSize:13 }}>{nation.bio}</p>
+              <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.06em", textTransform:"uppercase", marginBottom:"0.5rem" }}>Nation Profile</div>
+              <p style={{ margin:0, color:"#d8c890", lineHeight:1.85, fontSize:13 }}>{nation.bio}</p>
             </div>
           )}
         </div>
@@ -664,28 +665,28 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
 
       {tab==="feed" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-          {nPosts.length===0 && <p style={{ color:"#3a3020", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No dispatches from this nation yet.</p>}
+          {nPosts.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No dispatches from this nation yet.</p>}
           {nPosts.map(p=><PostCard key={p.id} post={p} nations={nations} />)}
         </div>
       )}
 
       {tab==="actions" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-          {nActions.length===0 && <p style={{ color:"#3a3020", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No canon actions submitted yet.</p>}
+          {nActions.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No canon actions submitted yet.</p>}
           {nActions.map(a=><ActionCard key={a.id} action={a} nations={nations} expandable />)}
         </div>
       )}
 
       {tab==="wars" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-          {nWars.length===0 && <p style={{ color:"#3a3020", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No wars on record.</p>}
+          {nWars.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No wars on record.</p>}
           {nWars.map(w=><WarCard key={w.id} war={w} nations={nations} />)}
         </div>
       )}
 
       {tab==="alliances" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-          {nAlliances.length===0 && <p style={{ color:"#3a3020", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>Not part of any alliance.</p>}
+          {nAlliances.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>Not part of any alliance.</p>}
           {nAlliances.map(a=>{
             const members = allianceMembers.filter(m=>m.alliance_id===a.id).map(m=>nations.find(n=>n.id===m.nation_id)).filter(Boolean);
             return (
@@ -714,14 +715,14 @@ const PostCard = ({ post, nations }) => {
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
             <span style={{ fontWeight:800, color:"#d4af37", fontSize:13 }}>{post.nations?.name||"Unknown"}</span>
-            {targetNation && <><span style={{ color:"#3a3020", fontSize:12 }}>to</span><NationPill nation={targetNation} /></>}
-            <span style={{ marginLeft:"auto", fontSize:11, color:"#4a3820" }}>{timeAgo(post.created_at)}</span>
+            {targetNation && <><span style={{ color:"#8493ad", fontSize:12 }}>to</span><NationPill nation={targetNation} /></>}
+            <span style={{ marginLeft:"auto", fontSize:11, color:"#8fa0bd" }}>{timeAgo(post.created_at)}</span>
           </div>
         </div>
         <span style={{ fontSize:11, fontWeight:800, color:POST_COLS[post.post_type]||"#d4af37", background:"rgba(0,0,0,0.5)", borderRadius:4, padding:"2px 8px", letterSpacing:"0.04em", border:`1px solid ${POST_COLS[post.post_type]||"#d4af37"}30` }}>{post.post_type}</span>
       </div>
-      <h3 style={{ margin:"0 0 0.6rem", color:"#f0e6c8", fontFamily:"var(--display)", fontSize:15 }}>{post.title}</h3>
-      <p style={{ margin:0, color:"#a89060", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{post.body}</p>
+      <h3 style={{ margin:"0 0 0.6rem", color:"#f7f0dc", fontFamily:"var(--display)", fontSize:15 }}>{post.title}</h3>
+      <p style={{ margin:0, color:"#d8c890", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{post.body}</p>
     </div>
   );
 };
@@ -748,23 +749,23 @@ const ActionCard = ({ action, nations, expandable, isMod, onRefresh, profile }) 
         <Flag nation={nation} size={26} />
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{action.title}</div>
-          <div style={{ fontSize:11, color:"#4a3820" }}>{nation?.name} - {timeAgo(action.created_at)}</div>
+          <div style={{ fontSize:11, color:"#8fa0bd" }}>{nation?.name} - {timeAgo(action.created_at)}</div>
         </div>
         <div style={{ display:"flex", gap:"0.4rem", alignItems:"center", flexWrap:"wrap" }}>
           <span style={{ fontSize:10, fontWeight:800, color:"#0a0806", background:ACTION_SIZES[action.size]?.color||"#d4af37", borderRadius:3, padding:"2px 7px" }}>{action.size?.toUpperCase()}</span>
           <span style={{ fontSize:10, fontWeight:800, color:STATUS_COL[action.status], border:`1px solid ${STATUS_COL[action.status]}`, borderRadius:3, padding:"2px 7px" }}>{action.status?.toUpperCase()}</span>
-          {action.estimated_days && <span style={{ fontSize:11, color:"#5a4830" }}>{action.estimated_days}d</span>}
-          {expandable && <span style={{ color:"#4a3820", fontSize:13 }}>{open?"▲":"▼"}</span>}
+          {action.estimated_days && <span style={{ fontSize:11, color:"#a9b7cf" }}>{action.estimated_days}d</span>}
+          {expandable && <span style={{ color:"#8fa0bd", fontSize:13 }}>{open?"▲":"▼"}</span>}
         </div>
       </div>
 
       {(open || !expandable) && (
         <div style={{ marginTop:"1rem", paddingTop:"1rem", borderTop:"1px solid rgba(255,215,0,0.06)" }}>
-          <p style={{ margin:"0 0 0.75rem", color:"#a89060", fontSize:13, lineHeight:1.8 }}>{action.description}</p>
+          <p style={{ margin:"0 0 0.75rem", color:"#d8c890", fontSize:13, lineHeight:1.8 }}>{action.description}</p>
           {action.tiktok_comment && (
             <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(212,175,55,0.1)", borderRadius:6, padding:"0.7rem", marginBottom:"0.75rem" }}>
-              <div style={{ fontSize:10, color:"#4a3820", letterSpacing:"0.1em", marginBottom:3 }}>TIKTOK COMMENT</div>
-              <div style={{ fontSize:13, color:"#c8b068", fontStyle:"italic" }}>{action.tiktok_comment}</div>
+              <div style={{ fontSize:10, color:"#8fa0bd", letterSpacing:"0.1em", marginBottom:3 }}>TIKTOK COMMENT</div>
+              <div style={{ fontSize:13, color:"#f0dc8a", fontStyle:"italic" }}>{action.tiktok_comment}</div>
             </div>
           )}
           {action.lore_notes && (
@@ -775,18 +776,18 @@ const ActionCard = ({ action, nations, expandable, isMod, onRefresh, profile }) 
           )}
           {action.action_updates?.length > 0 && (
             <div style={{ marginBottom:"0.75rem" }}>
-              <div style={{ fontSize:10, color:"#4a3820", letterSpacing:"0.12em", marginBottom:"0.5rem", textTransform:"uppercase" }}>Progress Log</div>
+              <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.06em", marginBottom:"0.5rem", textTransform:"uppercase" }}>Progress Log</div>
               {action.action_updates.map(u=>(
                 <div key={u.id} style={{ borderLeft:"2px solid rgba(212,175,55,0.25)", paddingLeft:"0.75rem", marginBottom:"0.5rem" }}>
-                  <div style={{ fontSize:11, color:"#4a3820" }}>{timeAgo(u.created_at)} - {u.profiles?.username}</div>
-                  <div style={{ fontSize:13, color:"#a89060" }}>{u.body}</div>
+                  <div style={{ fontSize:11, color:"#8fa0bd" }}>{timeAgo(u.created_at)} - {u.profiles?.username}</div>
+                  <div style={{ fontSize:13, color:"#d8c890" }}>{u.body}</div>
                 </div>
               ))}
             </div>
           )}
           {isMod && profile && (
             <div style={{ borderTop:"1px solid rgba(255,215,0,0.07)", paddingTop:"0.75rem", display:"flex", flexDirection:"column", gap:"0.6rem" }}>
-              <div style={{ fontSize:10, color:"#4a3820", letterSpacing:"0.12em", textTransform:"uppercase" }}>Lore Team Controls</div>
+              <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.06em", textTransform:"uppercase" }}>Lore Team Controls</div>
               <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
                 {action.status==="pending" && <button onClick={()=>updateStatus("active",{started_at:new Date().toISOString()})} style={{ ...mkBtn("blue"), fontSize:11 }}>▶ Activate</button>}
                 {action.status==="active" && <button onClick={()=>updateStatus("complete",{completed_at:new Date().toISOString()})} style={{ ...mkBtn("green"), fontSize:11 }}>Complete</button>}
@@ -812,7 +813,7 @@ const WarCard = ({ war, nations, isMod, onRefresh }) => {
           <Flag nation={agg} size={26} />
           <span style={{ fontFamily:"var(--display)", color:"#e74c3c", fontSize:13 }}>{agg?.name||"?"}</span>
         </div>
-        <span style={{ color:"#3a3020", fontFamily:"var(--display)", fontSize:18 }}>vs</span>
+        <span style={{ color:"#8493ad", fontFamily:"var(--display)", fontSize:18 }}>vs</span>
         <div style={{ display:"flex", gap:"0.5rem", alignItems:"center" }}>
           <Flag nation={def} size={26} />
           <span style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:13 }}>{def?.name||"?"}</span>
@@ -821,7 +822,7 @@ const WarCard = ({ war, nations, isMod, onRefresh }) => {
           <span style={{ fontSize:10, fontWeight:800, color:WAR_COL[war.status], border:`1px solid ${WAR_COL[war.status]}`, borderRadius:3, padding:"2px 7px" }}>{war.status?.toUpperCase()}</span>
         </div>
       </div>
-      {war.name && <div style={{ fontFamily:"var(--display)", color:"#a89060", fontSize:12, marginTop:"0.5rem", fontStyle:"italic" }}>"{war.name}"</div>}
+      {war.name && <div style={{ fontFamily:"var(--display)", color:"#d8c890", fontSize:12, marginTop:"0.5rem", fontStyle:"italic" }}>"{war.name}"</div>}
       {war.casus_belli && <p style={{ margin:"0.4rem 0 0", color:"#9fb4d6", fontSize:12 }}>{war.casus_belli}</p>}
       {isMod && (
         <div style={{ marginTop:"0.75rem", display:"flex", gap:"0.4rem" }}>
@@ -861,7 +862,7 @@ const Nations = ({ nations, posts, actions, wars, alliances, allianceMembers, pr
   return (
     <div>
       <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap" }}>
-        <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:20, flex:1 }}>Nations Registry <span style={{ fontSize:13, color:"#4a3820" }}>({list.length}/{nations.length})</span></h2>
+        <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:20, flex:1 }}>Nations Registry <span style={{ fontSize:13, color:"#8fa0bd" }}>({list.length}/{nations.length})</span></h2>
       </div>
       <div style={{ display:"flex", gap:"0.5rem", marginBottom:"1rem", flexWrap:"wrap" }}>
         <input placeholder="Search name or TikTok" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inp, flex:1, minWidth:160, width:"auto" }} />
@@ -883,15 +884,15 @@ const Nations = ({ nations, posts, actions, wars, alliances, allianceMembers, pr
               <Flag nation={n} size={38} />
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:14, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.name}</div>
-                <div style={{ fontSize:11, color:"#4a3820" }}>{n.government||"Unknown govt."}</div>
+                <div style={{ fontSize:11, color:"#8fa0bd" }}>{n.government||"Unknown govt."}</div>
               </div>
-              {!n.owner_id && <span style={{ fontSize:9, color:"#3a3020", border:"1px solid #3a3020", borderRadius:3, padding:"1px 5px", flexShrink:0 }}>UNASSIGNED</span>}
+              {!n.owner_id && <span style={{ fontSize:9, color:"#8493ad", border:"1px solid #8493ad", borderRadius:3, padding:"1px 5px", flexShrink:0 }}>UNASSIGNED</span>}
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"0.4rem" }}>
               {[["Pop",fmtPop(n.population)],["GDP",fmtGDP(n.gdp_usd)],["Army",n.army_rank!=null?`${n.army_rank}/11`:"-"]].map(([l,v])=>(
                 <div key={l}>
-                  <div style={{ fontSize:9, color:"#3a3020", textTransform:"uppercase", letterSpacing:"0.08em" }}>{l}</div>
-                  <div style={{ fontSize:12, color:"#a89060", fontWeight:700 }}>{v}</div>
+                  <div style={{ fontSize:9, color:"#8493ad", textTransform:"uppercase", letterSpacing:"0.08em" }}>{l}</div>
+                  <div style={{ fontSize:12, color:"#d8c890", fontWeight:700 }}>{v}</div>
                 </div>
               ))}
             </div>
@@ -922,7 +923,7 @@ const RPBoard = ({ posts, profile, userNation, nations, onRefresh }) => {
       <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap" }}>
         <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:20, flex:1 }}>Dispatch Board</h2>
         {userNation && <button onClick={()=>setShowForm(!showForm)} style={mkBtn()}>+ New Dispatch</button>}
-        {!userNation && profile && <span style={{ fontSize:12, color:"#4a3820", fontStyle:"italic" }}>You need an assigned nation to post</span>}
+        {!userNation && profile && <span style={{ fontSize:12, color:"#8fa0bd", fontStyle:"italic" }}>You need an assigned nation to post</span>}
       </div>
       <div style={{ display:"flex", gap:"0.35rem", marginBottom:"1rem", flexWrap:"wrap" }}>
         <button onClick={()=>setFilter("all")} style={{ ...mkBtn(filter==="all"?"gold":"ghost"), fontSize:11 }}>All</button>
@@ -952,7 +953,7 @@ const RPBoard = ({ posts, profile, userNation, nations, onRefresh }) => {
         </div>
       )}
       <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-        {filtered.length===0 && <p style={{ color:"#3a3020", textAlign:"center", padding:"3rem", fontStyle:"italic" }}>No dispatches yet. The world waits.</p>}
+        {filtered.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"3rem", fontStyle:"italic" }}>No dispatches yet. The world waits.</p>}
         {filtered.map(p=><PostCard key={p.id} post={p} nations={nations} />)}
       </div>
     </div>
@@ -988,7 +989,7 @@ const ActionsPage = ({ actions, profile, userNation, nations, isMod, onRefresh }
             <textarea placeholder="Describe the action in full detail" value={form.description} onChange={e=>setForm({...form,description:e.target.value})} style={ta} />
             <input placeholder="TikTok comment (paste original if applicable)" value={form.tiktok_comment} onChange={e=>setForm({...form,tiktok_comment:e.target.value})} style={inp} />
             <div>
-              <div style={{ fontSize:10, color:"#4a3820", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:"0.4rem" }}>Action Size - determines canon duration</div>
+              <div style={{ fontSize:10, color:"#8fa0bd", letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:"0.4rem" }}>Action Size - determines canon duration</div>
               <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
                 {Object.entries(ACTION_SIZES).map(([k,v])=>(
                   <button key={k} onClick={()=>setForm({...form,size:k})} style={{ ...mkBtn(form.size===k?"gold":"ghost"), fontSize:11, borderLeft:form.size===k?`3px solid ${v.color}`:"" }}>
@@ -1012,7 +1013,7 @@ const ActionsPage = ({ actions, profile, userNation, nations, isMod, onRefresh }
       </div>
 
       <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-        {filtered.length===0 && <p style={{ color:"#3a3020", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No actions here.</p>}
+        {filtered.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No actions here.</p>}
         {filtered.map(a=><ActionCard key={a.id} action={a} nations={nations} expandable isMod={isMod} profile={profile} onRefresh={onRefresh} />)}
       </div>
     </div>
@@ -1072,7 +1073,7 @@ const WarsPage = ({ wars, alliances, allianceMembers, nations, profile, userNati
             </div>
           )}
           <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-            {wars.length===0 && <p style={{ color:"#3a3020", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>The world is at peace for now.</p>}
+            {wars.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>The world is at peace for now.</p>}
             {wars.map(w=><WarCard key={w.id} war={w} nations={nations} isMod={isMod} onRefresh={onRefresh} />)}
           </div>
         </div>
@@ -1097,7 +1098,7 @@ const WarsPage = ({ wars, alliances, allianceMembers, nations, profile, userNati
             </div>
           )}
           <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-            {alliances.length===0 && <p style={{ color:"#3a3020", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No alliances formed yet.</p>}
+            {alliances.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No alliances formed yet.</p>}
             {alliances.map(a=>{
               const members = allianceMembers.filter(m=>m.alliance_id===a.id).map(m=>nations.find(n=>n.id===m.nation_id)).filter(Boolean);
               return (
@@ -1106,7 +1107,7 @@ const WarsPage = ({ wars, alliances, allianceMembers, nations, profile, userNati
                     <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:15, flex:1 }}>{a.name}</div>
                     <span style={{ fontSize:11, color:"#3498db", border:"1px solid rgba(52,152,219,0.25)", borderRadius:3, padding:"2px 8px" }}>{a.type?.toUpperCase()}</span>
                   </div>
-                  {a.description && <p style={{ margin:"0 0 0.75rem", color:"#6a5a40", fontSize:12 }}>{a.description}</p>}
+                  {a.description && <p style={{ margin:"0 0 0.75rem", color:"#b8c4d8", fontSize:12 }}>{a.description}</p>}
                   <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center" }}>
                     {members.map(n=><NationPill key={n.id} nation={n} />)}
                     {userNation && !members.find(m=>m.id===userNation.id) && (
@@ -1149,7 +1150,7 @@ const NewsPage = ({ news, profile, isMod, onRefresh }) => {
               {NEWS_CATS.map(c=><button key={c} onClick={()=>setForm({...form,category:c})} style={{ ...mkBtn(form.category===c?"gold":"ghost"), fontSize:11 }}>{c}</button>)}
             </div>
             <textarea placeholder="Full story" value={form.body} onChange={e=>setForm({...form,body:e.target.value})} style={{ ...ta, minHeight:120 }} />
-            <label style={{ display:"flex", gap:"0.5rem", alignItems:"center", color:"#7a6040", fontSize:12, cursor:"pointer" }}>
+            <label style={{ display:"flex", gap:"0.5rem", alignItems:"center", color:"#c7b783", fontSize:12, cursor:"pointer" }}>
               <input type="checkbox" checked={form.pinned} onChange={e=>setForm({...form,pinned:e.target.checked})} /> Pin this article
             </label>
             <div style={{ display:"flex", gap:"0.5rem" }}>
@@ -1161,29 +1162,29 @@ const NewsPage = ({ news, profile, isMod, onRefresh }) => {
       )}
       {news.filter(n=>n.pinned).length>0 && (
         <div style={{ marginBottom:"1.25rem" }}>
-          <div style={{ fontSize:10, color:"#4a3820", letterSpacing:"0.15em", textTransform:"uppercase", marginBottom:"0.5rem" }}>Pinned</div>
+          <div style={{ fontSize:10, color:"#8fa0bd", letterSpacing:"0.15em", textTransform:"uppercase", marginBottom:"0.5rem" }}>Pinned</div>
           {news.filter(n=>n.pinned).map(n=>(
             <div key={n.id} style={{ ...card, marginBottom:"0.75rem" }}>
               <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", marginBottom:"0.6rem", flexWrap:"wrap" }}>
                 <span style={{ fontSize:10, fontWeight:800, color:"#0a0806", background:NEWS_COL[n.category]||"#d4af37", borderRadius:3, padding:"2px 8px" }}>{n.category?.toUpperCase()}</span>
-                <span style={{ marginLeft:"auto", fontSize:11, color:"#4a3820" }}>{timeAgo(n.created_at)}</span>
+                <span style={{ marginLeft:"auto", fontSize:11, color:"#8fa0bd" }}>{timeAgo(n.created_at)}</span>
               </div>
-              <h3 style={{ margin:"0 0 0.6rem", fontFamily:"var(--display)", color:"#f0e6c8", fontSize:17 }}>{n.title}</h3>
-              <p style={{ margin:0, color:"#a89060", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{n.body}</p>
+              <h3 style={{ margin:"0 0 0.6rem", fontFamily:"var(--display)", color:"#f7f0dc", fontSize:17 }}>{n.title}</h3>
+              <p style={{ margin:0, color:"#d8c890", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{n.body}</p>
             </div>
           ))}
         </div>
       )}
       <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-        {news.filter(n=>!n.pinned).length===0 && news.filter(n=>n.pinned).length===0 && <p style={{ color:"#3a3020", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No news published yet.</p>}
+        {news.filter(n=>!n.pinned).length===0 && news.filter(n=>n.pinned).length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No news published yet.</p>}
         {news.filter(n=>!n.pinned).map(n=>(
           <div key={n.id} style={card}>
             <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", marginBottom:"0.6rem", flexWrap:"wrap" }}>
               <span style={{ fontSize:10, fontWeight:800, color:"#0a0806", background:NEWS_COL[n.category]||"#d4af37", borderRadius:3, padding:"2px 8px" }}>{n.category?.toUpperCase()}</span>
-              <span style={{ marginLeft:"auto", fontSize:11, color:"#4a3820" }}>{timeAgo(n.created_at)}</span>
+              <span style={{ marginLeft:"auto", fontSize:11, color:"#8fa0bd" }}>{timeAgo(n.created_at)}</span>
             </div>
-            <h3 style={{ margin:"0 0 0.6rem", fontFamily:"var(--display)", color:"#f0e6c8", fontSize:17 }}>{n.title}</h3>
-            <p style={{ margin:0, color:"#a89060", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{n.body}</p>
+            <h3 style={{ margin:"0 0 0.6rem", fontFamily:"var(--display)", color:"#f7f0dc", fontSize:17 }}>{n.title}</h3>
+            <p style={{ margin:0, color:"#d8c890", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{n.body}</p>
           </div>
         ))}
       </div>
@@ -1221,9 +1222,9 @@ const Leaderboards = ({ nations }) => {
           return (
             <div key={n.id} style={{ ...card, padding:"0.9rem 1.25rem" }}>
               <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"0.45rem" }}>
-                <span style={{ fontFamily:"var(--display)", color:i<3?"#d4af37":"#3a3020", fontSize:14, width:26, textAlign:"center" }}>{medal||`#${i+1}`}</span>
+                <span style={{ fontFamily:"var(--display)", color:i<3?"#d4af37":"#8493ad", fontSize:14, width:26, textAlign:"center" }}>{medal||`#${i+1}`}</span>
                 <Flag nation={n} size={26} />
-                <span style={{ flex:1, fontSize:14, color:"#c8b068", fontWeight:700 }}>{n.name}</span>
+                <span style={{ flex:1, fontSize:14, color:"#f0dc8a", fontWeight:700 }}>{n.name}</span>
                 <span style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:15 }}>{m.fmt(val)}</span>
               </div>
               <div style={{ height:3, background:"rgba(255,255,255,0.03)", borderRadius:2, marginLeft:26+26+12, overflow:"hidden" }}>
@@ -1273,12 +1274,12 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
                 <div style={{ display:"flex", gap:"1rem", alignItems:"center" }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>{b.name}</div>
-                    <div style={{ fontSize:12, color:"#4a3820", marginTop:2 }}>{b.description}</div>
-                    {lastThread && <div style={{ fontSize:11, color:"#3a3020", marginTop:3 }}>Latest: {lastThread.title} - {timeAgo(lastThread.created_at)}</div>}
+                    <div style={{ fontSize:12, color:"#8fa0bd", marginTop:2 }}>{b.description}</div>
+                    {lastThread && <div style={{ fontSize:11, color:"#8493ad", marginTop:3 }}>Latest: {lastThread.title} - {timeAgo(lastThread.created_at)}</div>}
                   </div>
                   <div style={{ textAlign:"right", flexShrink:0 }}>
-                    <div style={{ fontFamily:"var(--display)", fontSize:18, color:"#3a3020" }}>{bThreads.length}</div>
-                    <div style={{ fontSize:9, color:"#3a3020", letterSpacing:"0.1em", textTransform:"uppercase" }}>threads</div>
+                    <div style={{ fontFamily:"var(--display)", fontSize:18, color:"#8493ad" }}>{bThreads.length}</div>
+                    <div style={{ fontSize:10, color:"#8493ad", letterSpacing:"0.04em", textTransform:"uppercase" }}>threads</div>
                   </div>
                 </div>
               </div>
@@ -1313,7 +1314,7 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
             </div>
           </div>
         )}
-        {pinned.length>0 && <div style={{ fontSize:10, color:"#4a3820", letterSpacing:"0.12em", textTransform:"uppercase", marginBottom:"0.4rem" }}>Pinned</div>}
+        {pinned.length>0 && <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.06em", textTransform:"uppercase", marginBottom:"0.4rem" }}>Pinned</div>}
         <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
           {[...pinned,...regular].map(t=>{
             const tPosts = posts.filter(p=>p.thread_id===t.id);
@@ -1325,17 +1326,17 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
                 onClick={()=>setView({type:"thread",thread:t})}>
                 {authorNation ? <Flag nation={authorNation} size={22} /> : <div style={{ width:22, height:14, background:"rgba(255,255,255,0.04)", borderRadius:2 }} />}
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:13, color:"#c8b068", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.pinned&&"Pinned: "}{t.title}</div>
-                  <div style={{ fontSize:11, color:"#4a3820" }}>{authorNation?.name||t.profiles?.username||"?"} - {timeAgo(t.created_at)}</div>
+                  <div style={{ fontSize:13, color:"#f0dc8a", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.pinned&&"Pinned: "}{t.title}</div>
+                  <div style={{ fontSize:11, color:"#8fa0bd" }}>{authorNation?.name||t.profiles?.username||"?"} - {timeAgo(t.created_at)}</div>
                 </div>
                 <div style={{ textAlign:"right", flexShrink:0 }}>
-                  <div style={{ fontFamily:"var(--display)", fontSize:16, color:"#3a3020" }}>{tPosts.length}</div>
-                  <div style={{ fontSize:9, color:"#3a3020", letterSpacing:"0.08em" }}>replies</div>
+                  <div style={{ fontFamily:"var(--display)", fontSize:16, color:"#8493ad" }}>{tPosts.length}</div>
+                  <div style={{ fontSize:10, color:"#8493ad", letterSpacing:"0.04em" }}>replies</div>
                 </div>
               </div>
             );
           })}
-          {bThreads.length===0 && <p style={{ color:"#3a3020", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No threads yet.</p>}
+          {bThreads.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No threads yet.</p>}
         </div>
       </div>
     );
@@ -1358,10 +1359,10 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
                   <div style={{ flex:1 }}>
                     <span style={{ fontSize:13, color:"#d4af37", fontWeight:700 }}>{pNation?.name||p.profiles?.username||"Unknown"}</span>
                     {i===0 && <span style={{ fontSize:10, color:"#d4af37", border:"1px solid rgba(212,175,55,0.25)", borderRadius:3, padding:"1px 5px", marginLeft:"0.5rem" }}>OP</span>}
-                    <span style={{ fontSize:11, color:"#4a3820", marginLeft:"0.5rem" }}>{timeAgo(p.created_at)}</span>
+                    <span style={{ fontSize:11, color:"#8fa0bd", marginLeft:"0.5rem" }}>{timeAgo(p.created_at)}</span>
                   </div>
                 </div>
-                <p style={{ margin:0, color:"#a89060", fontSize:13, lineHeight:1.85, whiteSpace:"pre-wrap" }}>{p.body}</p>
+                <p style={{ margin:0, color:"#d8c890", fontSize:13, lineHeight:1.85, whiteSpace:"pre-wrap" }}>{p.body}</p>
               </div>
             );
           })}
@@ -1373,7 +1374,7 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
             <button onClick={submitReply} style={{ ...mkBtn(), marginTop:"0.6rem" }}>Post Reply</button>
           </div>
         )}
-        {view.thread.locked && <div style={{ ...card, textAlign:"center", color:"#4a3820", fontSize:13, fontStyle:"italic" }}>This thread is locked.</div>}
+        {view.thread.locked && <div style={{ ...card, textAlign:"center", color:"#8fa0bd", fontSize:13, fontStyle:"italic" }}>This thread is locked.</div>}
       </div>
     );
   }
@@ -1418,11 +1419,11 @@ const Admin = ({ nations, profiles, onRefresh }) => {
             ))}
             <textarea placeholder="Nation bio or lore" value={nf.bio} onChange={e=>setNf({...nf,bio:e.target.value})} style={{ ...ta, gridColumn:"1/-1", minHeight:65 }} />
             <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", flexWrap:"wrap", gridColumn:"1/-1" }}>
-              <span style={{ fontSize:12, color:"#6a5a40" }}>Flag Colors:</span>
-              <label style={{ display:"flex", gap:"0.4rem", alignItems:"center", fontSize:12, color:"#6a5a40" }}>Color 1 <input type="color" value={nf.flag_color1} onChange={e=>setNf({...nf,flag_color1:e.target.value})} style={{ width:36, height:26, border:"none", background:"none", cursor:"pointer" }} /></label>
-              <label style={{ display:"flex", gap:"0.4rem", alignItems:"center", fontSize:12, color:"#6a5a40" }}>Color 2 <input type="color" value={nf.flag_color2} onChange={e=>setNf({...nf,flag_color2:e.target.value})} style={{ width:36, height:26, border:"none", background:"none", cursor:"pointer" }} /></label>
+              <span style={{ fontSize:12, color:"#b8c4d8" }}>Flag Colors:</span>
+              <label style={{ display:"flex", gap:"0.4rem", alignItems:"center", fontSize:12, color:"#b8c4d8" }}>Color 1 <input type="color" value={nf.flag_color1} onChange={e=>setNf({...nf,flag_color1:e.target.value})} style={{ width:36, height:26, border:"none", background:"none", cursor:"pointer" }} /></label>
+              <label style={{ display:"flex", gap:"0.4rem", alignItems:"center", fontSize:12, color:"#b8c4d8" }}>Color 2 <input type="color" value={nf.flag_color2} onChange={e=>setNf({...nf,flag_color2:e.target.value})} style={{ width:36, height:26, border:"none", background:"none", cursor:"pointer" }} /></label>
               <Flag nation={{ name:nf.name, flag_color1:nf.flag_color1, flag_color2:nf.flag_color2 }} size={42} />
-              <span style={{ fontSize:11, color:"#4a3820" }}>Preview (players can upload real flag images)</span>
+              <span style={{ fontSize:11, color:"#8fa0bd" }}>Preview (players can upload real flag images)</span>
             </div>
           </div>
           <div style={{ display:"flex", gap:"0.5rem", marginTop:"1rem" }}>
@@ -1469,8 +1470,8 @@ const Admin = ({ nations, profiles, onRefresh }) => {
             <div key={n.id} style={{ ...card, padding:"0.9rem", display:"flex", gap:"0.75rem", alignItems:"center" }}>
               <Flag nation={n} size={28} />
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:13, color:"#c8b068", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.name}</div>
-                <div style={{ fontSize:11, color:"#4a3820" }}>{n.government||"?"} - {n.profiles?`@${n.profiles.username}`:"unassigned"}</div>
+                <div style={{ fontSize:13, color:"#f0dc8a", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.name}</div>
+                <div style={{ fontSize:11, color:"#8fa0bd" }}>{n.government||"?"} - {n.profiles?`@${n.profiles.username}`:"unassigned"}</div>
               </div>
               <button onClick={()=>loadEdit(n)} style={{ ...mkBtn("ghost"), fontSize:11, padding:"5px 10px" }}>Edit</button>
               <button onClick={async()=>{if(!confirm("Delete this nation?"))return;await supabase.from("nations").delete().eq("id",n.id);onRefresh();}} style={{ ...mkBtn("red"), fontSize:11, padding:"5px 10px" }}>Del</button>
@@ -1566,7 +1567,7 @@ export default function App() {
       <header style={{ background:"rgba(3,4,7,0.98)", borderBottom:"1px solid rgba(20,96,184,0.36)", padding:"0 1.25rem", display:"flex", alignItems:"center", gap:"1rem", height:50, position:"sticky", top:0, zIndex:200, backdropFilter:"blur(20px)" }}>
         <div style={{ display:"flex", alignItems:"center", gap:"0.55rem", cursor:"pointer", flexShrink:0 }} onClick={()=>navigate("forums")}>
           <img src={LOGO_SRC} alt="Nationwheel" style={{ width:34, height:34, objectFit:"cover", borderRadius:"50%", border:"1px solid rgba(246,193,50,0.35)" }} />
-          <span style={{ fontFamily:"var(--display)", color:"#fff8e6", fontSize:15, letterSpacing:"0.08em", fontWeight:900 }}>NATIONWHEEL</span>
+          <span style={{ fontFamily:"var(--brand)", color:"#fff8e6", fontSize:15, letterSpacing:"0.08em", fontWeight:900 }}>NATIONWHEEL</span>
         </div>
         {/* Desktop nav */}
         <nav style={{ display:"flex", gap:"0.1rem", flex:1, overflowX:"auto", scrollbarWidth:"none" }}>
@@ -1587,7 +1588,7 @@ export default function App() {
 
       <main style={{ maxWidth:980, margin:"0 auto", padding:"1.5rem 1rem", width:"100%", flex:1 }}>
         {loading
-          ? <div style={{ textAlign:"center", padding:"5rem", color:"#3a3020", fontFamily:"var(--display)", letterSpacing:"0.2em", fontSize:13 }}>LOADING WORLD</div>
+          ? <div style={{ textAlign:"center", padding:"5rem", color:"#8493ad", fontFamily:"var(--display)", letterSpacing:"0.2em", fontSize:13 }}>LOADING WORLD</div>
           : <>
               {page==="home"         && <Home nations={data.nations} news={data.news} actions={data.actions} wars={data.wars} />}
               {page==="nations"      && <Nations nations={data.nations} posts={data.posts} actions={data.actions} wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} profile={profile} userNation={userNation} isMod={isMod} isAdmin={isAdmin} onRefresh={fetchAll} />}
@@ -1607,10 +1608,11 @@ export default function App() {
       </footer>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=IM+Fell+English:ital@0;1&display=swap');
-        :root { --display:'Cinzel',serif; --body:'IM Fell English',Georgia,serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cinzel:wght@700;900&display=swap');
+        :root { --display:'Inter',Arial,sans-serif; --brand:'Cinzel',Georgia,serif; --body:'Inter',Arial,sans-serif; }
         *,*::before,*::after{box-sizing:border-box;}
         body {
+          font-family: var(--body);
           background: #020305;
           background-image:
             radial-gradient(circle at 18% 12%,rgba(225,29,29,0.18) 0%,transparent 30%),

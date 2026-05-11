@@ -40,3 +40,14 @@ supabase-admin-setup.sql
 ```
 
 The frontend must use the Supabase anon or publishable key only. Do not commit service role or secret keys.
+
+## Netlify
+
+Netlify should use the settings in `netlify.toml`:
+
+```text
+Build command: npm run build
+Publish directory: dist
+```
+
+Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Netlify environment variables before deploying.
