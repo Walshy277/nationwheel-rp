@@ -76,9 +76,9 @@ Publish directory: dist
 
 Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Netlify environment variables before deploying.
 
-## Forum Formatting
+## Forum And News Formatting
 
-Thread posts support safe BBCode:
+Thread posts and news articles support safe BBCode:
 
 ```text
 [b]bold[/b]

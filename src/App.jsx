@@ -1541,7 +1541,7 @@ const NewsPage = ({ news, profile, isMod, onRefresh }) => {
             <div style={{ display:"flex", gap:"0.35rem", flexWrap:"wrap" }}>
               {NEWS_CATS.map(c=><button key={c} onClick={()=>setForm({...form,category:c})} style={{ ...mkBtn(form.category===c?"gold":"ghost"), fontSize:11 }}>{c}</button>)}
             </div>
-            <textarea placeholder="Full story" value={form.body} onChange={e=>setForm({...form,body:e.target.value})} style={{ ...ta, minHeight:120 }} />
+            <textarea placeholder="Full story. BBCode is supported: [b], [i], [quote], [url], [img]. Basic HTML tags like <b> and <blockquote> are also allowed." value={form.body} onChange={e=>setForm({...form,body:e.target.value})} style={{ ...ta, minHeight:120 }} />
             <label style={{ display:"flex", gap:"0.5rem", alignItems:"center", color:"#b7c6dc", fontSize:12, cursor:"pointer" }}>
               <input type="checkbox" checked={form.pinned} onChange={e=>setForm({...form,pinned:e.target.checked})} /> Pin this article
             </label>
@@ -1562,7 +1562,7 @@ const NewsPage = ({ news, profile, isMod, onRefresh }) => {
                 <span style={{ marginLeft:"auto", fontSize:11, color:"#8fa0bd" }}>{timeAgo(n.created_at)}</span>
               </div>
               <h3 style={{ margin:"0 0 0.6rem", fontFamily:"var(--display)", color:"#f8fbff", fontSize:17 }}>{n.title}</h3>
-              <p style={{ margin:0, color:"#d7e2f2", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{n.body}</p>
+              <RichText>{n.body}</RichText>
             </div>
           ))}
         </div>
@@ -1576,7 +1576,7 @@ const NewsPage = ({ news, profile, isMod, onRefresh }) => {
               <span style={{ marginLeft:"auto", fontSize:11, color:"#8fa0bd" }}>{timeAgo(n.created_at)}</span>
             </div>
             <h3 style={{ margin:"0 0 0.6rem", fontFamily:"var(--display)", color:"#f8fbff", fontSize:17 }}>{n.title}</h3>
-            <p style={{ margin:0, color:"#d7e2f2", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{n.body}</p>
+            <RichText>{n.body}</RichText>
           </div>
         ))}
       </div>
