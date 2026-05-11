@@ -408,17 +408,17 @@ const renderRichText = value => {
 const RichText = ({ children }) => (
   <div className="rich-post" dangerouslySetInnerHTML={{ __html: renderRichText(children) }} />
 );
-const inp = { background:"rgba(255,255,255,0.055)", border:"1px solid rgba(21,96,181,0.42)", borderRadius:6, padding:"11px 13px", color:"#fff8e6", fontSize:16, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
+const inp = { background:"rgba(255,255,255,0.055)", border:"1px solid rgba(21,96,181,0.42)", borderRadius:6, padding:"11px 13px", color:"#f5f8ff", fontSize:16, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
 const ta  = { ...inp, resize:"vertical", minHeight:80 };
 const mkBtn = (v="gold") => ({
   background: v==="gold"?"#f6c132": v==="red"?"#b91616": v==="blue"?"#145bb0": v==="green"?"#1f8f43":"rgba(255,255,255,0.055)",
-  color: v==="gold"?"#050505":"#fff8e6",
+  color: v==="gold"?"#050505":"#f5f8ff",
   border: v==="ghost"?"1px solid rgba(246,193,50,0.24)":"none",
   borderRadius:6, padding:"9px 14px", cursor:"pointer", fontWeight:700, fontSize:13,
   letterSpacing:"0.04em", fontFamily:"inherit", transition:"opacity 0.15s, transform 0.1s",
   whiteSpace:"nowrap",
 });
-const card = { background:"linear-gradient(180deg,rgba(15,18,24,0.96),rgba(7,8,10,0.94))", border:"1px solid rgba(246,193,50,0.14)", borderRadius:10, padding:"1.25rem", boxShadow:"0 18px 45px rgba(0,0,0,0.35)" };
+const card = { background:"linear-gradient(180deg,rgba(10,16,27,0.97),rgba(3,7,13,0.96))", border:"1px solid rgba(78,128,190,0.24)", borderRadius:8, padding:"1.25rem", boxShadow:"0 18px 45px rgba(0,0,0,0.35)" };
 
 // ─── FLAG COMPONENT ───────────────────────────────────────────────
 const Flag = ({ nation, size = 36 }) => {
@@ -451,13 +451,13 @@ const SetupModal = ({ onClose }) => {
           <h2 style={{ margin:0, color:"#f6c132", fontFamily:"var(--display)" }}>Supabase Setup</h2>
           <button onClick={onClose} style={{ ...mkBtn("ghost"), padding:"4px 10px" }}>Close</button>
         </div>
-        <ol style={{ color:"#d8c890", lineHeight:2.2, paddingLeft:"1.2rem", fontSize:13 }}>
+        <ol style={{ color:"#d7e2f2", lineHeight:2.2, paddingLeft:"1.2rem", fontSize:13 }}>
           <li>Go to <a href="https://supabase.com" target="_blank" rel="noreferrer" style={{color:"#d4af37"}}>supabase.com</a>, then create a free project</li>
-          <li>Settings, API, then copy <strong style={{color:"#f7f0dc"}}>Project URL</strong> and <strong style={{color:"#f7f0dc"}}>anon key</strong></li>
+          <li>Settings, API, then copy <strong style={{color:"#f8fbff"}}>Project URL</strong> and <strong style={{color:"#f8fbff"}}>anon key</strong></li>
           <li>Paste into <code style={{color:"#d4af37",fontSize:11}}>VITE_SUPABASE_URL</code> / <code style={{color:"#d4af37",fontSize:11}}>VITE_SUPABASE_ANON_KEY</code> in <code style={{color:"#d4af37",fontSize:11}}>.env.local</code></li>
           <li>SQL Editor &gt; paste SQL below &gt; Run. The RLS warning is expected for table creation; this SQL explicitly enables RLS and adds policies before the app uses the tables.</li>
-          <li>Authentication, Providers, then enable <strong style={{color:"#f7f0dc"}}>Email</strong></li>
-          <li>Storage: check the <strong style={{color:"#f7f0dc"}}>flags</strong> and <strong style={{color:"#f7f0dc"}}>profile-media</strong> buckets were created, or create them manually and set them to Public</li>
+          <li>Authentication, Providers, then enable <strong style={{color:"#f8fbff"}}>Email</strong></li>
+          <li>Storage: check the <strong style={{color:"#f8fbff"}}>flags</strong> and <strong style={{color:"#f8fbff"}}>profile-media</strong> buckets were created, or create them manually and set them to Public</li>
           <li>The SQL promotes the first registered user to <code style={{color:"#d4af37",fontSize:11}}>admin</code></li>
           <li>Deploy to <a href="https://vercel.com" target="_blank" rel="noreferrer" style={{color:"#d4af37"}}>Vercel</a> or <a href="https://netlify.com" target="_blank" rel="noreferrer" style={{color:"#d4af37"}}>Netlify</a> (both free)</li>
         </ol>
@@ -514,17 +514,13 @@ const Auth = ({ onAuth, setupRequired }) => {
         *,*::before,*::after{box-sizing:border-box;}
         body {
           font-family: var(--body);
-          background: #020305;
-          background-image:
-            radial-gradient(circle at 18% 12%,rgba(225,29,29,0.18) 0%,transparent 30%),
-            radial-gradient(circle at 50% 0%,rgba(246,193,50,0.12) 0%,transparent 34%),
-            radial-gradient(circle at 82% 18%,rgba(20,96,184,0.18) 0%,transparent 32%),
-            radial-gradient(circle at 24% 88%,rgba(31,143,67,0.12) 0%,transparent 30%);
-          color:#fff8e6; margin:0;
+          background: #030712;
+          background-image: linear-gradient(180deg,#07111f 0%,#030712 42%,#02050b 100%);
+          color:#f5f8ff; margin:0;
         }
         input::placeholder,textarea::placeholder{color:#7184a5;}
         input:focus,textarea:focus,select:focus{outline:none;border-color:rgba(246,193,50,0.72)!important;box-shadow:0 0 0 3px rgba(20,96,184,0.16);}
-        select option{background:#05070b;color:#fff8e6;}
+        select option{background:#05070b;color:#f5f8ff;}
         button:hover{opacity:0.8;}
         button:active{transform:scale(0.97);}
         button,input,textarea,select{font:inherit;}
@@ -540,7 +536,7 @@ const Auth = ({ onAuth, setupRequired }) => {
         <div className="auth-panel" style={{ width:"100%", maxWidth:400 }}>
           <div style={{ textAlign:"center", marginBottom:"2rem" }}>
             <img className="auth-logo" src={LOGO_SRC} alt="Nationwheel" style={{ width:150, height:150, objectFit:"cover", borderRadius:"50%", border:"2px solid rgba(246,193,50,0.38)", boxShadow:"0 0 0 6px rgba(20,96,184,0.14), 0 22px 55px rgba(0,0,0,0.55)" }} />
-            <h1 style={{ fontFamily:"var(--brand)", fontSize:"clamp(2rem,6vw,3rem)", color:"#fff8e6", margin:"0.9rem 0 0", letterSpacing:"0.08em", textShadow:"0 0 34px rgba(246,193,50,0.22)" }}>NATIONWHEEL</h1>
+            <h1 style={{ fontFamily:"var(--brand)", fontSize:"clamp(2rem,6vw,3rem)", color:"#f5f8ff", margin:"0.9rem 0 0", letterSpacing:"0.08em", textShadow:"0 0 34px rgba(246,193,50,0.22)" }}>NATIONWHEEL</h1>
             <p style={{ color:"#f6c132", marginTop:"0.35rem", fontSize:11, letterSpacing:"0.18em", textTransform:"uppercase" }}>Geopolitical Roleplay World</p>
           </div>
           <div style={{ ...card, border:"1px solid rgba(246,193,50,0.22)" }}>
@@ -551,7 +547,7 @@ const Auth = ({ onAuth, setupRequired }) => {
             )}
             <div style={{ display:"flex", gap:"0.4rem", marginBottom:"1.25rem" }}>
               {["login","signup"].map(m=>(
-                <button key={m} onClick={()=>setMode(m)} style={{ flex:1, padding:"8px", borderRadius:6, cursor:"pointer", fontWeight:800, fontSize:12, letterSpacing:"0.06em", border:mode===m?"none":"1px solid rgba(20,96,184,0.36)", background:mode===m?"#f6c132":"rgba(255,255,255,0.035)", color:mode===m?"#050505":"#fff8e6", fontFamily:"inherit" }}>
+                <button key={m} onClick={()=>setMode(m)} style={{ flex:1, padding:"8px", borderRadius:6, cursor:"pointer", fontWeight:800, fontSize:12, letterSpacing:"0.06em", border:mode===m?"none":"1px solid rgba(20,96,184,0.36)", background:mode===m?"#f6c132":"rgba(255,255,255,0.035)", color:mode===m?"#050505":"#f5f8ff", fontFamily:"inherit" }}>
                   {m==="login"?"SIGN IN":"REGISTER"}
                 </button>
               ))}
@@ -709,7 +705,7 @@ const ProfilePage = ({ user, profile, userNation, onProfileUpdate }) => {
 
       <div className="profile-grid" style={{ display:"grid", gridTemplateColumns:"minmax(0, 1fr) 320px", gap:"1rem", alignItems:"start" }}>
         <div style={{ ...card, display:"flex", flexDirection:"column", gap:"0.8rem" }}>
-          <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#f0dc8a", fontSize:15 }}>Account Details</h3>
+          <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#edf4ff", fontSize:15 }}>Account Details</h3>
           <label style={{ display:"flex", flexDirection:"column", gap:"0.35rem", color:"#8fa0bd", fontSize:12 }}>
             Username
             <input value={form.username} onChange={e=>setForm({...form,username:e.target.value})} style={inp} />
@@ -742,8 +738,8 @@ const ProfilePage = ({ user, profile, userNation, onProfileUpdate }) => {
           <div style={{ flex:1, minWidth:180 }}>
             <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:18, fontWeight:800 }}>@{profile.username}</div>
             <div style={{ color:"#8fa0bd", fontSize:12, marginTop:2 }}>{profile.role || "player"}{user?.email ? ` - ${user.email}` : ""}</div>
-            {profile.bio && <p style={{ margin:"0.75rem 0 0", color:"#d8c890", lineHeight:1.75, fontSize:13, whiteSpace:"pre-wrap" }}>{profile.bio}</p>}
-            {profile.signature_url && <img src={profile.signature_url} alt="" style={{ marginTop:"0.85rem", maxWidth:"100%", maxHeight:110, objectFit:"contain", borderTop:"1px solid rgba(246,193,50,0.12)", paddingTop:"0.75rem" }} />}
+            {profile.bio && <p style={{ margin:"0.75rem 0 0", color:"#d7e2f2", lineHeight:1.75, fontSize:13, whiteSpace:"pre-wrap" }}>{profile.bio}</p>}
+            {profile.signature_url && <img src={profile.signature_url} alt="" style={{ marginTop:"0.85rem", maxWidth:"100%", maxHeight:110, objectFit:"contain", borderTop:"1px solid rgba(20,96,184,0.16)", paddingTop:"0.75rem" }} />}
           </div>
         </div>
       </div>
@@ -760,8 +756,8 @@ const Home = ({ nations, news, actions, wars }) => {
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1.5rem" }}>
       {/* Hero bar */}
-      <div style={{ ...card, background:"linear-gradient(120deg,rgba(14,10,4,0.98),rgba(26,18,6,0.98))", border:"1px solid rgba(212,175,55,0.25)", padding:"1.75rem 2rem", position:"relative", overflow:"hidden" }}>
-        <div style={{ position:"absolute", top:-60, right:-60, width:220, height:220, background:"radial-gradient(circle,rgba(212,175,55,0.07),transparent 70%)", pointerEvents:"none", borderRadius:"50%" }} />
+      <div style={{ ...card, background:"linear-gradient(120deg,rgba(6,10,18,0.98),rgba(9,18,32,0.98))", border:"1px solid rgba(212,175,55,0.25)", padding:"1.75rem 2rem", position:"relative", overflow:"hidden" }}>
+        <div style={{ position:"absolute", inset:"auto 0 0 0", height:3, background:"linear-gradient(90deg,#145bb0,#f6c132,#1f8f43)", pointerEvents:"none" }} />
         <div style={{ display:"flex", gap:"2.5rem", flexWrap:"wrap", alignItems:"center" }}>
           <div style={{ flex:1, minWidth:180 }}>
             <p style={{ margin:"0 0 0.3rem", fontSize:11, letterSpacing:"0.12em", color:"#8fa0bd", textTransform:"uppercase" }}>Season 1 - Living World</p>
@@ -786,7 +782,7 @@ const Home = ({ nations, news, actions, wars }) => {
                 <span style={{ fontSize:10, fontWeight:800, color:"#0a0806", background:NEWS_COL[n.category]||"#d4af37", borderRadius:3, padding:"1px 6px", letterSpacing:"0.04em" }}>{n.category?.toUpperCase()}</span>
                 <span style={{ fontSize:11, color:"#8fa0bd" }}>{timeAgo(n.created_at)}</span>
               </div>
-              <div style={{ fontSize:13, color:"#f0dc8a", fontWeight:700, marginTop:3 }}>{n.title}</div>
+              <div style={{ fontSize:13, color:"#edf4ff", fontWeight:700, marginTop:3 }}>{n.title}</div>
             </div>
           ))}
         </Section>
@@ -796,7 +792,7 @@ const Home = ({ nations, news, actions, wars }) => {
             <div key={a.id} style={{ padding:"0.6rem 0", borderBottom:"1px solid rgba(255,215,0,0.05)", display:"flex", gap:"0.5rem", alignItems:"center" }}>
               <span style={{ fontSize:10, fontWeight:800, color:"#0a0806", background:ACTION_SIZES[a.size]?.color||"#d4af37", borderRadius:3, padding:"1px 6px" }}>{a.size?.toUpperCase()}</span>
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:13, color:"#f0dc8a", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{a.title}</div>
+                <div style={{ fontSize:13, color:"#edf4ff", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{a.title}</div>
                 <div style={{ fontSize:11, color:"#8fa0bd" }}>{a.nations?.name}</div>
               </div>
             </div>
@@ -808,7 +804,7 @@ const Home = ({ nations, news, actions, wars }) => {
             <div key={w.id} style={{ padding:"0.6rem 0", borderBottom:"1px solid rgba(255,215,0,0.05)", fontSize:13 }}>
               <span style={{ color:"#e74c3c", fontWeight:700 }}>{w.aggressor?.name||"?"}</span>
               <span style={{ color:"#8fa0bd", margin:"0 0.5rem" }}>vs</span>
-              <span style={{ color:"#f0dc8a", fontWeight:700 }}>{w.defender?.name||"?"}</span>
+              <span style={{ color:"#edf4ff", fontWeight:700 }}>{w.defender?.name||"?"}</span>
               {w.name && <div style={{ fontSize:11, color:"#a9b7cf", fontStyle:"italic" }}>"{w.name}"</div>}
             </div>
           ))}
@@ -817,9 +813,9 @@ const Home = ({ nations, news, actions, wars }) => {
         <Section title="Top GDP Nations" empty="No nation data.">
           {topGDP.map((n,i)=>(
             <div key={n.id} style={{ display:"flex", gap:"0.75rem", alignItems:"center", padding:"0.45rem 0", borderBottom:"1px solid rgba(255,215,0,0.05)" }}>
-              <span style={{ fontFamily:"var(--display)", color:i===0?"#d4af37":i<3?"#d8c890":"#8493ad", fontSize:13, width:20, textAlign:"center" }}>#{i+1}</span>
+              <span style={{ fontFamily:"var(--display)", color:i===0?"#d4af37":i<3?"#d7e2f2":"#8493ad", fontSize:13, width:20, textAlign:"center" }}>#{i+1}</span>
               <Flag nation={n} size={24} />
-              <span style={{ flex:1, fontSize:13, color:"#f0dc8a" }}>{n.name}</span>
+              <span style={{ flex:1, fontSize:13, color:"#edf4ff" }}>{n.name}</span>
               <span style={{ fontSize:12, color:"#d4af37", fontWeight:700 }}>{fmtGDP(n.gdp_usd)}</span>
             </div>
           ))}
@@ -865,7 +861,7 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
 
       {/* Nation Header */}
       <div style={{ ...card, border:"1px solid rgba(212,175,55,0.25)", marginBottom:"1rem", padding:"1.75rem", position:"relative", overflow:"hidden" }}>
-        <div style={{ position:"absolute", inset:0, background:"linear-gradient(135deg,rgba(14,10,4,0.97),rgba(22,16,5,0.97))", pointerEvents:"none" }} />
+        <div style={{ position:"absolute", inset:0, background:"linear-gradient(135deg,rgba(6,10,18,0.97),rgba(9,18,32,0.97))", pointerEvents:"none" }} />
         <div style={{ position:"relative", display:"flex", gap:"1.25rem", alignItems:"flex-start", flexWrap:"wrap" }}>
           <div style={{ position:"relative" }}>
             <Flag nation={nation} size={72} />
@@ -876,7 +872,7 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
           </div>
           <div style={{ flex:1, minWidth:200 }}>
             <h1 style={{ margin:"0 0 0.25rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:"clamp(1.5rem,3vw,2.2rem)", letterSpacing:"0.04em" }}>{nation.name}</h1>
-            <p style={{ margin:"0 0 0.5rem", color:"#c7b783", fontSize:13 }}>{nation.government}{nation.ideology ? ` - ${nation.ideology}` : ""}</p>
+            <p style={{ margin:"0 0 0.5rem", color:"#b7c6dc", fontSize:13 }}>{nation.government}{nation.ideology ? ` - ${nation.ideology}` : ""}</p>
             <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
               {nation.tiktok_username && <span style={{ fontSize:11, color:"#a9b7cf" }}>TikTok: @{nation.tiktok_username}</span>}
           {(nation.owner || nation.profiles) && <span style={{ fontSize:11, color:"#a9b7cf" }}>Owner: {(nation.owner || nation.profiles).username}</span>}
@@ -905,7 +901,7 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
           {nation.bio && (
             <div style={{ ...card, gridColumn:"1/-1" }}>
               <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.06em", textTransform:"uppercase", marginBottom:"0.5rem" }}>Nation Profile</div>
-              <p style={{ margin:0, color:"#d8c890", lineHeight:1.85, fontSize:13 }}>{nation.bio}</p>
+              <p style={{ margin:0, color:"#d7e2f2", lineHeight:1.85, fontSize:13 }}>{nation.bio}</p>
             </div>
           )}
         </div>
@@ -969,8 +965,8 @@ const PostCard = ({ post, nations }) => {
         </div>
         <span style={{ fontSize:11, fontWeight:800, color:POST_COLS[post.post_type]||"#d4af37", background:"rgba(0,0,0,0.5)", borderRadius:4, padding:"2px 8px", letterSpacing:"0.04em", border:`1px solid ${POST_COLS[post.post_type]||"#d4af37"}30` }}>{post.post_type}</span>
       </div>
-      <h3 style={{ margin:"0 0 0.6rem", color:"#f7f0dc", fontFamily:"var(--display)", fontSize:15 }}>{post.title}</h3>
-      <p style={{ margin:0, color:"#d8c890", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{post.body}</p>
+      <h3 style={{ margin:"0 0 0.6rem", color:"#f8fbff", fontFamily:"var(--display)", fontSize:15 }}>{post.title}</h3>
+      <p style={{ margin:0, color:"#d7e2f2", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{post.body}</p>
     </div>
   );
 };
@@ -1009,11 +1005,11 @@ const ActionCard = ({ action, nations, expandable, isMod, onRefresh, profile }) 
 
       {(open || !expandable) && (
         <div style={{ marginTop:"1rem", paddingTop:"1rem", borderTop:"1px solid rgba(255,215,0,0.06)" }}>
-          <p style={{ margin:"0 0 0.75rem", color:"#d8c890", fontSize:13, lineHeight:1.8 }}>{action.description}</p>
+          <p style={{ margin:"0 0 0.75rem", color:"#d7e2f2", fontSize:13, lineHeight:1.8 }}>{action.description}</p>
           {action.tiktok_comment && (
             <div style={{ background:"rgba(255,255,255,0.02)", border:"1px solid rgba(212,175,55,0.1)", borderRadius:6, padding:"0.7rem", marginBottom:"0.75rem" }}>
               <div style={{ fontSize:10, color:"#8fa0bd", letterSpacing:"0.1em", marginBottom:3 }}>TIKTOK COMMENT</div>
-              <div style={{ fontSize:13, color:"#f0dc8a", fontStyle:"italic" }}>{action.tiktok_comment}</div>
+              <div style={{ fontSize:13, color:"#edf4ff", fontStyle:"italic" }}>{action.tiktok_comment}</div>
             </div>
           )}
           {action.lore_notes && (
@@ -1028,7 +1024,7 @@ const ActionCard = ({ action, nations, expandable, isMod, onRefresh, profile }) 
               {action.action_updates.map(u=>(
                 <div key={u.id} style={{ borderLeft:"2px solid rgba(212,175,55,0.25)", paddingLeft:"0.75rem", marginBottom:"0.5rem" }}>
                   <div style={{ fontSize:11, color:"#8fa0bd" }}>{timeAgo(u.created_at)} - {u.profiles?.username}</div>
-                  <div style={{ fontSize:13, color:"#d8c890" }}>{u.body}</div>
+                  <div style={{ fontSize:13, color:"#d7e2f2" }}>{u.body}</div>
                 </div>
               ))}
             </div>
@@ -1070,7 +1066,7 @@ const WarCard = ({ war, nations, isMod, onRefresh }) => {
           <span style={{ fontSize:10, fontWeight:800, color:WAR_COL[war.status], border:`1px solid ${WAR_COL[war.status]}`, borderRadius:3, padding:"2px 7px" }}>{war.status?.toUpperCase()}</span>
         </div>
       </div>
-      {war.name && <div style={{ fontFamily:"var(--display)", color:"#d8c890", fontSize:12, marginTop:"0.5rem", fontStyle:"italic" }}>"{war.name}"</div>}
+      {war.name && <div style={{ fontFamily:"var(--display)", color:"#d7e2f2", fontSize:12, marginTop:"0.5rem", fontStyle:"italic" }}>"{war.name}"</div>}
       {war.casus_belli && <p style={{ margin:"0.4rem 0 0", color:"#9fb4d6", fontSize:12 }}>{war.casus_belli}</p>}
       {isMod && (
         <div style={{ marginTop:"0.75rem", display:"flex", gap:"0.4rem" }}>
@@ -1124,13 +1120,13 @@ const Nations = ({ nations, posts, actions, wars, alliances, allianceMembers, pr
       </div>
       {nations.length === 0 && (
         <div style={{ ...card, textAlign:"center", padding:"2rem", border:"1px solid rgba(225,29,29,0.26)" }}>
-          <div style={{ fontFamily:"var(--display)", color:"#f0dc8a", fontSize:16, marginBottom:"0.35rem" }}>No nations loaded</div>
+          <div style={{ fontFamily:"var(--display)", color:"#edf4ff", fontSize:16, marginBottom:"0.35rem" }}>No nations loaded</div>
           <p style={{ margin:0, color:"#8fa0bd", fontSize:13, lineHeight:1.6 }}>The directory is public, so this usually means the database seed has not been run on this Supabase project or the deployment is pointing at the wrong Supabase environment.</p>
         </div>
       )}
       {nations.length > 0 && list.length === 0 && (
         <div style={{ ...card, textAlign:"center", padding:"2rem" }}>
-          <div style={{ fontFamily:"var(--display)", color:"#f0dc8a", fontSize:16, marginBottom:"0.35rem" }}>No matches</div>
+          <div style={{ fontFamily:"var(--display)", color:"#edf4ff", fontSize:16, marginBottom:"0.35rem" }}>No matches</div>
           <p style={{ margin:0, color:"#8fa0bd", fontSize:13 }}>Clear the search or government filter to see all nations.</p>
         </div>
       )}
@@ -1152,7 +1148,7 @@ const Nations = ({ nations, posts, actions, wars, alliances, allianceMembers, pr
               {[["Pop",fmtPop(n.population)],["GDP",fmtGDP(n.gdp_usd)],["Army",n.army_rank!=null?`${n.army_rank}/11`:"-"]].map(([l,v])=>(
                 <div key={l}>
                   <div style={{ fontSize:9, color:"#8493ad", textTransform:"uppercase", letterSpacing:"0.08em" }}>{l}</div>
-                  <div style={{ fontSize:12, color:"#d8c890", fontWeight:700 }}>{v}</div>
+                  <div style={{ fontSize:12, color:"#d7e2f2", fontWeight:700 }}>{v}</div>
                 </div>
               ))}
             </div>
@@ -1410,7 +1406,7 @@ const NewsPage = ({ news, profile, isMod, onRefresh }) => {
               {NEWS_CATS.map(c=><button key={c} onClick={()=>setForm({...form,category:c})} style={{ ...mkBtn(form.category===c?"gold":"ghost"), fontSize:11 }}>{c}</button>)}
             </div>
             <textarea placeholder="Full story" value={form.body} onChange={e=>setForm({...form,body:e.target.value})} style={{ ...ta, minHeight:120 }} />
-            <label style={{ display:"flex", gap:"0.5rem", alignItems:"center", color:"#c7b783", fontSize:12, cursor:"pointer" }}>
+            <label style={{ display:"flex", gap:"0.5rem", alignItems:"center", color:"#b7c6dc", fontSize:12, cursor:"pointer" }}>
               <input type="checkbox" checked={form.pinned} onChange={e=>setForm({...form,pinned:e.target.checked})} /> Pin this article
             </label>
             <div style={{ display:"flex", gap:"0.5rem" }}>
@@ -1429,8 +1425,8 @@ const NewsPage = ({ news, profile, isMod, onRefresh }) => {
                 <span style={{ fontSize:10, fontWeight:800, color:"#0a0806", background:NEWS_COL[n.category]||"#d4af37", borderRadius:3, padding:"2px 8px" }}>{n.category?.toUpperCase()}</span>
                 <span style={{ marginLeft:"auto", fontSize:11, color:"#8fa0bd" }}>{timeAgo(n.created_at)}</span>
               </div>
-              <h3 style={{ margin:"0 0 0.6rem", fontFamily:"var(--display)", color:"#f7f0dc", fontSize:17 }}>{n.title}</h3>
-              <p style={{ margin:0, color:"#d8c890", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{n.body}</p>
+              <h3 style={{ margin:"0 0 0.6rem", fontFamily:"var(--display)", color:"#f8fbff", fontSize:17 }}>{n.title}</h3>
+              <p style={{ margin:0, color:"#d7e2f2", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{n.body}</p>
             </div>
           ))}
         </div>
@@ -1443,8 +1439,8 @@ const NewsPage = ({ news, profile, isMod, onRefresh }) => {
               <span style={{ fontSize:10, fontWeight:800, color:"#0a0806", background:NEWS_COL[n.category]||"#d4af37", borderRadius:3, padding:"2px 8px" }}>{n.category?.toUpperCase()}</span>
               <span style={{ marginLeft:"auto", fontSize:11, color:"#8fa0bd" }}>{timeAgo(n.created_at)}</span>
             </div>
-            <h3 style={{ margin:"0 0 0.6rem", fontFamily:"var(--display)", color:"#f7f0dc", fontSize:17 }}>{n.title}</h3>
-            <p style={{ margin:0, color:"#d8c890", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{n.body}</p>
+            <h3 style={{ margin:"0 0 0.6rem", fontFamily:"var(--display)", color:"#f8fbff", fontSize:17 }}>{n.title}</h3>
+            <p style={{ margin:0, color:"#d7e2f2", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{n.body}</p>
           </div>
         ))}
       </div>
@@ -1484,7 +1480,7 @@ const Leaderboards = ({ nations }) => {
               <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"0.45rem" }}>
                 <span style={{ fontFamily:"var(--display)", color:i<3?"#d4af37":"#8493ad", fontSize:14, width:26, textAlign:"center" }}>{medal||`#${i+1}`}</span>
                 <Flag nation={n} size={26} />
-                <span style={{ flex:1, fontSize:14, color:"#f0dc8a", fontWeight:700 }}>{n.name}</span>
+                <span style={{ flex:1, fontSize:14, color:"#edf4ff", fontWeight:700 }}>{n.name}</span>
                 <span style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:15 }}>{m.fmt(val)}</span>
               </div>
               <div style={{ height:3, background:"rgba(255,255,255,0.03)", borderRadius:2, marginLeft:26+26+12, overflow:"hidden" }}>
@@ -1590,7 +1586,7 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
                 onClick={()=>setView({type:"thread",thread:t})}>
                 {authorNation ? <Flag nation={authorNation} size={22} /> : <div style={{ width:22, height:14, background:"rgba(255,255,255,0.04)", borderRadius:2 }} />}
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:13, color:"#f0dc8a", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.pinned&&"Pinned: "}{t.title}</div>
+                  <div style={{ fontSize:13, color:"#edf4ff", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.pinned&&"Pinned: "}{t.title}</div>
                   <div style={{ fontSize:11, color:"#8fa0bd" }}>{authorNation?.name||t.profiles?.username||"?"} - {timeAgo(t.created_at)}</div>
                 </div>
                 <div style={{ textAlign:"right", flexShrink:0 }}>
@@ -1748,7 +1744,7 @@ const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
             <div key={n.id} style={{ ...card, padding:"0.9rem", display:"flex", gap:"0.75rem", alignItems:"center" }}>
               <Flag nation={n} size={28} />
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:13, color:"#f0dc8a", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.name}</div>
+                <div style={{ fontSize:13, color:"#edf4ff", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.name}</div>
                 <div style={{ fontSize:11, color:"#8fa0bd" }}>{n.government||"?"} - {(n.owner || n.profiles)?`@${(n.owner || n.profiles).username}`:"unassigned"}</div>
               </div>
               <button onClick={()=>loadEdit(n)} style={{ ...mkBtn("ghost"), fontSize:11, padding:"5px 10px" }}>Edit</button>
@@ -1878,12 +1874,12 @@ export default function App() {
       <header className="app-header" style={{ background:"rgba(3,4,7,0.98)", borderBottom:"1px solid rgba(20,96,184,0.36)", padding:"0 1.25rem", display:"flex", alignItems:"center", gap:"1rem", height:50, position:"sticky", top:0, zIndex:200, backdropFilter:"blur(20px)" }}>
         <div className="brand" style={{ display:"flex", alignItems:"center", gap:"0.55rem", cursor:"pointer", flexShrink:0 }} onClick={()=>navigate("forums")}>
           <img className="brand-logo" src={LOGO_SRC} alt="Nationwheel" style={{ width:34, height:34, objectFit:"cover", borderRadius:"50%", border:"1px solid rgba(246,193,50,0.35)" }} />
-          <span className="brand-name" style={{ fontFamily:"var(--brand)", color:"#fff8e6", fontSize:15, letterSpacing:"0.08em", fontWeight:900 }}>NATIONWHEEL</span>
+          <span className="brand-name" style={{ fontFamily:"var(--brand)", color:"#f5f8ff", fontSize:15, letterSpacing:"0.08em", fontWeight:900 }}>NATIONWHEEL</span>
         </div>
         {/* Desktop nav */}
         <nav className="app-nav" style={{ display:"flex", gap:"0.1rem", flex:1, overflowX:"auto", scrollbarWidth:"none" }}>
           {nav.map(n=>(
-            <button className="nav-button" key={n.id} onClick={()=>navigate(n.id)} style={{ background:page===n.id?"rgba(246,193,50,0.12)":"transparent", color:page===n.id?"#f6c132":"#8aa4c9", border:"none", borderRadius:5, padding:"5px 9px", cursor:"pointer", fontSize:11.5, fontWeight:page===n.id?800:600, whiteSpace:"nowrap", transition:"all 0.15s", fontFamily:"inherit" }}>
+            <button className="nav-button" key={n.id} onClick={()=>navigate(n.id)} style={{ background:page===n.id?"rgba(20,96,184,0.16)":"transparent", color:page===n.id?"#f6c132":"#8aa4c9", border:"none", borderRadius:5, padding:"5px 9px", cursor:"pointer", fontSize:11.5, fontWeight:page===n.id?800:600, whiteSpace:"nowrap", transition:"all 0.15s", fontFamily:"inherit" }}>
               {n.label}
             </button>
           ))}
@@ -1942,30 +1938,26 @@ export default function App() {
         *,*::before,*::after{box-sizing:border-box;}
         body {
           font-family: var(--body);
-          background: #020305;
-          background-image:
-            radial-gradient(circle at 18% 12%,rgba(225,29,29,0.18) 0%,transparent 30%),
-            radial-gradient(circle at 50% 0%,rgba(246,193,50,0.12) 0%,transparent 34%),
-            radial-gradient(circle at 82% 18%,rgba(20,96,184,0.18) 0%,transparent 32%),
-            radial-gradient(circle at 24% 88%,rgba(31,143,67,0.12) 0%,transparent 30%);
-          color:#fff8e6; margin:0;
+          background: #030712;
+          background-image: linear-gradient(180deg,#07111f 0%,#030712 42%,#02050b 100%);
+          color:#f5f8ff; margin:0;
         }
         input::placeholder,textarea::placeholder{color:#7184a5;}
         input:focus,textarea:focus,select:focus{outline:none;border-color:rgba(246,193,50,0.72)!important;box-shadow:0 0 0 3px rgba(20,96,184,0.16);}
-        select option{background:#05070b;color:#fff8e6;}
+        select option{background:#05070b;color:#f5f8ff;}
         button:hover{opacity:0.8;}
         button:active{transform:scale(0.97);}
         button,input,textarea,select{font:inherit;}
         button{min-height:40px;}
         body{overflow-x:hidden;}
-        .rich-post{margin:0;color:#d8c890;font-size:13px;line-height:1.85;white-space:pre-wrap;overflow-wrap:anywhere;}
-        .rich-post blockquote{margin:0.75rem 0;padding:0.6rem 0.75rem;border-left:3px solid rgba(246,193,50,0.35);background:rgba(255,255,255,0.04);color:#f0dc8a;}
+        .rich-post{margin:0;color:#d7e2f2;font-size:13px;line-height:1.85;white-space:pre-wrap;overflow-wrap:anywhere;}
+        .rich-post blockquote{margin:0.75rem 0;padding:0.6rem 0.75rem;border-left:3px solid rgba(246,193,50,0.35);background:rgba(255,255,255,0.04);color:#edf4ff;}
         .rich-post pre{white-space:pre-wrap;overflow:auto;background:#030405;border:1px solid rgba(20,96,184,0.28);border-radius:6px;padding:0.75rem;color:#99dca7;}
         .rich-post a{color:#6fb7ff;text-decoration:underline;}
         .rich-post img{display:block;max-width:100%;height:auto;border-radius:6px;margin:0.75rem 0;border:1px solid rgba(255,255,255,0.12);}
-        .post-signature{display:block;max-width:100%;max-height:120px;object-fit:contain;margin-top:1rem;padding-top:0.85rem;border-top:1px solid rgba(246,193,50,0.12);}
+        .post-signature{display:block;max-width:100%;max-height:120px;object-fit:contain;margin-top:1rem;padding-top:0.85rem;border-top:1px solid rgba(20,96,184,0.16);}
         .forum-post-layout{display:flex;gap:1.1rem;align-items:flex-start;}
-        .post-author{border-right:1px solid rgba(246,193,50,0.12);padding-right:1rem;}
+        .post-author{border-right:1px solid rgba(20,96,184,0.16);padding-right:1rem;}
         ::-webkit-scrollbar{width:4px;height:4px;}
         ::-webkit-scrollbar-track{background:#020305;}
         ::-webkit-scrollbar-thumb{background:rgba(246,193,50,0.28);border-radius:2px;}
@@ -2011,7 +2003,7 @@ export default function App() {
           .thread-card{padding:0.85rem!important;gap:0.6rem!important;align-items:flex-start!important;}
           .post-card{padding:1rem!important;}
           .forum-post-layout{display:block!important;}
-          .post-author{width:auto!important;border-right:none!important;border-bottom:1px solid rgba(246,193,50,0.12);padding:0 0 0.85rem!important;margin-bottom:0.85rem;display:grid;grid-template-columns:auto 1fr;column-gap:0.85rem;align-items:center;}
+          .post-author{width:auto!important;border-right:none!important;border-bottom:1px solid rgba(20,96,184,0.16);padding:0 0 0.85rem!important;margin-bottom:0.85rem;display:grid;grid-template-columns:auto 1fr;column-gap:0.85rem;align-items:center;}
           .post-author img,.post-author > div:first-child{grid-row:1 / span 3;}
           .profile-grid{grid-template-columns:1fr!important;}
         }
@@ -2028,3 +2020,4 @@ export default function App() {
     </div>
   );
 }
+
