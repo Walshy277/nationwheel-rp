@@ -39,6 +39,18 @@ For admin role repair or first-user promotion, run:
 supabase-admin-setup.sql
 ```
 
+To import the known canon nations from the spreadsheet sources, run:
+
+```text
+supabase-nation-seed.sql
+```
+
+The seed is generated from `-NW- World Database (2).xlsx` and `S2 Base (3).xlsx`. If those sheets are updated, regenerate the SQL with:
+
+```powershell
+python scripts/generate_nation_seed.py
+```
+
 The frontend must use the Supabase anon or publishable key only. Do not commit service role or secret keys.
 
 ## Netlify
