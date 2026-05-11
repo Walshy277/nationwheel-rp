@@ -50,7 +50,9 @@ def parse_spaced_number(value):
     text = clean(value)
     if not text:
         return None
-    match = re.search(r"([\d\s]+)", text)
+    text = re.sub(r"\s+", " ", text.replace("\xa0", " ")).strip()
+    text = re.sub(r"\s+\d+\s*/\s*\d+\s*$", "", text).strip()
+    match = re.match(r"^(\d[\d\s]*)", text)
     if not match:
         return parse_number_text(text)
     digits = re.sub(r"\s+", "", match.group(1))

@@ -328,7 +328,7 @@ Military: Expansionist 10 / 11'),
 Spin: #104'),
 ('South Isma', 'south-isma', null, null, null, 300000, null, null, null, null, null, 'Source: Season 1 world database
 Spin: #105'),
-('Aagyr', 'aagyr', 'Presidential Republic', 250000004, 500000000000, 3000005, 5, 0.84, 'Jewelry craft', 'Diplo Isolation', 'Demonbound', 'Source: Season 2 base
+('Aagyr', 'aagyr', 'Presidential Republic', 25000000, 500000000000, 300000, 5, 0.84, 'Jewelry craft', 'Diplo Isolation', 'Demonbound', 'Source: Season 2 base
 Spin: #1
 Leader traits: Vengeful +2 Mil
 Military: Basic Army 5/10
@@ -338,7 +338,7 @@ Blessing / Curse: Diplo Isolation
 Localisation: South Fang
 Influence: 5.0
 Note: 5.5'),
-('Grunewald', 'grunewald', 'Auth. Republic', 2500000008, 2500000000000, 10000007, 5, 0.8, 'Hydropower / Cows', 'Long peace', 'Demonbound', 'Source: Season 2 base
+('Grunewald', 'grunewald', 'Auth. Republic', 250000000, 2500000000000, 1000000, 5, 0.8, 'Hydropower / Cows', 'Long peace', 'Demonbound', 'Source: Season 2 base
 Spin: #2
 Leader traits: Leper -2 HDI
 Military: Basic Army 5/10
@@ -348,7 +348,7 @@ Blessing / Curse: Long peace
 Localisation: North Fang
 Influence: 6.0
 Note: 7'),
-('Weak Empire', 'weak-empire', 'High Tribal Kingdom', 500000005, 900000000000, 9000007, 6, 0.62, 'Manuf / Desalinisation', 'Ember Industry', 'Demonbound', 'Source: Season 2 base
+('Weak Empire', 'weak-empire', 'High Tribal Kingdom', 50000000, 900000000000, 900000, 6, 0.62, 'Manuf / Desalinisation', 'Ember Industry', 'Demonbound', 'Source: Season 2 base
 Spin: #3
 Leader traits: Beautiful +1 HDI
 Military: Organized Army 6/10
@@ -358,7 +358,7 @@ Blessing / Curse: Ember Industry
 Localisation: Red Ear
 Influence: 5.0
 Note: 6'),
-('Rōzurando shū', 'r-zurando-sh', 'Presidential Republic', 800000006, 9000000000000, 6000006, 6, 0.93, 'Critical Ress / Bananas', 'Iron Stability', 'Resilient', 'Source: Season 2 base
+('Rōzurando shū', 'r-zurando-sh', 'Presidential Republic', 80000000, 9000000000000, 600000, 6, 0.93, 'Critical Ress / Bananas', 'Iron Stability', 'Resilient', 'Source: Season 2 base
 Spin: #4
 Leader traits: Naive -2 Military
 Military: Organized Army 6/10
@@ -368,7 +368,7 @@ Blessing / Curse: Iron Stability
 Localisation: Feastwater
 Influence: 8.0
 Note: 7.333333333'),
-('Vulcan', 'vulcan', 'Plutocracy', 1100000006, 9000000000000, 600002, 9, 0.92, 'Mining', 'Strategic Hesitation', 'Resilient', 'Source: Season 2 base
+('Vulcan', 'vulcan', 'Plutocracy', 110000000, 9000000000000, 60000, 9, 0.92, 'Mining', 'Strategic Hesitation', 'Resilient', 'Source: Season 2 base
 Spin: #5
 Leader traits: Zealous +2 Mil
 Military: Global Military (Land/Air) 9/10
@@ -378,7 +378,7 @@ Blessing / Curse: Strategic Hesitation
 Localisation: Red Ear
 Influence: 8.0
 Note: 7.166666667'),
-('Autronia', 'autronia', 'Constitutional Monarchy', 90000003, 600000000000, 400002, 0, 0.6, 'Heavy Industry', 'Economic Collapse', 'Demonbound', 'Source: Season 2 base
+('Autronia', 'autronia', 'Constitutional Monarchy', 9000000, 600000000000, 40000, 0, 0.6, 'Heavy Industry', 'Economic Collapse', 'Demonbound', 'Source: Season 2 base
 Spin: #6
 Leader traits: Quick +1 GDP
 Military: No Army 0/10
@@ -388,7 +388,7 @@ Blessing / Curse: Economic Collapse
 Localisation: Seas of tears
 Influence: 3.0
 Note: 3.5'),
-('Invictus Realm', 'invictus-realm', 'Absolute Monarchy', 600000005, 1000000000000, 5000006, 7, 0.96, 'Scientific Res / Coffee', 'Steady Growth', 'Resilient', 'Source: Season 2 base
+('Invictus Realm', 'invictus-realm', 'Absolute Monarchy', 60000000, 1000000000000, 500000, 7, 0.96, 'Scientific Res / Coffee', 'Steady Growth', 'Resilient', 'Source: Season 2 base
 Spin: #7
 Leader traits: Imbecile -3 GDP
 Military: Elite Army 7/10
@@ -398,7 +398,7 @@ Blessing / Curse: Steady Growth
 Localisation: North Fang
 Influence: 6.0
 Note: 6.833333333'),
-('Yoyleland', 'yoyleland', 'City- State', 20000002, 15000000000, 200001, 1, 0.75, 'Beers', 'Infernal Surge', 'Demonbound', 'Source: Season 2 base
+('Yoyleland', 'yoyleland', 'City- State', 2000000, 15000000000, 20000, 1, 0.75, 'Beers', 'Infernal Surge', 'Demonbound', 'Source: Season 2 base
 Spin: #8
 Leader traits: Fecund +2 Pop
 Military: Civil Guard 1/10
@@ -408,7 +408,7 @@ Blessing / Curse: Infernal Surge
 Localisation: Nosecrest
 Influence: 2.0
 Note: 2.5'),
-('Intdocryn', 'intdocryn', 'Technocracy', 40000003, 500000000000, 1500004, 5, 0.76, 'Financial Services +1 GDP', 'Internal Revolt', 'Demonbound', 'Source: Season 2 base
+('Intdocryn', 'intdocryn', 'Technocracy', 4000000, 500000000000, 150000, 5, 0.76, 'Financial Services +1 GDP', 'Internal Revolt', 'Demonbound', 'Source: Season 2 base
 Spin: #9
 Leader traits: Quick +1 GDP
 Military: Basic Army 5/10
@@ -418,7 +418,7 @@ Blessing / Curse: Internal Revolt
 Localisation: Seas of tears
 Influence: 4.0
 Note: 5'),
-('Belvaria', 'belvaria', 'Communism', 600000005, 600000000000, 8000007, 8, 0.62, 'Paper / Heavy Ind', 'Blood Economy', 'Demonbound', 'Source: Season 2 base
+('Belvaria', 'belvaria', 'Communism', 60000000, 600000000000, 800000, 8, 0.62, 'Paper / Heavy Ind', 'Blood Economy', 'Demonbound', 'Source: Season 2 base
 Spin: #10
 Leader traits: Deceitful -2 HDI
 Military: Regional Military (Land) 8/10
@@ -428,7 +428,7 @@ Blessing / Curse: Blood Economy
 Localisation: Twin Diadems
 Influence: 7.0
 Note: 6.666666667'),
-('Trivarya', 'trivarya', 'Communism', 100000003, 700000000000, 4500005, 7, 0.65, 'Yogurt Flavoring', 'Ressource Burn', 'Demonbound', 'Source: Season 2 base
+('Trivarya', 'trivarya', 'Communism', 10000000, 700000000000, 450000, 7, 0.65, 'Yogurt Flavoring', 'Ressource Burn', 'Demonbound', 'Source: Season 2 base
 Spin: #11
 Leader traits: Schemer +1 GDP
 Military: Elite Army 7/10
@@ -438,7 +438,7 @@ Blessing / Curse: Ressource Burn
 Localisation: Seas of tears
 Influence: 3.0
 Note: 5.166666667'),
-('Atomicmixiz', 'atomicmixiz', 'Fed. Republic', 20000002, 500000000, 1000003, 6, 0.91, 'Road Construction', 'Hellfleet Naval Sup. Feastwater', 'Demonbound', 'Source: Season 2 base
+('Atomicmixiz', 'atomicmixiz', 'Fed. Republic', 2000000, 500000000, 100000, 6, 0.91, 'Road Construction', 'Hellfleet Naval Sup. Feastwater', 'Demonbound', 'Source: Season 2 base
 Spin: #12
 Leader traits: Bastard - No Malus Republic
 Military: Organized Army 6/10
@@ -448,7 +448,7 @@ Blessing / Curse: Hellfleet Naval Sup. Feastwater
 Localisation: Feastwater
 Influence: 3.0
 Note: 4'),
-('Ayyutit', 'ayyutit', 'Council of 100 Clans', 6000000009, 9000000000000, 6000006, 7, 0.42, 'Security / Pharma / Hairstylist', 'Dark Pact Trade', 'Demonbound', 'Source: Season 2 base
+('Ayyutit', 'ayyutit', 'Council of 100 Clans', 600000000, 9000000000000, 600000, 7, 0.42, 'Security / Pharma / Hairstylist', 'Dark Pact Trade', 'Demonbound', 'Source: Season 2 base
 Spin: #13
 Leader traits: Calm +1 HDI
 Military: Elite Army 7/10
@@ -458,7 +458,7 @@ Blessing / Curse: Dark Pact Trade
 Localisation: Red Ear
 Influence: 7.0
 Note: 7'),
-('Federal', 'federal', 'Fascism', 170000000010, 20000000000000, 60000009, 9, 0.92, 'Agri / Lobby / Lux. Cruise', 'Ember Industry', 'Demonbound', 'Source: Season 2 base
+('Federal', 'federal', 'Fascism', 1700000000, 20000000000000, 6000000, 9, 0.92, 'Agri / Lobby / Lux. Cruise', 'Ember Industry', 'Demonbound', 'Source: Season 2 base
 Spin: #14
 Leader traits: Strategist +3 Military
 Military: Global Military (Naval/Air) 9/10
@@ -468,7 +468,7 @@ Blessing / Curse: Ember Industry
 Localisation: Twin Diadems
 Influence: 9.0
 Note: 9.333333333'),
-('Aurizhan', 'aurizhan', 'Communism', 5000001, 750000000, 1250003, 5, 0.96, 'Golden Rice', 'Crimson Mobilization', 'Demonbound', 'Source: Season 2 base
+('Aurizhan', 'aurizhan', 'Communism', 500000, 750000000, 125000, 5, 0.96, 'Golden Rice', 'Crimson Mobilization', 'Demonbound', 'Source: Season 2 base
 Spin: #15
 Leader traits: Just +2 HDI
 Military: Basic Army 5/10
@@ -478,7 +478,7 @@ Blessing / Curse: Crimson Mobilization
 Localisation: South Fang
 Influence: 3.0
 Note: 3.833333333'),
-('Qamilandia', 'qamilandia', 'Presidential Republic', 70000003, 1000000000000, 9000007, 7, 0.59, 'Elder''s Care', 'Infernal Surge', 'Demonbound', 'Source: Season 2 base
+('Qamilandia', 'qamilandia', 'Presidential Republic', 7000000, 1000000000000, 900000, 7, 0.59, 'Elder''s Care', 'Infernal Surge', 'Demonbound', 'Source: Season 2 base
 Spin: #16
 Leader traits: Temperate +1 GDP
 Military: Elite Army 7/10
@@ -488,7 +488,7 @@ Blessing / Curse: Infernal Surge
 Localisation: Quiet Reach
 Influence: 5.0
 Note: 5.666666667'),
-('Bennia', 'bennia', 'Corporate State', 10000002, 10000000000, 600002, 3, 0.55, 'Gambling', 'Hellmouth Risk', 'Demonbound', 'Source: Season 2 base
+('Bennia', 'bennia', 'Corporate State', 1000000, 10000000000, 60000, 3, 0.55, 'Gambling', 'Hellmouth Risk', 'Demonbound', 'Source: Season 2 base
 Spin: #17
 Leader traits: Dwarf -1 HDI
 Military: Local Militia 3/10
@@ -498,7 +498,7 @@ Blessing / Curse: Hellmouth Risk
 Localisation: Quiet Reach
 Influence: 2.0
 Note: 2.666666667'),
-('Arcinia', 'arcinia', 'Auth. Republic', 1150000006, 150000000000, 9000007, 0, 0.28, 'Garbage / Street Food', 'Moral Unity', 'Resilient', 'Source: Season 2 base
+('Arcinia', 'arcinia', 'Auth. Republic', 115000000, 150000000000, 900000, 0, 0.28, 'Garbage / Street Food', 'Moral Unity', 'Resilient', 'Source: Season 2 base
 Spin: #18
 Leader traits: Murderer -3 HDI
 Military: No Army 0/10
@@ -508,7 +508,7 @@ Blessing / Curse: Moral Unity
 Localisation: Red Ear
 Influence: 3.0
 Note: 3.833333333'),
-('Forgovia', 'forgovia', 'Absolute Monarchy', 1000001, 15000000000, 100001, 1, 0.98, 'Top University', 'Population Drain', 'Demonbound', 'Source: Season 2 base
+('Forgovia', 'forgovia', 'Absolute Monarchy', 100000, 15000000000, 10000, 1, 0.98, 'Top University', 'Population Drain', 'Demonbound', 'Source: Season 2 base
 Spin: #19
 Leader traits: Generous +2 HDI
 Military: Civil Guard 1/10
@@ -518,7 +518,7 @@ Blessing / Curse: Population Drain
 Localisation: Nosecrest
 Influence: 5.0
 Note: 3.333333333'),
-('Ranak', 'ranak', 'Absolute Monarchy', 800000006, 1000000000000, 3000005, 6, 0.87, 'Weeding Venues / Mercenaries', 'Mountain Shield', 'Resilient', 'Source: Season 2 base
+('Ranak', 'ranak', 'Absolute Monarchy', 80000000, 1000000000000, 300000, 6, 0.87, 'Weeding Venues / Mercenaries', 'Mountain Shield', 'Resilient', 'Source: Season 2 base
 Spin: #20
 Leader traits: Generous +2 HDI
 Military: Organized Army 6/10
@@ -528,7 +528,7 @@ Blessing / Curse: Mountain Shield
 Localisation: Nosecrest
 Influence: 5.0
 Note: 6.166666667'),
-('Silker', 'silker', 'Military Dictatorship', 250000004, 700000000000, 9000007, 5, 0.31, 'Eco Toilets / Mercenaries', 'Population Drain', 'Demonbound', 'Source: Season 2 base
+('Silker', 'silker', 'Military Dictatorship', 25000000, 700000000000, 900000, 5, 0.31, 'Eco Toilets / Mercenaries', 'Population Drain', 'Demonbound', 'Source: Season 2 base
 Spin: #21
 Leader traits: Architect +2 GDP
 Military: Basic Army 5/10
@@ -538,7 +538,7 @@ Blessing / Curse: Population Drain
 Localisation: Feastwater
 Influence: 4.0
 Note: 5'),
-('Kytom', 'kytom', 'Corporate State', 5000001, 50000000, 900003, 1, 0.38, 'Grey Market', 'Demonic Fear', 'Demonbound', 'Source: Season 2 base
+('Kytom', 'kytom', 'Corporate State', 500000, 50000000, 90000, 1, 0.38, 'Grey Market', 'Demonic Fear', 'Demonbound', 'Source: Season 2 base
 Spin: #22
 Leader traits: Poet +1 HDI
 Military: Civil Guard 1/10
@@ -548,7 +548,7 @@ Blessing / Curse: Demonic Fear
 Localisation: North Fang
 Influence: 1.0
 Note: 1.5'),
-('Kaelvyr', 'kaelvyr', 'Empire', 900000006, 4000000000000, 7500006, 8, 0.87, 'Forced labor / Warlord trade', 'Demon Dependancy', 'Demonbound', 'Source: Season 2 base
+('Kaelvyr', 'kaelvyr', 'Empire', 90000000, 4000000000000, 750000, 8, 0.87, 'Forced labor / Warlord trade', 'Demon Dependancy', 'Demonbound', 'Source: Season 2 base
 Spin: #23
 Leader traits: Berseker +2 Military
 Military: Regional Military (Land) 8/10
@@ -558,7 +558,7 @@ Blessing / Curse: Demon Dependancy
 Localisation: Twin Diadems
 Influence: 6.0
 Note: 7'),
-('Pentara', 'pentara', 'Confederation', 700000006, 3000000000000, 40000009, 10, 0.94, 'Motocycle / Best Architect', 'Steady Growth', 'Resilient', 'Source: Season 2 base
+('Pentara', 'pentara', 'Confederation', 70000000, 3000000000000, 4000000, 10, 0.94, 'Motocycle / Best Architect', 'Steady Growth', 'Resilient', 'Source: Season 2 base
 Spin: #24
 Leader traits: Genius +3 GDP
 Military: SUPERPOWER (All Spe) 10/10
@@ -568,7 +568,7 @@ Blessing / Curse: Steady Growth
 Localisation: South Fang
 Influence: 9.0
 Note: 8.5'),
-('Novaterra', 'novaterra', 'Confederation', 1000000006, 4000000000000, 5000006, 6, 0.63, 'Manufacture / Exorcism', 'Civil Fear', 'Demonbound', 'Source: Season 2 base
+('Novaterra', 'novaterra', 'Confederation', 100000000, 4000000000000, 500000, 6, 0.63, 'Manufacture / Exorcism', 'Civil Fear', 'Demonbound', 'Source: Season 2 base
 Spin: #25
 Leader traits: Amateur plotter -1 GDP
 Military: Organized Army 6/10
@@ -578,7 +578,7 @@ Blessing / Curse: Civil Fear
 Localisation: Nosecrest
 Influence: 5.0
 Note: 6.166666667'),
-('Aethelgard', 'aethelgard', 'Military Dictatorship +1 Military', 170000000010, 8000000000000, 30000008, 8, 0.79, 'Tourism / Construction / Music', 'Crimson Mobilization', 'Demonbound', 'Source: Season 2 base
+('Aethelgard', 'aethelgard', 'Military Dictatorship +1 Military', 1700000000, 8000000000000, 3000000, 8, 0.79, 'Tourism / Construction / Music', 'Crimson Mobilization', 'Demonbound', 'Source: Season 2 base
 Spin: #26
 Leader traits: Seducer +1 Influence
 Military: Regional Military (Land) 8/10
@@ -588,7 +588,7 @@ Blessing / Curse: Crimson Mobilization
 Localisation: Twin Diadems
 Influence: 7.0
 Note: 8.166666667'),
-('Union', 'union', 'Communism', 800000006, 900000000000, 3000005, 6, 0.72, 'Archeology / Tax Haven', 'Ressources Scarcity', 'Resilient', 'Source: Season 2 base
+('Union', 'union', 'Communism', 80000000, 900000000000, 300000, 6, 0.72, 'Archeology / Tax Haven', 'Ressources Scarcity', 'Resilient', 'Source: Season 2 base
 Spin: #27
 Leader traits: Born Purple +2 HDI
 Military: Organized Army 6/10
@@ -598,7 +598,7 @@ Blessing / Curse: Ressources Scarcity
 Localisation: Quiet Reach
 Influence: 5.0
 Note: 6'),
-('Bellville', 'bellville', 'Fed. Republic', 500000005, 400000000000, 6000006, 3, 0.91, 'Hidropower / Real Estate', 'Diplo Isolation', 'Demonbound', 'Source: Season 2 base
+('Bellville', 'bellville', 'Fed. Republic', 50000000, 400000000000, 600000, 3, 0.91, 'Hidropower / Real Estate', 'Diplo Isolation', 'Demonbound', 'Source: Season 2 base
 Spin: #28
 Leader traits: Callous -2 HDI
 Military: Local Militia 3/10
@@ -608,7 +608,7 @@ Blessing / Curse: Diplo Isolation
 Localisation: Feastwater
 Influence: 3.0
 Note: 5.333333333'),
-('Hope', 'hope', 'Presidential Republic', 110000003, 25000000000000, 300001, 7, 0.99, 'Critical Ressource (Uranium)', 'Ember Industry', 'Demonbound', 'Source: Season 2 base
+('Hope', 'hope', 'Presidential Republic', 11000000, 25000000000000, 30000, 7, 0.99, 'Critical Ressource (Uranium)', 'Ember Industry', 'Demonbound', 'Source: Season 2 base
 Spin: #29
 Leader traits: Fecund +2 Pop
 Military: Elite Army 7/10
@@ -618,7 +618,7 @@ Blessing / Curse: Ember Industry
 Localisation: Feastwater
 Influence: 8.0
 Note: 6.5'),
-('Vungor', 'vungor', 'Merchant Guild State', 150000004, 400000000000, 10000007, 3, 0.85, 'Anime', 'Infernal Surge', 'Demonbound', 'Source: Season 2 base
+('Vungor', 'vungor', 'Merchant Guild State', 15000000, 400000000000, 1000000, 3, 0.85, 'Anime', 'Infernal Surge', 'Demonbound', 'Source: Season 2 base
 Spin: #30
 Leader traits: Pure Blooded +1 HDI
 Military: Local Militia 3/10
@@ -628,7 +628,7 @@ Blessing / Curse: Infernal Surge
 Localisation: North Fang
 Influence: 5.0
 Note: 5.5'),
-('Werre', 'werre', 'Constitutional Monarchy', 10000002, 5000000000, 1000003, 3, 0.36, 'Human Testing', 'Internal Revolt', 'Demonbound', 'Source: Season 2 base
+('Werre', 'werre', 'Constitutional Monarchy', 1000000, 5000000000, 100000, 3, 0.36, 'Human Testing', 'Internal Revolt', 'Demonbound', 'Source: Season 2 base
 Spin: #31
 Leader traits: Ugly -1 HDI
 Military: Local Militia 3/10
@@ -638,7 +638,7 @@ Blessing / Curse: Internal Revolt
 Localisation: Seas of tears
 Influence: 2.0
 Note: 2.5'),
-('Hellios', 'hellios', 'Confederation', 12000000009, 14000000000000, 4000005, 7, 0.82, 'Whales / Traffic / Rice', 'Mountain Shield', 'Resilient', 'Source: Season 2 base
+('Hellios', 'hellios', 'Confederation', 1200000000, 14000000000000, 400000, 7, 0.82, 'Whales / Traffic / Rice', 'Mountain Shield', 'Resilient', 'Source: Season 2 base
 Spin: #32
 Leader traits: BladeMaster +2 Military
 Military: Elite Army 7/10
@@ -648,7 +648,7 @@ Blessing / Curse: Mountain Shield
 Localisation: Nosecrest
 Influence: 7.0
 Note: 7.5'),
-('Doolandia', 'doolandia', 'Communism', 70000003, 800000000000, 7500006, 8, 0.86, 'Addiction-Based', 'Demon Dependancy', 'Demonbound', 'Source: Season 2 base
+('Doolandia', 'doolandia', 'Communism', 7000000, 800000000000, 750000, 8, 0.86, 'Addiction-Based', 'Demon Dependancy', 'Demonbound', 'Source: Season 2 base
 Spin: #33
 Leader traits: Renowned Physician +3 HDI
 Military: Regional Military (Air) 8/10
@@ -658,7 +658,7 @@ Blessing / Curse: Demon Dependancy
 Localisation: Feastwater
 Influence: 7.0
 Note: 6.5'),
-('Tornavia', 'tornavia', 'Auth. Republic', 500000, 50000000000, 1000, 3, 0.95, 'Quantum Computing', 'Patient Strategy', 'Resilient', 'Source: Season 2 base
+('Tornavia', 'tornavia', 'Auth. Republic', 50000, 50000000000, 100, 3, 0.95, 'Quantum Computing', 'Patient Strategy', 'Resilient', 'Source: Season 2 base
 Spin: #34
 Leader traits: Skilled Tactician +2 Military
 Military: Local Militia 3/10
@@ -668,7 +668,7 @@ Blessing / Curse: Patient Strategy
 Localisation: Nosecrest
 Influence: 5.0
 Note: 3.333333333'),
-('Imperial Dominion', 'imperial-dominion', 'Empire', 1000000006, 3500000000000, 30000008, 6, 0.98, 'Mining / Cybernetics Augmentation', 'Crimson Mobilization', 'Demonbound', 'Source: Season 2 base
+('Imperial Dominion', 'imperial-dominion', 'Empire', 100000000, 3500000000000, 3000000, 6, 0.98, 'Mining / Cybernetics Augmentation', 'Crimson Mobilization', 'Demonbound', 'Source: Season 2 base
 Spin: #35
 Leader traits: Imbecile -3 GDP
 Military: Organized Army 6/10
@@ -678,7 +678,7 @@ Blessing / Curse: Crimson Mobilization
 Localisation: North Fang
 Influence: 6.0
 Note: 7.333333333'),
-('Avarthon Dominion', 'avarthon-dominion', 'Confederation', 900000006, 5000000000000, 9000007, 7, 0.88, 'Vaccin / Processed food', 'Economic Collapse', 'Demonbound', 'Source: Season 2 base
+('Avarthon Dominion', 'avarthon-dominion', 'Confederation', 90000000, 5000000000000, 900000, 7, 0.88, 'Vaccin / Processed food', 'Economic Collapse', 'Demonbound', 'Source: Season 2 base
 Spin: #36
 Leader traits: Irritable -1 HDI
 Military: Elite Army 7/10
@@ -688,7 +688,7 @@ Blessing / Curse: Economic Collapse
 Localisation: North Fang
 Influence: 6.0
 Note: 7.166666667'),
-('Dokikalan', 'dokikalan', 'Parlementary Democracy', 10000002, 120000000000, 1250003, 7, 0.72, 'Grey Market', 'Lower Prestige', 'Resilient', 'Source: Season 2 base
+('Dokikalan', 'dokikalan', 'Parlementary Democracy', 1000000, 120000000000, 125000, 7, 0.72, 'Grey Market', 'Lower Prestige', 'Resilient', 'Source: Season 2 base
 Spin: #37
 Leader traits: Melancholic -2 GDP
 Military: Elite Army 7/10
@@ -698,7 +698,7 @@ Blessing / Curse: Lower Prestige
 Localisation: Seas of tears
 Influence: 3.0
 Note: 4.5'),
-('Helios', 'helios', 'Colony #35 Imp. Dominion', 70000003, 2000000000000, 7500006, 8, 0.53, 'Video Games', 'Ashen Resilience', 'Demonbound', 'Source: Season 2 base
+('Helios', 'helios', 'Colony #35 Imp. Dominion', 7000000, 2000000000000, 750000, 8, 0.53, 'Video Games', 'Ashen Resilience', 'Demonbound', 'Source: Season 2 base
 Spin: #38
 Leader traits: Berseker +2 Military
 Military: Regional Military (Air) 8/10
@@ -708,7 +708,7 @@ Blessing / Curse: Ashen Resilience
 Localisation: Feastwater
 Influence: 5.0
 Note: 5.833333333'),
-('1000 suns', '1000-suns', 'Constitutional Monarchy', 1250000007, 1000000000000, 900000010, 6, 0.74, 'Religious Text / Caravan Trades', 'Slow Expansion', 'Resilient', 'Source: Season 2 base
+('1000 suns', '1000-suns', 'Constitutional Monarchy', 125000000, 1000000000000, 9000000, 6, 0.74, 'Religious Text / Caravan Trades', 'Slow Expansion', 'Resilient', 'Source: Season 2 base
 Spin: #39
 Leader traits: Theologian +1 HDI
 Military: Organized Army 6/10
