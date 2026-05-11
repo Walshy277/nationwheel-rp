@@ -312,13 +312,13 @@ const ensureProfile = async (user, preferredUsername) => {
 };
 
 // ─── STYLES ───────────────────────────────────────────────────────
-const inp = { background:"rgba(255,255,255,0.055)", border:"1px solid rgba(21,96,181,0.42)", borderRadius:6, padding:"9px 13px", color:"#fff8e6", fontSize:13, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
+const inp = { background:"rgba(255,255,255,0.055)", border:"1px solid rgba(21,96,181,0.42)", borderRadius:6, padding:"11px 13px", color:"#fff8e6", fontSize:16, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
 const ta  = { ...inp, resize:"vertical", minHeight:80 };
 const mkBtn = (v="gold") => ({
   background: v==="gold"?"#f6c132": v==="red"?"#b91616": v==="blue"?"#145bb0": v==="green"?"#1f8f43":"rgba(255,255,255,0.055)",
   color: v==="gold"?"#050505":"#fff8e6",
   border: v==="ghost"?"1px solid rgba(246,193,50,0.24)":"none",
-  borderRadius:6, padding:"7px 14px", cursor:"pointer", fontWeight:700, fontSize:12,
+  borderRadius:6, padding:"9px 14px", cursor:"pointer", fontWeight:700, fontSize:13,
   letterSpacing:"0.04em", fontFamily:"inherit", transition:"opacity 0.15s, transform 0.1s",
   whiteSpace:"nowrap",
 });
@@ -432,11 +432,19 @@ const Auth = ({ onAuth, setupRequired }) => {
         select option{background:#05070b;color:#fff8e6;}
         button:hover{opacity:0.8;}
         button:active{transform:scale(0.97);}
+        button,input,textarea,select{font:inherit;}
+        button{min-height:40px;}
+        .auth-shell{min-height:100svh!important;}
+        @media (max-width: 560px) {
+          .auth-shell{align-items:flex-start!important;padding:1.25rem 0.85rem!important;}
+          .auth-panel{max-width:none!important;}
+          .auth-logo{width:118px!important;height:118px!important;}
+        }
       `}</style>
-      <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:"1rem" }}>
-        <div style={{ width:"100%", maxWidth:400 }}>
+      <div className="auth-shell" style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:"1rem" }}>
+        <div className="auth-panel" style={{ width:"100%", maxWidth:400 }}>
           <div style={{ textAlign:"center", marginBottom:"2rem" }}>
-            <img src={LOGO_SRC} alt="Nationwheel" style={{ width:150, height:150, objectFit:"cover", borderRadius:"50%", border:"2px solid rgba(246,193,50,0.38)", boxShadow:"0 0 0 6px rgba(20,96,184,0.14), 0 22px 55px rgba(0,0,0,0.55)" }} />
+            <img className="auth-logo" src={LOGO_SRC} alt="Nationwheel" style={{ width:150, height:150, objectFit:"cover", borderRadius:"50%", border:"2px solid rgba(246,193,50,0.38)", boxShadow:"0 0 0 6px rgba(20,96,184,0.14), 0 22px 55px rgba(0,0,0,0.55)" }} />
             <h1 style={{ fontFamily:"var(--brand)", fontSize:"clamp(2rem,6vw,3rem)", color:"#fff8e6", margin:"0.9rem 0 0", letterSpacing:"0.08em", textShadow:"0 0 34px rgba(246,193,50,0.22)" }}>NATIONWHEEL</h1>
             <p style={{ color:"#f6c132", marginTop:"0.35rem", fontSize:11, letterSpacing:"0.18em", textTransform:"uppercase" }}>Geopolitical Roleplay World</p>
           </div>
@@ -1262,22 +1270,22 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
     return (
       <div>
         <h2 style={{ margin:"0 0 1.25rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:20 }}>Boards</h2>
-        <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
+        <div className="board-list" style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
           {boards.map(b=>{
             const bThreads = threads.filter(t=>t.board_id===b.id);
             const lastThread = bThreads[0];
             return (
-              <div key={b.id} style={{ ...card, cursor:"pointer", transition:"border-color 0.18s" }}
+              <div className="board-card" key={b.id} style={{ ...card, cursor:"pointer", transition:"border-color 0.18s" }}
                 onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(212,175,55,0.38)"}
                 onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(212,175,55,0.1)"}
                 onClick={()=>setView({type:"board",board:b})}>
-                <div style={{ display:"flex", gap:"1rem", alignItems:"center" }}>
+                <div className="board-card-row" style={{ display:"flex", gap:"1rem", alignItems:"center" }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>{b.name}</div>
                     <div style={{ fontSize:12, color:"#8fa0bd", marginTop:2 }}>{b.description}</div>
                     {lastThread && <div style={{ fontSize:11, color:"#8493ad", marginTop:3 }}>Latest: {lastThread.title} - {timeAgo(lastThread.created_at)}</div>}
                   </div>
-                  <div style={{ textAlign:"right", flexShrink:0 }}>
+                  <div className="board-count" style={{ textAlign:"right", flexShrink:0 }}>
                     <div style={{ fontFamily:"var(--display)", fontSize:18, color:"#8493ad" }}>{bThreads.length}</div>
                     <div style={{ fontSize:10, color:"#8493ad", letterSpacing:"0.04em", textTransform:"uppercase" }}>threads</div>
                   </div>
@@ -1320,7 +1328,7 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
             const tPosts = posts.filter(p=>p.thread_id===t.id);
             const authorNation = nations.find(n=>n.id===t.nation_id);
             return (
-              <div key={t.id} style={{ ...card, cursor:"pointer", display:"flex", gap:"0.75rem", alignItems:"center", transition:"border-color 0.18s", padding:"0.9rem 1.25rem" }}
+              <div className="thread-card" key={t.id} style={{ ...card, cursor:"pointer", display:"flex", gap:"0.75rem", alignItems:"center", transition:"border-color 0.18s", padding:"0.9rem 1.25rem" }}
                 onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(212,175,55,0.38)"}
                 onMouseLeave={e=>e.currentTarget.style.borderColor=t.pinned?"rgba(212,175,55,0.2)":"rgba(212,175,55,0.1)"}
                 onClick={()=>setView({type:"thread",thread:t})}>
@@ -1353,7 +1361,7 @@ const Forums = ({ boards, threads, posts, profile, userNation, nations, onRefres
           {tPosts.map((p,i)=>{
             const pNation = nations.find(n=>n.id===p.nation_id);
             return (
-              <div key={p.id} style={{ ...card, borderLeft:i===0?"2px solid rgba(212,175,55,0.3)":undefined }}>
+              <div className="post-card" key={p.id} style={{ ...card, borderLeft:i===0?"2px solid rgba(212,175,55,0.3)":undefined }}>
                 <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"0.75rem", flexWrap:"wrap" }}>
                   {pNation ? <Flag nation={pNation} size={24} /> : <div style={{ width:24, height:16, background:"rgba(255,255,255,0.04)", borderRadius:2, flexShrink:0 }} />}
                   <div style={{ flex:1 }}>
@@ -1564,20 +1572,20 @@ export default function App() {
       {showSetup && <SetupModal onClose={()=>setShowSetup(false)} />}
 
       {/* HEADER */}
-      <header style={{ background:"rgba(3,4,7,0.98)", borderBottom:"1px solid rgba(20,96,184,0.36)", padding:"0 1.25rem", display:"flex", alignItems:"center", gap:"1rem", height:50, position:"sticky", top:0, zIndex:200, backdropFilter:"blur(20px)" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:"0.55rem", cursor:"pointer", flexShrink:0 }} onClick={()=>navigate("forums")}>
-          <img src={LOGO_SRC} alt="Nationwheel" style={{ width:34, height:34, objectFit:"cover", borderRadius:"50%", border:"1px solid rgba(246,193,50,0.35)" }} />
-          <span style={{ fontFamily:"var(--brand)", color:"#fff8e6", fontSize:15, letterSpacing:"0.08em", fontWeight:900 }}>NATIONWHEEL</span>
+      <header className="app-header" style={{ background:"rgba(3,4,7,0.98)", borderBottom:"1px solid rgba(20,96,184,0.36)", padding:"0 1.25rem", display:"flex", alignItems:"center", gap:"1rem", height:50, position:"sticky", top:0, zIndex:200, backdropFilter:"blur(20px)" }}>
+        <div className="brand" style={{ display:"flex", alignItems:"center", gap:"0.55rem", cursor:"pointer", flexShrink:0 }} onClick={()=>navigate("forums")}>
+          <img className="brand-logo" src={LOGO_SRC} alt="Nationwheel" style={{ width:34, height:34, objectFit:"cover", borderRadius:"50%", border:"1px solid rgba(246,193,50,0.35)" }} />
+          <span className="brand-name" style={{ fontFamily:"var(--brand)", color:"#fff8e6", fontSize:15, letterSpacing:"0.08em", fontWeight:900 }}>NATIONWHEEL</span>
         </div>
         {/* Desktop nav */}
-        <nav style={{ display:"flex", gap:"0.1rem", flex:1, overflowX:"auto", scrollbarWidth:"none" }}>
+        <nav className="app-nav" style={{ display:"flex", gap:"0.1rem", flex:1, overflowX:"auto", scrollbarWidth:"none" }}>
           {nav.map(n=>(
-            <button key={n.id} onClick={()=>navigate(n.id)} style={{ background:page===n.id?"rgba(246,193,50,0.12)":"transparent", color:page===n.id?"#f6c132":"#8aa4c9", border:"none", borderRadius:5, padding:"5px 9px", cursor:"pointer", fontSize:11.5, fontWeight:page===n.id?800:600, whiteSpace:"nowrap", transition:"all 0.15s", fontFamily:"inherit" }}>
+            <button className="nav-button" key={n.id} onClick={()=>navigate(n.id)} style={{ background:page===n.id?"rgba(246,193,50,0.12)":"transparent", color:page===n.id?"#f6c132":"#8aa4c9", border:"none", borderRadius:5, padding:"5px 9px", cursor:"pointer", fontSize:11.5, fontWeight:page===n.id?800:600, whiteSpace:"nowrap", transition:"all 0.15s", fontFamily:"inherit" }}>
               {n.label}
             </button>
           ))}
         </nav>
-        <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexShrink:0 }}>
+        <div className="user-tools" style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexShrink:0 }}>
           {userNation && <><Flag nation={userNation} size={20} /><span style={{ fontSize:11, color:"#9fb4d6", maxWidth:70, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{userNation.name}</span></>}
           <span style={{ fontSize:11, color:"#9fb4d6" }}>@{profile?.username}</span>
           {isMod && <span style={{ fontSize:9, color:"#3498db", border:"1px solid #3498db33", borderRadius:3, padding:"1px 5px", letterSpacing:"0.06em" }}>{profile?.role?.toUpperCase()}</span>}
@@ -1586,7 +1594,7 @@ export default function App() {
         </div>
       </header>
 
-      <main style={{ maxWidth:980, margin:"0 auto", padding:"1.5rem 1rem", width:"100%", flex:1 }}>
+      <main className="app-main" style={{ maxWidth:980, margin:"0 auto", padding:"1.5rem 1rem", width:"100%", flex:1 }}>
         {loading
           ? <div style={{ textAlign:"center", padding:"5rem", color:"#8493ad", fontFamily:"var(--display)", letterSpacing:"0.2em", fontSize:13 }}>LOADING WORLD</div>
           : <>
@@ -1603,7 +1611,7 @@ export default function App() {
         }
       </main>
 
-      <footer style={{ borderTop:"1px solid rgba(20,96,184,0.22)", padding:"1rem", textAlign:"center", fontSize:10, color:"#6f85a8", letterSpacing:"0.15em", textTransform:"uppercase" }}>
+      <footer className="app-footer" style={{ borderTop:"1px solid rgba(20,96,184,0.22)", padding:"1rem", textAlign:"center", fontSize:10, color:"#6f85a8", letterSpacing:"0.15em", textTransform:"uppercase" }}>
         Nationwheel - Geopolitical Roleplay World - Season 1
       </footer>
 
@@ -1626,10 +1634,63 @@ export default function App() {
         select option{background:#05070b;color:#fff8e6;}
         button:hover{opacity:0.8;}
         button:active{transform:scale(0.97);}
+        button,input,textarea,select{font:inherit;}
+        button{min-height:40px;}
+        body{overflow-x:hidden;}
         ::-webkit-scrollbar{width:4px;height:4px;}
         ::-webkit-scrollbar-track{background:#020305;}
         ::-webkit-scrollbar-thumb{background:rgba(246,193,50,0.28);border-radius:2px;}
         nav::-webkit-scrollbar{display:none;}
+        @media (max-width: 760px) {
+          .app-header{
+            height:auto!important;
+            min-height:104px!important;
+            padding:0.65rem 0.75rem 0.55rem!important;
+            display:grid!important;
+            grid-template-columns:1fr auto!important;
+            grid-template-areas:"brand tools" "nav nav"!important;
+            gap:0.55rem!important;
+            align-items:center!important;
+          }
+          .brand{grid-area:brand;min-width:0;}
+          .brand-logo{width:32px!important;height:32px!important;}
+          .brand-name{font-size:13px!important;letter-spacing:0.06em!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+          .user-tools{grid-area:tools;gap:0.35rem!important;max-width:48vw;overflow:hidden;justify-content:flex-end;}
+          .user-tools > span{display:none!important;}
+          .user-tools button{padding:6px 9px!important;font-size:11px!important;min-height:34px!important;}
+          .app-nav{
+            grid-area:nav;
+            width:100%;
+            gap:0.35rem!important;
+            padding:0.05rem 0 0.15rem;
+            overflow-x:auto!important;
+            scroll-snap-type:x proximity;
+            -webkit-overflow-scrolling:touch;
+          }
+          .nav-button{
+            min-height:38px!important;
+            padding:8px 12px!important;
+            font-size:12px!important;
+            border:1px solid rgba(20,96,184,0.26)!important;
+            scroll-snap-align:start;
+          }
+          .app-main{padding:1rem 0.75rem 1.25rem!important;max-width:none!important;}
+          .app-footer{font-size:9px!important;letter-spacing:0.08em!important;padding:0.85rem 0.75rem!important;}
+          .board-card{padding:1rem!important;}
+          .board-card-row{align-items:flex-start!important;gap:0.75rem!important;}
+          .board-count{min-width:48px;}
+          .thread-card{padding:0.85rem!important;gap:0.6rem!important;align-items:flex-start!important;}
+          .post-card{padding:1rem!important;}
+        }
+        @media (max-width: 430px) {
+          .app-header{min-height:108px!important;}
+          .brand-name{font-size:12px!important;}
+          .user-tools{max-width:44vw;}
+          .user-tools button{padding:5px 7px!important;font-size:10.5px!important;}
+          .nav-button{font-size:11.5px!important;padding:8px 10px!important;}
+          h1{font-size:2rem!important;}
+          h2{font-size:18px!important;}
+        }
       `}</style>
     </div>
   );

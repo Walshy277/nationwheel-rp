@@ -5,6 +5,8 @@ dist
 *.log
 debug-current.png
 dev-preview.png
+desktop-preview.png
+mobile-preview.png
 code.jsx
 code.jsx.txt
 /nationwheel_logo.jpg
