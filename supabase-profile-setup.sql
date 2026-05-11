@@ -35,3 +35,5 @@ using (
   and auth.role() = 'authenticated'
   and (storage.foldername(name))[1] = auth.uid()::text
 );
+
+notify pgrst, 'reload schema';

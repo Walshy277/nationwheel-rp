@@ -78,6 +78,8 @@ alter table profiles add column if not exists avatar_url text;
 alter table profiles add column if not exists signature_url text;
 alter table profiles add column if not exists bio text;
 
+notify pgrst, 'reload schema';
+
 create table if not exists nations (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -363,6 +365,12 @@ const ensureProfile = async (user, preferredUsername) => {
 };
 
 // ─── STYLES ───────────────────────────────────────────────────────
+const isMissingOptionalProfileSchema = error =>
+  error?.code === "42703" ||
+  /profiles(_\d+)?\.(bio|avatar_url|signature_url)|column .*profiles.* does not exist|schema cache/i.test(error?.message || "");
+const isMissingProfileMediaBucket = error =>
+  /bucket not found|not found/i.test(error?.message || "");
+
 const escapeHtml = value => String(value || "")
   .replace(/&/g, "&amp;")
   .replace(/</g, "&lt;")
@@ -617,14 +625,18 @@ const ProfileMediaUploader = ({ profileId, field, currentUrl, label, onUploaded,
     const path = `${profileId}/${field}.${ext}`;
     const { error } = await supabase.storage.from("profile-media").upload(path, file, { upsert: true, contentType: file.type });
     if (error) {
-      alert(error.message);
+      alert(isMissingProfileMediaBucket(error)
+        ? "Profile uploads are not enabled yet. Run supabase-profile-setup.sql in Supabase, then refresh the app."
+        : error.message);
       setUploading(false);
       return;
     }
     const { data } = supabase.storage.from("profile-media").getPublicUrl(path);
     const url = data.publicUrl + "?t=" + Date.now();
     const update = await supabase.from("profiles").update({ [field]: url }).eq("id", profileId).select("*").single();
-    if (update.error) alert(update.error.message);
+    if (update.error) alert(isMissingOptionalProfileSchema(update.error)
+      ? "The upload worked, but the profile columns are not installed yet. Run supabase-profile-setup.sql in Supabase, then refresh."
+      : update.error.message);
     else onUploaded(update.data);
     setUploading(false);
   };
@@ -662,16 +674,28 @@ const ProfilePage = ({ user, profile, userNation, onProfileUpdate }) => {
     }
     setSaving(true);
     setMsg("");
-    const { data, error } = await supabase
+    let nextMsg = "Profile saved.";
+    let { data, error } = await supabase
       .from("profiles")
       .update({ username, bio:form.bio.trim() || null })
       .eq("id", profile.id)
       .select("*")
       .single();
+    if (isMissingOptionalProfileSchema(error)) {
+      const retry = await supabase
+        .from("profiles")
+        .update({ username })
+        .eq("id", profile.id)
+        .select("*")
+        .single();
+      data = retry.data;
+      error = retry.error;
+      if (!error) nextMsg = "Username saved. Run supabase-profile-setup.sql to enable bios, avatars, and signatures.";
+    }
     if (error) setMsg(error.message);
     else {
       onProfileUpdate(data);
-      setMsg("Profile saved.");
+      setMsg(nextMsg);
     }
     setSaving(false);
   };
@@ -855,7 +879,7 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
             <p style={{ margin:"0 0 0.5rem", color:"#c7b783", fontSize:13 }}>{nation.government}{nation.ideology ? ` - ${nation.ideology}` : ""}</p>
             <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
               {nation.tiktok_username && <span style={{ fontSize:11, color:"#a9b7cf" }}>TikTok: @{nation.tiktok_username}</span>}
-          {nation.profiles && <span style={{ fontSize:11, color:"#a9b7cf" }}>Owner: {nation.profiles.username}</span>}
+          {(nation.owner || nation.profiles) && <span style={{ fontSize:11, color:"#a9b7cf" }}>Owner: {(nation.owner || nation.profiles).username}</span>}
               {nation.diplomatic_status && <span style={{ fontSize:11, color:"#d4af37", border:"1px solid rgba(212,175,55,0.25)", borderRadius:4, padding:"1px 8px" }}>{nation.diplomatic_status}</span>}
               {nation.bloc && <span style={{ fontSize:11, color:"#3498db", border:"1px solid rgba(52,152,219,0.25)", borderRadius:4, padding:"1px 8px" }}>{nation.bloc}</span>}
             </div>
@@ -1098,6 +1122,18 @@ const Nations = ({ nations, posts, actions, wars, alliances, allianceMembers, pr
           {[["name","Name"],["gdp","GDP"],["pop","Population"],["land","Land"],["army","Army"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}
         </select>
       </div>
+      {nations.length === 0 && (
+        <div style={{ ...card, textAlign:"center", padding:"2rem", border:"1px solid rgba(225,29,29,0.26)" }}>
+          <div style={{ fontFamily:"var(--display)", color:"#f0dc8a", fontSize:16, marginBottom:"0.35rem" }}>No nations loaded</div>
+          <p style={{ margin:0, color:"#8fa0bd", fontSize:13, lineHeight:1.6 }}>The directory is public, so this usually means the database seed has not been run on this Supabase project or the deployment is pointing at the wrong Supabase environment.</p>
+        </div>
+      )}
+      {nations.length > 0 && list.length === 0 && (
+        <div style={{ ...card, textAlign:"center", padding:"2rem" }}>
+          <div style={{ fontFamily:"var(--display)", color:"#f0dc8a", fontSize:16, marginBottom:"0.35rem" }}>No matches</div>
+          <p style={{ margin:0, color:"#8fa0bd", fontSize:13 }}>Clear the search or government filter to see all nations.</p>
+        </div>
+      )}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(275px,1fr))", gap:"0.75rem" }}>
         {list.map(n=>(
           <div key={n.id} style={{ ...card, cursor:"pointer", transition:"border-color 0.18s" }}
@@ -1713,7 +1749,7 @@ const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
               <Flag nation={n} size={28} />
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:13, color:"#f0dc8a", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.name}</div>
-                <div style={{ fontSize:11, color:"#8fa0bd" }}>{n.government||"?"} - {n.profiles?`@${n.profiles.username}`:"unassigned"}</div>
+                <div style={{ fontSize:11, color:"#8fa0bd" }}>{n.government||"?"} - {(n.owner || n.profiles)?`@${(n.owner || n.profiles).username}`:"unassigned"}</div>
               </div>
               <button onClick={()=>loadEdit(n)} style={{ ...mkBtn("ghost"), fontSize:11, padding:"5px 10px" }}>Edit</button>
               <button onClick={async()=>{if(!confirm("Delete this nation?"))return;await supabase.from("nations").delete().eq("id",n.id);onRefresh();}} style={{ ...mkBtn("red"), fontSize:11, padding:"5px 10px" }}>Del</button>
@@ -1737,14 +1773,29 @@ export default function App() {
   const [data, setData] = useState({ nations:[], profiles:[], news:[], posts:[], actions:[], wars:[], alliances:[], allianceMembers:[], boards:[], threads:[], forumPosts:[] });
   const [loading, setLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
+  const [dbIssues, setDbIssues] = useState([]);
 
   const fetchAll = useCallback(async () => {
     if (!SUPABASE_CONFIGURED) {
       setLoading(false);
       return;
     }
+    const issues = [];
+    const run = async (label, query, fallback) => {
+      const result = await query;
+      if (!result.error) return result.data || [];
+      issues.push(`${label}: ${result.error.message}`);
+      if (!fallback) return [];
+      const retry = await fallback(result.error);
+      if (retry.error) {
+        issues.push(`${label} fallback: ${retry.error.message}`);
+        return [];
+      }
+      return retry.data || [];
+    };
     const [nations, profiles, news, posts, actions, wars, alliances, allianceMembers, boards, threads, forumPosts] = await Promise.all([
-      supabase.from("nations").select("*, profiles(username)").order("name"),
+      run("Nations", supabase.from("nations").select("*, owner:owner_id(username)").order("name"),
+        () => supabase.from("nations").select("*").order("name")),
       supabase.from("profiles").select("*").order("username"),
       supabase.from("news").select("*").order("created_at",{ascending:false}),
       supabase.from("rp_posts").select("*, nations(name,flag_url), target_nation_id").order("created_at",{ascending:false}).limit(100),
@@ -1753,10 +1804,14 @@ export default function App() {
       supabase.from("alliances").select("*").order("created_at",{ascending:false}),
       supabase.from("alliance_members").select("*"),
       supabase.from("forum_boards").select("*").order("sort_order"),
-      supabase.from("forum_threads").select("*, profiles(username,avatar_url)").order("created_at",{ascending:false}),
-      supabase.from("forum_posts").select("*, profiles(username,avatar_url,signature_url,bio)").order("created_at",{ascending:true}),
+      run("Forum threads", supabase.from("forum_threads").select("*, profiles(username,avatar_url)").order("created_at",{ascending:false}),
+        error => isMissingOptionalProfileSchema(error) ? supabase.from("forum_threads").select("*, profiles(username)").order("created_at",{ascending:false}) : Promise.resolve({ data:null, error })),
+      run("Forum posts", supabase.from("forum_posts").select("*, profiles(username,avatar_url,signature_url,bio)").order("created_at",{ascending:true}),
+        error => isMissingOptionalProfileSchema(error) ? supabase.from("forum_posts").select("*, profiles(username)").order("created_at",{ascending:true}) : Promise.resolve({ data:null, error })),
     ]);
-    setData({ nations:nations.data||[], profiles:profiles.data||[], news:news.data||[], posts:posts.data||[], actions:actions.data||[], wars:wars.data||[], alliances:alliances.data||[], allianceMembers:allianceMembers.data||[], boards:boards.data||[], threads:threads.data||[], forumPosts:forumPosts.data||[] });
+    const unwrap = result => Array.isArray(result) ? result : (result.data || []);
+    setData({ nations, profiles:unwrap(profiles), news:unwrap(news), posts:unwrap(posts), actions:unwrap(actions), wars:unwrap(wars), alliances:unwrap(alliances), allianceMembers:unwrap(allianceMembers), boards:unwrap(boards), threads, forumPosts });
+    setDbIssues(issues);
     setLoading(false);
   }, []);
 
@@ -1847,6 +1902,18 @@ export default function App() {
       </header>
 
       <main className="app-main" style={{ maxWidth:980, margin:"0 auto", padding:"1.5rem 1rem", width:"100%", flex:1 }}>
+        {dbIssues.length > 0 && (
+          <div style={{ ...card, border:"1px solid rgba(225,29,29,0.34)", background:"linear-gradient(180deg,rgba(62,12,12,0.88),rgba(17,9,9,0.92))", marginBottom:"1rem" }}>
+            <div style={{ fontFamily:"var(--display)", color:"#ffd7d7", fontWeight:800, fontSize:14, marginBottom:"0.35rem" }}>Database setup needs one update</div>
+            <p style={{ margin:"0 0 0.6rem", color:"#f0c2c2", fontSize:12, lineHeight:1.6 }}>
+              Public pages are still loading with fallbacks, but profile media needs the latest setup SQL in Supabase.
+            </p>
+            <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+              <button onClick={()=>setShowSetup(true)} style={{ ...mkBtn("ghost"), fontSize:11 }}>Open Setup SQL</button>
+              <span style={{ color:"#cfa0a0", fontSize:11, alignSelf:"center" }}>Run supabase-profile-setup.sql, then refresh.</span>
+            </div>
+          </div>
+        )}
         {loading
           ? <div style={{ textAlign:"center", padding:"5rem", color:"#8493ad", fontFamily:"var(--display)", letterSpacing:"0.2em", fontSize:13 }}>LOADING WORLD</div>
           : <>
