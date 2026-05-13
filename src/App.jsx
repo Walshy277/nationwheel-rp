@@ -1694,7 +1694,7 @@ const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
 };
 
 // ROOT APP
-const StaffTools = ({ isAdmin, page, navigate, setShowSetup, counts }) => (
+const StaffTools = ({ isAdmin, page, navigate, counts }) => (
   <div className="staff-tools" style={{ position:"sticky", top:50, zIndex:150, background:"rgba(3,7,13,0.96)", borderBottom:"1px solid rgba(78,128,190,0.24)", backdropFilter:"blur(16px)" }}>
     <div style={{ maxWidth:980, margin:"0 auto", padding:"0.45rem 1rem", display:"flex", gap:"0.4rem", alignItems:"center", overflowX:"auto", scrollbarWidth:"none" }}>
       <span style={{ fontSize:10, color:"#8fa0bd", letterSpacing:"0.12em", textTransform:"uppercase", flexShrink:0 }}>{isAdmin ? "Admin Tools" : "Lore Tools"}</span>
@@ -1707,7 +1707,6 @@ const StaffTools = ({ isAdmin, page, navigate, setShowSetup, counts }) => (
       ].map(([id,label])=>(
         <button key={id} onClick={()=>navigate(id)} style={{ ...mkBtn(page===id?"gold":"ghost"), minHeight:30, padding:"5px 9px", fontSize:10.5 }}>{label}</button>
       ))}
-      <button onClick={()=>setShowSetup(true)} style={{ ...mkBtn("ghost"), minHeight:30, padding:"5px 9px", fontSize:10.5, marginLeft:"auto" }}>Setup</button>
     </div>
   </div>
 );
@@ -1716,7 +1715,6 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [page, setPage] = useState("forums");
-  const [showSetup, setShowSetup] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [data, setData] = useState({ nations:[], profiles:[], news:[], posts:[], actions:[], wars:[], warParticipants:[], alliances:[], allianceMembers:[], boards:[], threads:[], forumPosts:[], forumReactions:[] });
   const [loading, setLoading] = useState(true);
@@ -1830,8 +1828,6 @@ export default function App() {
 
   return (
     <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column" }}>
-      {showSetup && <SetupModal onClose={()=>setShowSetup(false)} />}
-
       {/* HEADER */}
       <header className="app-header" style={{ background:"rgba(3,4,7,0.98)", borderBottom:"1px solid rgba(20,96,184,0.36)", padding:"0 1.25rem", display:"flex", alignItems:"center", gap:"1rem", height:50, position:"sticky", top:0, zIndex:200, backdropFilter:"blur(20px)" }}>
         <div className="brand" style={{ display:"flex", alignItems:"center", gap:"0.55rem", cursor:"pointer", flexShrink:0 }} onClick={()=>navigate("forums")}>
@@ -1864,7 +1860,6 @@ export default function App() {
           isAdmin={isAdmin}
           page={page}
           navigate={navigate}
-          setShowSetup={setShowSetup}
           counts={{
             nations:data.nations.length,
             wars:data.wars.filter(w=>w.status!=="peace").length,
@@ -1874,15 +1869,6 @@ export default function App() {
       )}
 
       <main className="app-main" style={{ maxWidth:980, margin:"0 auto", padding:"1.5rem 1rem", width:"100%", flex:1 }}>
-        {isLoreTeam && dbIssues.length > 0 && setupRequired && (
-          <div style={{ ...card, border:"1px solid rgba(225,29,29,0.34)", background:"linear-gradient(180deg,rgba(62,12,12,0.88),rgba(17,9,9,0.92))", marginBottom:"1rem" }}>
-            <div style={{ fontFamily:"var(--display)", color:"#ffd7d7", fontWeight:800, fontSize:14, marginBottom:"0.35rem" }}>Database setup is incomplete</div>
-            <p style={{ margin:"0 0 0.6rem", color:"#f0c2c2", fontSize:12, lineHeight:1.6 }}>
-              Run the SQL files in <code>supabase/</code>, then refresh.
-            </p>
-            <button onClick={()=>setShowSetup(true)} style={{ ...mkBtn("ghost"), fontSize:11 }}>Open Setup</button>
-          </div>
-        )}
         {loading
           ? <div style={{ textAlign:"center", padding:"5rem", color:"#8493ad", fontFamily:"var(--display)", letterSpacing:"0.2em", fontSize:13 }}>LOADING WORLD</div>
           : <>
