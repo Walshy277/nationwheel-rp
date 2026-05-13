@@ -692,7 +692,7 @@ const ActionCard = ({ action, nations, expandable, isMod, onRefresh, profile }) 
           <span style={{ fontSize:10, fontWeight:800, color:"#0a0806", background:ACTION_SIZES[action.size]?.color||"#d4af37", borderRadius:3, padding:"2px 7px" }}>{action.size?.toUpperCase()}</span>
           <span style={{ fontSize:10, fontWeight:800, color:STATUS_COL[action.status], border:`1px solid ${STATUS_COL[action.status]}`, borderRadius:3, padding:"2px 7px" }}>{action.status?.toUpperCase()}</span>
           {action.estimated_days && <span style={{ fontSize:11, color:"#a9b7cf" }}>{action.estimated_days}d</span>}
-          {expandable && <span style={{ color:"#8fa0bd", fontSize:13 }}>{open?"â–²":"â–¼"}</span>}
+          {expandable && <span style={{ color:"#8fa0bd", fontSize:13 }}>{open?"^":"v"}</span>}
         </div>
       </div>
 
@@ -720,7 +720,7 @@ const ActionCard = ({ action, nations, expandable, isMod, onRefresh, profile }) 
             <div style={{ borderTop:"1px solid rgba(255,215,0,0.07)", paddingTop:"0.75rem", display:"flex", flexDirection:"column", gap:"0.6rem" }}>
               <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.06em", textTransform:"uppercase" }}>Lore Team Controls</div>
               <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
-                {action.status==="pending" && <button onClick={()=>updateStatus("active",{started_at:new Date().toISOString()})} style={{ ...mkBtn("blue"), fontSize:11 }}>â–¶ Activate</button>}
+                {action.status==="pending" && <button onClick={()=>updateStatus("active",{started_at:new Date().toISOString()})} style={{ ...mkBtn("blue"), fontSize:11 }}>Activate</button>}
                 {action.status==="active" && <button onClick={()=>updateStatus("complete",{completed_at:new Date().toISOString()})} style={{ ...mkBtn("green"), fontSize:11 }}>Complete</button>}
                 <button onClick={()=>updateStatus("cancelled")} style={{ ...mkBtn("red"), fontSize:11 }}>Cancel</button>
               </div>
@@ -1388,7 +1388,7 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
   const [editBody, setEditBody] = useState("");
   const [threadEditorTab, setThreadEditorTab] = useState("write");
   const [replyEditorTab, setReplyEditorTab] = useState("write");
-  const reactEmojis = ["ðŸ‘","â¤ï¸","ðŸ˜‚","ðŸ”¥","ðŸ‘€","ðŸ«¡"];
+  const reactEmojis = ["\u{1F44D}","\u2764\uFE0F","\u{1F602}","\u{1F525}","\u{1F440}","\u{1FAE1}"];
   const appendThreadBBCode = (open, close) => setThreadForm(current => ({ ...current, body:`${current.body}${open}${close}` }));
   const appendReplyBBCode = (open, close) => setReplyBody(current => `${current}${open}${close}`);
 
@@ -1458,7 +1458,7 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
       <div>
         <button onClick={()=>setView({type:"boards"})} style={{ ...mkBtn("ghost"), marginBottom:"1rem", fontSize:12 }}>All Boards</button>
         <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap" }}>
-          <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:20, flex:1 }}>{view.board.icon || BOARD_ICONS[view.board.slug] || "â€¢"} {view.board.name}</h2>
+          <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:20, flex:1 }}>{view.board.icon || BOARD_ICONS[view.board.slug] || "*"} {view.board.name}</h2>
           {profile && <button onClick={()=>setShowNewThread(!showNewThread)} style={mkBtn()}>+ New Thread</button>}
           {!profile && <button onClick={onRequireAuth} style={mkBtn("ghost")}>Sign In to Post</button>}
         </div>
