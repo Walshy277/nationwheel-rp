@@ -314,7 +314,7 @@ const ProfileMediaUploader = ({ profileId, field, currentUrl, label, onUploaded,
     const { error } = await supabase.storage.from("profile-media").upload(path, file, { upsert: true, contentType: file.type });
     if (error) {
       alert(isMissingProfileMediaBucket(error)
-        ? "Profile uploads are not enabled yet. Run supabase-profile-setup.sql in Supabase, then refresh the app."
+        ? "Profile uploads are not enabled yet. Run supabase/schema.sql in Supabase, then refresh the app."
         : error.message);
       setUploading(false);
       return;
@@ -323,7 +323,7 @@ const ProfileMediaUploader = ({ profileId, field, currentUrl, label, onUploaded,
     const url = data.publicUrl + "?t=" + Date.now();
     const update = await supabase.from("profiles").update({ [field]: url }).eq("id", profileId).select("*").single();
     if (update.error) alert(isMissingOptionalProfileSchema(update.error)
-      ? "The upload worked, but the profile columns are not installed yet. Run supabase-profile-setup.sql in Supabase, then refresh."
+      ? "The upload worked, but the profile columns are not installed yet. Run supabase/schema.sql in Supabase, then refresh."
       : update.error.message);
     else onUploaded(update.data);
     setUploading(false);
@@ -378,7 +378,7 @@ const ProfilePage = ({ user, profile, userNation, onProfileUpdate }) => {
         .single();
       data = retry.data;
       error = retry.error;
-      if (!error) nextMsg = "Username saved. Run supabase-profile-setup.sql to enable bios, avatars, and signatures.";
+      if (!error) nextMsg = "Username saved. Run supabase/schema.sql to enable bios, avatars, and signatures.";
     }
     if (error) setMsg(error.message);
     else {
@@ -1874,16 +1874,13 @@ export default function App() {
       )}
 
       <main className="app-main" style={{ maxWidth:980, margin:"0 auto", padding:"1.5rem 1rem", width:"100%", flex:1 }}>
-        {dbIssues.length > 0 && (
+        {isLoreTeam && dbIssues.length > 0 && setupRequired && (
           <div style={{ ...card, border:"1px solid rgba(225,29,29,0.34)", background:"linear-gradient(180deg,rgba(62,12,12,0.88),rgba(17,9,9,0.92))", marginBottom:"1rem" }}>
-            <div style={{ fontFamily:"var(--display)", color:"#ffd7d7", fontWeight:800, fontSize:14, marginBottom:"0.35rem" }}>Database setup needs one update</div>
+            <div style={{ fontFamily:"var(--display)", color:"#ffd7d7", fontWeight:800, fontSize:14, marginBottom:"0.35rem" }}>Database setup is incomplete</div>
             <p style={{ margin:"0 0 0.6rem", color:"#f0c2c2", fontSize:12, lineHeight:1.6 }}>
-              Public pages are still loading with fallbacks, but profile media needs the latest setup SQL in Supabase.
+              Run the SQL files in <code>supabase/</code>, then refresh.
             </p>
-            <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
-              <button onClick={()=>setShowSetup(true)} style={{ ...mkBtn("ghost"), fontSize:11 }}>Open Setup</button>
-              <span style={{ color:"#cfa0a0", fontSize:11, alignSelf:"center" }}>Run supabase-profile-setup.sql, then refresh.</span>
-            </div>
+            <button onClick={()=>setShowSetup(true)} style={{ ...mkBtn("ghost"), fontSize:11 }}>Open Setup</button>
           </div>
         )}
         {loading
