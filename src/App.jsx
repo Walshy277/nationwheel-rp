@@ -314,7 +314,7 @@ const ProfileMediaUploader = ({ profileId, field, currentUrl, label, onUploaded,
     const { error } = await supabase.storage.from("profile-media").upload(path, file, { upsert: true, contentType: file.type });
     if (error) {
       alert(isMissingProfileMediaBucket(error)
-        ? "Profile uploads are not enabled yet. Run supabase/schema.sql in Supabase, then refresh the app."
+        ? "Profile uploads are not enabled yet. Run supabase-profile-setup.sql in Supabase, then refresh the app."
         : error.message);
       setUploading(false);
       return;
@@ -323,7 +323,7 @@ const ProfileMediaUploader = ({ profileId, field, currentUrl, label, onUploaded,
     const url = data.publicUrl + "?t=" + Date.now();
     const update = await supabase.from("profiles").update({ [field]: url }).eq("id", profileId).select("*").single();
     if (update.error) alert(isMissingOptionalProfileSchema(update.error)
-      ? "The upload worked, but the profile columns are not installed yet. Run supabase/schema.sql in Supabase, then refresh."
+      ? "The upload worked, but the profile columns are not installed yet. Run supabase-profile-setup.sql in Supabase, then refresh."
       : update.error.message);
     else onUploaded(update.data);
     setUploading(false);
@@ -378,7 +378,7 @@ const ProfilePage = ({ user, profile, userNation, onProfileUpdate }) => {
         .single();
       data = retry.data;
       error = retry.error;
-      if (!error) nextMsg = "Username saved. Run supabase/schema.sql to enable bios, avatars, and signatures.";
+      if (!error) nextMsg = "Username saved. Run supabase-profile-setup.sql to enable bios, avatars, and signatures.";
     }
     if (error) setMsg(error.message);
     else {
