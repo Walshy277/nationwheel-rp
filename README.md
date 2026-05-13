@@ -31,7 +31,18 @@ http://127.0.0.1:5173
 
 ## Supabase Setup
 
-Use the setup guide inside the app to copy the full schema SQL into the Supabase SQL Editor.
+Run the SQL files from the `supabase/` directory in the Supabase SQL Editor. SQL is intentionally kept out of the frontend bundle.
+
+Recommended order:
+
+```text
+supabase/schema.sql
+supabase/functions.sql
+supabase/migrations/20260513_forum_foundation.sql
+supabase/policies.sql
+supabase/seed-forum.sql
+supabase-nation-seed.sql
+```
 
 For admin role repair or first-user promotion, run:
 
@@ -94,4 +105,12 @@ Thread posts and news articles support safe BBCode:
 [img]https://example.com/image.png[/img]
 ```
 
-A small safe HTML subset is also allowed for familiar tags such as `<b>`, `<i>`, `<blockquote>`, `<code>`, and lists. Script tags and arbitrary HTML attributes are escaped.
+HTML is escaped by default. Only a very small attribute-free formatting subset is restored, such as `<b>`, `<i>`, `<blockquote>`, and `<code>`.
+
+## Quality Checks
+
+```powershell
+npm run lint
+npm run format
+npm run check
+```

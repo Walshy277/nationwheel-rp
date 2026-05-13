@@ -1,18 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { SUPABASE_CONFIGURED, supabase } from "./lib/supabase";
+import { canAccessStaff, canManageRoles, ROLE_LABELS } from "./lib/permissions";
+import { RichText } from "./lib/richText";
+import { BOARD_ICONS, FORUM_BOARDS } from "./lib/forumUtils";
+import BBCodeToolbar from "./components/forum/BBCodeToolbar";
+import ForumIndex from "./pages/ForumIndex";
 
-// ─── CONFIG ───────────────────────────────────────────────────────
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const SUPABASE_CONFIGURED = Boolean(
-  SUPABASE_URL &&
-  SUPABASE_ANON_KEY &&
-  SUPABASE_ANON_KEY !== "replace_with_your_supabase_anon_or_publishable_key"
-);
-const supabase = SUPABASE_CONFIGURED ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 const LOGO_SRC = "/nationwheel_logo.jpg";
-
-// ─── CONSTANTS ────────────────────────────────────────────────────
 const ACTION_SIZES = {
   small:  { days: 1,  label: "Small",  color: "#4caf50" },
   medium: { days: 3,  label: "Medium", color: "#f39c12" },
@@ -23,370 +17,10 @@ const ACTION_SIZES = {
 const STATUS_COL = { pending:"#7f8c8d", active:"#3498db", complete:"#2ecc71", cancelled:"#e74c3c" };
 const WAR_COL    = { active:"#e74c3c", ceasefire:"#3498db", frozen:"#3498db", stalemate:"#f39c12", peace:"#2ecc71" };
 const POST_TYPES = ["Dispatch","Official Statement","Declaration","Intelligence","Propaganda","Treaty Proposal","Ultimatum"];
-const POST_COLS  = { Dispatch:"#3498db", "Official Statement":"#9b59b6", "Communiqué":"#9b59b6", "CommuniquÃ©":"#9b59b6", Declaration:"#d4af37", Intelligence:"#e67e22", Propaganda:"#e74c3c", "Treaty Proposal":"#2ecc71", Ultimatum:"#c0392b" };
+const POST_COLS  = { Dispatch:"#3498db", "Official Statement":"#9b59b6", Communique:"#9b59b6", Declaration:"#d4af37", Intelligence:"#e67e22", Propaganda:"#e74c3c", "Treaty Proposal":"#2ecc71", Ultimatum:"#c0392b" };
 const NEWS_CATS  = ["announcement","war","diplomacy","economy","lore","community"];
 const NEWS_COL   = { announcement:"#d4af37", war:"#e74c3c", diplomacy:"#3498db", economy:"#2ecc71", lore:"#9b59b6", community:"#e67e22" };
 
-const FORUM_BOARDS = [
-  { slug:"general",           name:"General",              desc:"Cross-world discussion and community chat",              icon:"💬", sort:1  },
-  { slug:"diplomacy",         name:"Diplomacy",            desc:"Treaties, negotiations, and alliances",                  icon:"🤝", sort:2  },
-  { slug:"canon-actions",     name:"Canon Actions",        desc:"Action discussion, outcomes, and lore clarification",    icon:"🧭", sort:3  },
-  { slug:"war-room",          name:"War Room",             desc:"Military strategy, war declarations, and battle reports", icon:"⚔️", sort:4  },
-  { slug:"intelligence",      name:"Intelligence",         desc:"Espionage, leaks, and covert operations",                icon:"🔎", sort:5  },
-  { slug:"trade",             name:"Trade",                desc:"Economic deals, markets, and logistics",                 icon:"💱", sort:6  },
-  { slug:"propaganda",        name:"Propaganda",           desc:"State media, narratives, and public messaging",          icon:"📣", sort:7  },
-  { slug:"cultural-exchange", name:"Cultural Exchange",    desc:"Arts, religion, culture, and soft power",                icon:"🎭", sort:8  },
-  { slug:"newsroom",          name:"Newsroom",             desc:"Reports, reactions, and world event discussion",         icon:"📰", sort:9  },
-  { slug:"lore-library",      name:"Lore Library",         desc:"World lore, canon rules, factions, and timeline",       icon:"📚", sort:10 },
-  { slug:"nation-introductions", name:"Nation Introductions", desc:"Introduce your nation, its history and culture",     icon:"🌐", sort:11 },
-  { slug:"season-archives",   name:"Season Archives",      desc:"Completed seasons, outcomes, and historical records",    icon:"🗄️", sort:12 },
-  { slug:"support",           name:"Support",              desc:"Questions, onboarding, and site help",                   icon:"🛟", sort:13 },
-];
-const BOARD_ICONS = Object.fromEntries(FORUM_BOARDS.map(b => [b.slug, b.icon]));
-
-// ─── SQL ──────────────────────────────────────────────────────────
-const SQL = `-- Run once in Supabase SQL Editor
-
--- Enable storage
-insert into storage.buckets (id, name, public) values ('flags', 'flags', true) on conflict do nothing;
-insert into storage.buckets (id, name, public) values ('profile-media', 'profile-media', true) on conflict do nothing;
-drop policy if exists "Public flag read" on storage.objects;
-drop policy if exists "Auth flag upload" on storage.objects;
-drop policy if exists "Auth flag update" on storage.objects;
-drop policy if exists "Public profile media read" on storage.objects;
-drop policy if exists "Auth profile media upload" on storage.objects;
-drop policy if exists "Auth profile media update" on storage.objects;
-create policy "Public flag read" on storage.objects for select using (bucket_id = 'flags');
-create policy "Auth flag upload" on storage.objects for insert with check (bucket_id = 'flags' AND auth.role() = 'authenticated');
-create policy "Auth flag update" on storage.objects for update using (bucket_id = 'flags' AND auth.role() = 'authenticated');
-create policy "Public profile media read" on storage.objects for select using (bucket_id = 'profile-media');
-create policy "Auth profile media upload" on storage.objects for insert with check (bucket_id = 'profile-media' AND auth.role() = 'authenticated' AND (storage.foldername(name))[1] = auth.uid()::text);
-create policy "Auth profile media update" on storage.objects for update using (bucket_id = 'profile-media' AND auth.role() = 'authenticated' AND (storage.foldername(name))[1] = auth.uid()::text);
-
-create table if not exists profiles (
-  id uuid primary key references auth.users on delete cascade,
-  username text unique not null,
-  role text default 'player',
-  nation_id uuid,
-  avatar_url text,
-  signature_url text,
-  bio text,
-  created_at timestamptz default now()
-);
-
-alter table profiles add column if not exists avatar_url text;
-alter table profiles add column if not exists signature_url text;
-alter table profiles add column if not exists bio text;
-
-notify pgrst, 'reload schema';
-
-create table if not exists nations (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  slug text unique not null,
-  government text, ideology text,
-  population bigint, gdp_usd bigint, land_km2 bigint,
-  army_rank int default 0, hdi numeric(3,2),
-  economy text, bio text,
-  diplomatic_status text, bloc text,
-  tiktok_username text,
-  flag_url text,
-  owner_id uuid references profiles(id) on delete set null,
-  created_at timestamptz default now()
-);
-
-do $$ begin
-  alter table profiles add constraint fk_nation foreign key (nation_id) references nations(id) on delete set null;
-exception when duplicate_object then null;
-end $$;
-
-create table if not exists rp_posts (
-  id uuid primary key default gen_random_uuid(),
-  nation_id uuid references nations(id) on delete cascade,
-  author_id uuid references profiles(id) on delete cascade,
-  post_type text not null,
-  title text not null,
-  body text not null,
-  target_nation_id uuid references nations(id) on delete set null,
-  created_at timestamptz default now()
-);
-
-create table if not exists canon_actions (
-  id uuid primary key default gen_random_uuid(),
-  nation_id uuid references nations(id) on delete cascade,
-  submitted_by uuid references profiles(id) on delete cascade,
-  title text not null, description text not null,
-  tiktok_comment text,
-  size text default 'medium',
-  status text default 'pending',
-  started_at timestamptz, estimated_days int,
-  completed_at timestamptz, lore_notes text,
-  created_at timestamptz default now()
-);
-
-create table if not exists action_updates (
-  id uuid primary key default gen_random_uuid(),
-  action_id uuid references canon_actions(id) on delete cascade,
-  author_id uuid references profiles(id) on delete cascade,
-  body text not null,
-  created_at timestamptz default now()
-);
-
-create table if not exists wars (
-  id uuid primary key default gen_random_uuid(),
-  aggressor_id uuid references nations(id) on delete cascade,
-  defender_id uuid references nations(id) on delete cascade,
-  name text, status text default 'active', casus_belli text, outcome text,
-  objective text, casualties text, result text,
-  ceasefire_days int, ceasefire_until timestamptz,
-  started_at timestamptz default now(), ended_at timestamptz
-);
-
-alter table wars add column if not exists ceasefire_days int;
-alter table wars add column if not exists ceasefire_until timestamptz;
-alter table wars add column if not exists objective text;
-alter table wars add column if not exists casualties text;
-alter table wars add column if not exists result text;
-
-create table if not exists alliances (
-  id uuid primary key default gen_random_uuid(),
-  name text not null, description text,
-  flag_url text,
-  type text default 'alliance', status text default 'active',
-  created_at timestamptz default now()
-);
-
-alter table alliances add column if not exists flag_url text;
-
-create table if not exists alliance_members (
-  id uuid primary key default gen_random_uuid(),
-  alliance_id uuid references alliances(id) on delete cascade,
-  nation_id uuid references nations(id) on delete cascade
-);
-
-create table if not exists war_participants (
-  id uuid primary key default gen_random_uuid(),
-  war_id uuid references wars(id) on delete cascade,
-  side text not null check (side in ('attacker','defender')),
-  nation_id uuid references nations(id) on delete cascade,
-  alliance_id uuid references alliances(id) on delete cascade,
-  created_at timestamptz default now(),
-  check (nation_id is not null or alliance_id is not null)
-);
-
-create table if not exists news (
-  id uuid primary key default gen_random_uuid(),
-  author_id uuid references profiles(id) on delete cascade,
-  title text not null, body text not null,
-  category text default 'announcement', pinned boolean default false,
-  created_at timestamptz default now()
-);
-
-create table if not exists forum_boards (
-  id uuid primary key default gen_random_uuid(),
-  name text not null, description text,
-  slug text unique not null, icon text, sort_order int default 0
-);
-
-create table if not exists forum_threads (
-  id uuid primary key default gen_random_uuid(),
-  board_id uuid references forum_boards(id) on delete cascade,
-  author_id uuid references profiles(id) on delete cascade,
-  nation_id uuid references nations(id) on delete set null,
-  title text not null, pinned boolean default false, locked boolean default false,
-  created_at timestamptz default now()
-);
-
-create table if not exists forum_posts (
-  id uuid primary key default gen_random_uuid(),
-  thread_id uuid references forum_threads(id) on delete cascade,
-  author_id uuid references profiles(id) on delete cascade,
-  nation_id uuid references nations(id) on delete set null,
-  body text not null,
-  created_at timestamptz default now()
-);
-
-create table if not exists forum_reactions (
-  id uuid primary key default gen_random_uuid(),
-  post_id uuid references forum_posts(id) on delete cascade,
-  user_id uuid references profiles(id) on delete cascade,
-  emoji text not null,
-  created_at timestamptz default now(),
-  unique (post_id, user_id, emoji)
-);
-
--- RLS (explicit so Supabase can see it before you expose the API)
-alter table profiles enable row level security;
-alter table nations enable row level security;
-alter table rp_posts enable row level security;
-alter table canon_actions enable row level security;
-alter table action_updates enable row level security;
-alter table wars enable row level security;
-alter table war_participants enable row level security;
-alter table alliances enable row level security;
-alter table alliance_members enable row level security;
-alter table news enable row level security;
-alter table forum_boards enable row level security;
-alter table forum_threads enable row level security;
-alter table forum_posts enable row level security;
-alter table forum_reactions enable row level security;
-
-drop policy if exists "pub_read" on profiles;
-drop policy if exists "pub_read" on nations;
-drop policy if exists "pub_read" on rp_posts;
-drop policy if exists "pub_read" on canon_actions;
-drop policy if exists "pub_read" on action_updates;
-drop policy if exists "pub_read" on wars;
-drop policy if exists "pub_read" on war_participants;
-drop policy if exists "pub_read" on alliances;
-drop policy if exists "pub_read" on alliance_members;
-drop policy if exists "pub_read" on news;
-drop policy if exists "pub_read" on forum_boards;
-drop policy if exists "pub_read" on forum_threads;
-drop policy if exists "pub_read" on forum_posts;
-drop policy if exists "pub_read" on forum_reactions;
-create policy "pub_read" on profiles for select using (true);
-create policy "pub_read" on nations for select using (true);
-create policy "pub_read" on rp_posts for select using (true);
-create policy "pub_read" on canon_actions for select using (true);
-create policy "pub_read" on action_updates for select using (true);
-create policy "pub_read" on wars for select using (true);
-create policy "pub_read" on war_participants for select using (true);
-create policy "pub_read" on alliances for select using (true);
-create policy "pub_read" on alliance_members for select using (true);
-create policy "pub_read" on news for select using (true);
-create policy "pub_read" on forum_boards for select using (true);
-create policy "pub_read" on forum_threads for select using (true);
-create policy "pub_read" on forum_posts for select using (true);
-create policy "pub_read" on forum_reactions for select using (true);
-
-drop policy if exists "own_insert" on profiles;
-drop policy if exists "own_update" on profiles;
-drop policy if exists "auth_insert_rp" on rp_posts;
-drop policy if exists "auth_insert_ca" on canon_actions;
-drop policy if exists "auth_insert_au" on action_updates;
-drop policy if exists "auth_insert_ft" on forum_threads;
-drop policy if exists "auth_insert_fp" on forum_posts;
-drop policy if exists "auth_insert_fr" on forum_reactions;
-drop policy if exists "own_update_ft" on forum_threads;
-drop policy if exists "own_delete_ft" on forum_threads;
-drop policy if exists "own_update_fp" on forum_posts;
-drop policy if exists "own_delete_fp" on forum_posts;
-drop policy if exists "own_delete_fr" on forum_reactions;
-drop policy if exists "auth_insert_wars" on wars;
-drop policy if exists "auth_insert_war_participants" on war_participants;
-create policy "own_insert" on profiles for insert with check (auth.uid()=id);
-create policy "own_update" on profiles for update using (auth.uid()=id);
-create policy "auth_insert_rp" on rp_posts for insert with check (auth.uid()=author_id);
-create policy "auth_insert_ca" on canon_actions for insert with check (auth.uid()=submitted_by);
-create policy "auth_insert_au" on action_updates for insert with check (auth.uid()=author_id);
-create policy "auth_insert_ft" on forum_threads for insert with check (auth.uid()=author_id);
-create policy "auth_insert_fp" on forum_posts for insert with check (auth.uid()=author_id);
-create policy "auth_insert_fr" on forum_reactions for insert with check (auth.uid()=user_id);
-create policy "own_update_ft" on forum_threads for update using (auth.uid()=author_id);
-create policy "own_delete_ft" on forum_threads for delete using (auth.uid()=author_id);
-create policy "own_update_fp" on forum_posts for update using (auth.uid()=author_id);
-create policy "own_delete_fp" on forum_posts for delete using (auth.uid()=author_id);
-create policy "own_delete_fr" on forum_reactions for delete using (auth.uid()=user_id);
-create policy "auth_insert_wars" on wars for insert with check (auth.role()='authenticated');
-create policy "auth_insert_war_participants" on war_participants for insert with check (auth.role()='authenticated');
-
--- Seed forum boards
-insert into forum_boards (name,description,slug,icon,sort_order) values
-('General','Cross-world discussion and community chat','general','💬',1),
-('Diplomacy','Treaties, negotiations, and alliances','diplomacy','🤝',2),
-('Canon Actions','Action discussion and lore clarification','canon-actions','🧭',3),
-('War Room','Military strategy and battle reports','war-room','⚔️',4),
-('Intelligence','Espionage, leaks, and covert operations','intelligence','🔎',5),
-('Trade','Economic deals, markets, and logistics','trade','💱',6),
-('Propaganda','State media and public messaging','propaganda','📣',7),
-('Cultural Exchange','Arts, religion, and soft power','cultural-exchange','🎭',8),
-('Newsroom','Reports and world event discussion','newsroom','📰',9),
-('Lore Library','World lore, canon rules, and timeline','lore-library','📚',10),
-('Nation Introductions','Introduce your nation to the world','nation-introductions','🌐',11),
-('Season Archives','Completed seasons and historical records','season-archives','🗄️',12),
-('Support','Questions, onboarding, and site help','support','🛟',13)
-on conflict (slug) do update set icon = excluded.icon;
-
-create or replace function public.is_admin(uid uuid)
-returns boolean
-language sql
-security definer
-set search_path = public
-as $$
-  select exists(select 1 from public.profiles where id = uid and role = 'admin');
-$$;
-
-create or replace function public.is_lore_team(uid uuid)
-returns boolean
-language sql
-security definer
-set search_path = public
-as $$
-  select exists(select 1 from public.profiles where id = uid and role in ('admin','lore','mod'));
-$$;
-
-create or replace function public.assign_nation_as_staff(target_profile uuid, target_nation uuid)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if not public.is_lore_team(auth.uid()) then
-    raise exception 'Only admin or lore team can assign nations';
-  end if;
-
-  update public.nations
-  set owner_id = target_profile
-  where id = target_nation;
-
-  update public.profiles
-  set nation_id = target_nation
-  where id = target_profile;
-end;
-$$;
-
-drop policy if exists "admin_manage_profiles" on profiles;
-drop policy if exists "admin_manage_nations" on nations;
-drop policy if exists "admin_manage_canon_actions" on canon_actions;
-drop policy if exists "admin_manage_wars" on wars;
-drop policy if exists "admin_manage_war_participants" on war_participants;
-drop policy if exists "admin_manage_alliances" on alliances;
-drop policy if exists "admin_manage_alliance_members" on alliance_members;
-drop policy if exists "admin_manage_news" on news;
-drop policy if exists "admin_manage_forum_boards" on forum_boards;
-drop policy if exists "staff_manage_forum_threads" on forum_threads;
-drop policy if exists "staff_manage_forum_posts" on forum_posts;
-drop policy if exists "staff_manage_forum_reactions" on forum_reactions;
-create policy "admin_manage_profiles" on profiles for all using (public.is_admin(auth.uid())) with check (public.is_admin(auth.uid()));
-create policy "admin_manage_nations" on nations for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
-create policy "admin_manage_canon_actions" on canon_actions for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
-create policy "admin_manage_wars" on wars for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
-create policy "admin_manage_war_participants" on war_participants for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
-create policy "admin_manage_alliances" on alliances for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
-create policy "admin_manage_alliance_members" on alliance_members for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
-create policy "admin_manage_news" on news for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
-create policy "admin_manage_forum_boards" on forum_boards for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
-create policy "staff_manage_forum_threads" on forum_threads for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
-create policy "staff_manage_forum_posts" on forum_posts for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
-create policy "staff_manage_forum_reactions" on forum_reactions for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
-
-insert into profiles (id, username, role)
-select u.id, split_part(u.email, '@', 1), 'admin'
-from auth.users u
-where not exists (select 1 from profiles p where p.id = u.id)
-order by u.created_at
-limit 1
-on conflict (id) do update set role = 'admin';
-
-update profiles
-set role = 'admin'
-where id = (
-  select id from profiles order by created_at nulls last, username limit 1
-);`;
-
-// ─── HELPERS ──────────────────────────────────────────────────────
 const timeAgo = ts => {
   if (!ts) return "";
   const d = Math.floor((Date.now() - new Date(ts)) / 1000);
@@ -424,50 +58,12 @@ const ensureProfile = async (user, preferredUsername) => {
   return inserted.data;
 };
 
-// ─── STYLES ───────────────────────────────────────────────────────
 const isMissingOptionalProfileSchema = error =>
   error?.code === "42703" ||
   /profiles(_\d+)?\.(bio|avatar_url|signature_url)|column .*profiles.* does not exist|schema cache/i.test(error?.message || "");
 const isMissingProfileMediaBucket = error =>
   /bucket not found|not found/i.test(error?.message || "");
 
-const escapeHtml = value => String(value || "")
-  .replace(/&/g, "&amp;")
-  .replace(/</g, "&lt;")
-  .replace(/>/g, "&gt;")
-  .replace(/"/g, "&quot;")
-  .replace(/'/g, "&#39;");
-const safeUrl = value => {
-  const raw = String(value || "").trim();
-  return /^https?:\/\//i.test(raw) ? raw : "";
-};
-const renderRichText = value => {
-  let html = escapeHtml(value);
-  html = html
-    .replace(/\[b\]([\s\S]*?)\[\/b\]/gi, "<strong>$1</strong>")
-    .replace(/\[i\]([\s\S]*?)\[\/i\]/gi, "<em>$1</em>")
-    .replace(/\[u\]([\s\S]*?)\[\/u\]/gi, "<u>$1</u>")
-    .replace(/\[s\]([\s\S]*?)\[\/s\]/gi, "<s>$1</s>")
-    .replace(/\[quote\]([\s\S]*?)\[\/quote\]/gi, "<blockquote>$1</blockquote>")
-    .replace(/\[code\]([\s\S]*?)\[\/code\]/gi, "<pre><code>$1</code></pre>");
-  html = html.replace(/\[url=(.*?)\]([\s\S]*?)\[\/url\]/gi, (_, url, text) => {
-    const href = safeUrl(url);
-    return href ? `<a href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${text}</a>` : text;
-  });
-  html = html.replace(/\[url\]([\s\S]*?)\[\/url\]/gi, (_, url) => {
-    const href = safeUrl(url);
-    return href ? `<a href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(href)}</a>` : escapeHtml(url);
-  });
-  html = html.replace(/\[img\]([\s\S]*?)\[\/img\]/gi, (_, url) => {
-    const src = safeUrl(url);
-    return src ? `<img src="${escapeHtml(src)}" alt="" loading="lazy" />` : "";
-  });
-  html = html.replace(/&lt;(\/?)(b|strong|i|em|u|s|br|p|ul|ol|li|blockquote|code|pre)&gt;/gi, "<$1$2>");
-  return html;
-};
-const RichText = ({ children }) => (
-  <div className="rich-post" dangerouslySetInnerHTML={{ __html: renderRichText(children) }} />
-);
 const inp = { background:"rgba(255,255,255,0.055)", border:"1px solid rgba(21,96,181,0.42)", borderRadius:6, padding:"11px 13px", color:"#f5f8ff", fontSize:16, outline:"none", width:"100%", boxSizing:"border-box", fontFamily:"inherit" };
 const ta  = { ...inp, resize:"vertical", minHeight:80 };
 const mkBtn = (v="gold") => ({
@@ -480,7 +76,6 @@ const mkBtn = (v="gold") => ({
 });
 const card = { background:"linear-gradient(180deg,rgba(10,16,27,0.97),rgba(3,7,13,0.96))", border:"1px solid rgba(78,128,190,0.24)", borderRadius:8, padding:"1.25rem", boxShadow:"0 18px 45px rgba(0,0,0,0.35)" };
 
-// ─── FLAG COMPONENT ───────────────────────────────────────────────
 const Flag = ({ nation, size = 36 }) => {
   if (nation?.flag_url) {
     return (
@@ -501,9 +96,7 @@ const NationPill = ({ nation }) => nation ? (
   </span>
 ) : null;
 
-// ─── SETUP MODAL ──────────────────────────────────────────────────
 const SetupModal = ({ onClose }) => {
-  const [copied, setCopied] = useState(false);
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.92)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:"1rem" }}>
       <div style={{ ...card, maxWidth:700, width:"100%", maxHeight:"90vh", overflowY:"auto" }}>
@@ -515,15 +108,18 @@ const SetupModal = ({ onClose }) => {
           <li>Go to <a href="https://supabase.com" target="_blank" rel="noreferrer" style={{color:"#d4af37"}}>supabase.com</a>, then create a free project</li>
           <li>Settings, API, then copy <strong style={{color:"#f8fbff"}}>Project URL</strong> and <strong style={{color:"#f8fbff"}}>anon key</strong></li>
           <li>Paste into <code style={{color:"#d4af37",fontSize:11}}>VITE_SUPABASE_URL</code> / <code style={{color:"#d4af37",fontSize:11}}>VITE_SUPABASE_ANON_KEY</code> in <code style={{color:"#d4af37",fontSize:11}}>.env.local</code></li>
-          <li>SQL Editor &gt; paste SQL below &gt; Run. The RLS warning is expected for table creation; this SQL explicitly enables RLS and adds policies before the app uses the tables.</li>
+          <li>SQL Editor &gt; run the files in <code style={{color:"#d4af37",fontSize:11}}>supabase/</code> in this order: <code style={{color:"#d4af37",fontSize:11}}>schema.sql</code>, <code style={{color:"#d4af37",fontSize:11}}>functions.sql</code>, <code style={{color:"#d4af37",fontSize:11}}>migrations/20260513_forum_foundation.sql</code>, <code style={{color:"#d4af37",fontSize:11}}>policies.sql</code>, then <code style={{color:"#d4af37",fontSize:11}}>seed-forum.sql</code></li>
           <li>Authentication, Providers, then enable <strong style={{color:"#f8fbff"}}>Email</strong></li>
           <li>Storage: check the <strong style={{color:"#f8fbff"}}>flags</strong> and <strong style={{color:"#f8fbff"}}>profile-media</strong> buckets were created, or create them manually and set them to Public</li>
           <li>The SQL promotes the first registered user to <code style={{color:"#d4af37",fontSize:11}}>admin</code></li>
           <li>Deploy to <a href="https://vercel.com" target="_blank" rel="noreferrer" style={{color:"#d4af37"}}>Vercel</a> or <a href="https://netlify.com" target="_blank" rel="noreferrer" style={{color:"#d4af37"}}>Netlify</a> (both free)</li>
         </ol>
-        <div style={{ position:"relative", marginTop:"1rem" }}>
-          <pre style={{ background:"#030405", border:"1px solid rgba(20,96,184,0.32)", borderRadius:8, padding:"1rem", fontSize:10.5, overflowX:"auto", color:"#99dca7", maxHeight:260, lineHeight:1.7 }}>{SQL}</pre>
-          <button onClick={()=>{navigator.clipboard.writeText(SQL);setCopied(true);setTimeout(()=>setCopied(false),2000);}} style={{ ...mkBtn("gold"), position:"absolute", top:8, right:8, fontSize:11 }}>{copied?"Copied!":"Copy SQL"}</button>
+        <div style={{ ...card, background:"rgba(255,255,255,0.035)", boxShadow:"none", marginTop:"1rem", padding:"0.9rem" }}>
+          <div style={{ color:"#edf4ff", fontWeight:800, fontSize:13, marginBottom:"0.35rem" }}>SQL is no longer bundled into the website.</div>
+          <p style={{ margin:0, color:"#9fb4d6", fontSize:12, lineHeight:1.7 }}>
+            Open the project files under <code style={{color:"#d4af37",fontSize:11}}>supabase/</code>, paste each file into the Supabase SQL Editor, and run them once. This keeps database setup out of the public frontend bundle.
+          </p>
+          <a href="https://supabase.com/dashboard/project/_/sql" target="_blank" rel="noreferrer" style={{ ...mkBtn("gold"), display:"inline-flex", alignItems:"center", textDecoration:"none", marginTop:"0.75rem" }}>Open Supabase SQL Editor</a>
         </div>
         <button onClick={onClose} style={{ ...mkBtn(), marginTop:"1.25rem" }}>Got it</button>
       </div>
@@ -531,7 +127,6 @@ const SetupModal = ({ onClose }) => {
   );
 };
 
-// ─── AUTH ─────────────────────────────────────────────────────────
 const Auth = ({ onAuth, setupRequired }) => {
   const [mode,setMode]=useState("login");
   const [email,setEmail]=useState(""); const [pw,setPw]=useState(""); const [username,setUsername]=useState("");
@@ -602,7 +197,7 @@ const Auth = ({ onAuth, setupRequired }) => {
           <div style={{ ...card, border:"1px solid rgba(246,193,50,0.22)" }}>
             {setupRequired && (
               <div style={{ border:"1px solid rgba(225,29,29,0.45)", background:"rgba(225,29,29,0.12)", color:"#ffd7d7", borderRadius:6, padding:"0.75rem", marginBottom:"1rem", fontSize:12, lineHeight:1.5 }}>
-                Database setup is not finished. Open the Supabase setup guide below, copy the SQL, run it in Supabase, then refresh this page.
+                Database setup is not finished. Open the Supabase setup guide below, run the SQL files from the repo in Supabase, then refresh this page.
               </div>
             )}
             <div style={{ display:"flex", gap:"0.4rem", marginBottom:"1.25rem" }}>
@@ -629,7 +224,6 @@ const Auth = ({ onAuth, setupRequired }) => {
   );
 };
 
-// ─── FLAG UPLOAD ──────────────────────────────────────────────────
 const FlagUploader = ({ nationId, currentUrl, onUploaded }) => {
   const [uploading, setUploading] = useState(false);
   const ref = useRef();
@@ -665,7 +259,6 @@ const FlagUploader = ({ nationId, currentUrl, onUploaded }) => {
   );
 };
 
-// ─── HOME ─────────────────────────────────────────────────────────
 const AllianceFlag = ({ alliance, size = 34 }) => {
   if (alliance?.flag_url) {
     return <img src={alliance.flag_url} alt={alliance.name} style={{ width:size, height:size, objectFit:"cover", borderRadius:4, border:"1px solid rgba(255,255,255,0.12)", flexShrink:0 }} />;
@@ -933,7 +526,6 @@ const Section = ({ title, children, empty }) => (
   </div>
 );
 
-// ─── NATION PROFILE PAGE ──────────────────────────────────────────
 const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMembers, nations, onBack, profile, userNation, isMod, isAdmin, onRefresh }) => {
   const [tab, setTab] = useState("overview");
   const nPosts = posts.filter(p => p.nation_id === nation.id);
@@ -1051,7 +643,6 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
   );
 };
 
-// ─── SHARED CARDS ─────────────────────────────────────────────────
 const PostCard = ({ post, nations }) => {
   const targetNation = nations?.find(n => n.id === post.target_nation_id);
   return (
@@ -1101,7 +692,7 @@ const ActionCard = ({ action, nations, expandable, isMod, onRefresh, profile }) 
           <span style={{ fontSize:10, fontWeight:800, color:"#0a0806", background:ACTION_SIZES[action.size]?.color||"#d4af37", borderRadius:3, padding:"2px 7px" }}>{action.size?.toUpperCase()}</span>
           <span style={{ fontSize:10, fontWeight:800, color:STATUS_COL[action.status], border:`1px solid ${STATUS_COL[action.status]}`, borderRadius:3, padding:"2px 7px" }}>{action.status?.toUpperCase()}</span>
           {action.estimated_days && <span style={{ fontSize:11, color:"#a9b7cf" }}>{action.estimated_days}d</span>}
-          {expandable && <span style={{ color:"#8fa0bd", fontSize:13 }}>{open?"▲":"▼"}</span>}
+          {expandable && <span style={{ color:"#8fa0bd", fontSize:13 }}>{open?"â–²":"â–¼"}</span>}
         </div>
       </div>
 
@@ -1129,7 +720,7 @@ const ActionCard = ({ action, nations, expandable, isMod, onRefresh, profile }) 
             <div style={{ borderTop:"1px solid rgba(255,215,0,0.07)", paddingTop:"0.75rem", display:"flex", flexDirection:"column", gap:"0.6rem" }}>
               <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.06em", textTransform:"uppercase" }}>Lore Team Controls</div>
               <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
-                {action.status==="pending" && <button onClick={()=>updateStatus("active",{started_at:new Date().toISOString()})} style={{ ...mkBtn("blue"), fontSize:11 }}>▶ Activate</button>}
+                {action.status==="pending" && <button onClick={()=>updateStatus("active",{started_at:new Date().toISOString()})} style={{ ...mkBtn("blue"), fontSize:11 }}>â–¶ Activate</button>}
                 {action.status==="active" && <button onClick={()=>updateStatus("complete",{completed_at:new Date().toISOString()})} style={{ ...mkBtn("green"), fontSize:11 }}>Complete</button>}
                 <button onClick={()=>updateStatus("cancelled")} style={{ ...mkBtn("red"), fontSize:11 }}>Cancel</button>
               </div>
@@ -1331,7 +922,6 @@ const WarCard = ({ war, nations, alliances = [], participants = [], isMod, onRef
   );
 };
 
-// ─── NATIONS PAGE ─────────────────────────────────────────────────
 const Nations = ({ nations, posts, actions, wars, alliances, allianceMembers, profile, userNation, isMod, isAdmin, onRefresh }) => {
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState("");
@@ -1412,7 +1002,6 @@ const Nations = ({ nations, posts, actions, wars, alliances, allianceMembers, pr
   );
 };
 
-// ─── DISPATCH BOARD ───────────────────────────────────────────────
 const RPBoard = ({ posts, profile, userNation, nations, onRefresh }) => {
   const [showForm, setShowForm] = useState(false);
   const [pType, setPType] = useState("Dispatch");
@@ -1469,7 +1058,6 @@ const RPBoard = ({ posts, profile, userNation, nations, onRefresh }) => {
   );
 };
 
-// ─── CANON ACTIONS ────────────────────────────────────────────────
 const ActionsPage = ({ actions, profile, userNation, nations, isMod, onRefresh }) => {
   const [tab, setTab] = useState("active");
   const [showForm, setShowForm] = useState(false);
@@ -1528,7 +1116,6 @@ const ActionsPage = ({ actions, profile, userNation, nations, isMod, onRefresh }
   );
 };
 
-// ─── WARS & ALLIANCES ─────────────────────────────────────────────
 const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, profile, userNation, isMod, onRefresh }) => {
   const [tab, setTab] = useState("wars");
   const [showWarForm, setShowWarForm] = useState(false);
@@ -1680,7 +1267,6 @@ const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, 
   );
 };
 
-// ─── NEWS ─────────────────────────────────────────────────────────
 const NewsPage = ({ news, profile, isMod, onRefresh }) => {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title:"", body:"", category:"announcement", pinned:false });
@@ -1748,7 +1334,6 @@ const NewsPage = ({ news, profile, isMod, onRefresh }) => {
   );
 };
 
-// ─── LEADERBOARDS ─────────────────────────────────────────────────
 const Leaderboards = ({ nations }) => {
   const [metric, setMetric] = useState("gdp");
   const metrics = {
@@ -1794,7 +1379,6 @@ const Leaderboards = ({ nations }) => {
   );
 };
 
-// ─── FORUMS ───────────────────────────────────────────────────────
 const Forums = ({ boards, threads, posts, reactions, profile, userNation, nations, isMod, onRefresh, onRequireAuth }) => {
   const [view, setView] = useState({ type:"boards" });
   const [threadForm, setThreadForm] = useState({ title:"", body:"" });
@@ -1802,7 +1386,11 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
   const [showNewThread, setShowNewThread] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [editBody, setEditBody] = useState("");
-  const reactEmojis = ["👍","❤️","😂","🔥","👀","🫡"];
+  const [threadEditorTab, setThreadEditorTab] = useState("write");
+  const [replyEditorTab, setReplyEditorTab] = useState("write");
+  const reactEmojis = ["ðŸ‘","â¤ï¸","ðŸ˜‚","ðŸ”¥","ðŸ‘€","ðŸ«¡"];
+  const appendThreadBBCode = (open, close) => setThreadForm(current => ({ ...current, body:`${current.body}${open}${close}` }));
+  const appendReplyBBCode = (open, close) => setReplyBody(current => `${current}${open}${close}`);
 
   const submitThread = async () => {
     if (!threadForm.title.trim()||!threadForm.body.trim()||view.type!=="board") return;
@@ -1848,36 +1436,17 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
 
   if (view.type==="boards") {
     return (
-      <div>
-        <h2 style={{ margin:"0 0 0.35rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:20 }}>Boards</h2>
-        {!profile && <p style={{ margin:"0 0 1.25rem", color:"#8fa0bd", fontSize:13 }}>Public viewing is open. Sign in to create threads or post replies.</p>}
-        <div className="board-list" style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
-          {boards.map(b=>{
-            const bThreads = threads.filter(t=>t.board_id===b.id);
-            const lastThread = bThreads[0];
-            const icon = b.icon || BOARD_ICONS[b.slug] || "•";
-            return (
-              <div className="board-card" key={b.id} style={{ ...card, cursor:"pointer", transition:"border-color 0.18s" }}
-                onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(212,175,55,0.38)"}
-                onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(212,175,55,0.1)"}
-                onClick={()=>setView({type:"board",board:b})}>
-                <div className="board-card-row" style={{ display:"flex", gap:"1rem", alignItems:"center" }}>
-                  <div className="board-icon" aria-hidden="true" style={{ fontSize:22, width:28, textAlign:"center", flexShrink:0 }}>{icon}</div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>{b.name}</div>
-                    <div style={{ fontSize:12, color:"#8fa0bd", marginTop:2 }}>{b.description}</div>
-                    {lastThread && <div style={{ fontSize:11, color:"#8493ad", marginTop:3 }}>Latest: {lastThread.title} - {timeAgo(lastThread.created_at)}</div>}
-                  </div>
-                  <div className="board-count" style={{ textAlign:"right", flexShrink:0 }}>
-                    <div style={{ fontFamily:"var(--display)", fontSize:18, color:"#8493ad" }}>{bThreads.length}</div>
-                    <div style={{ fontSize:10, color:"#8493ad", letterSpacing:"0.04em", textTransform:"uppercase" }}>threads</div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <ForumIndex
+        boards={boards}
+        threads={threads}
+        posts={posts}
+        profile={profile}
+        onRequireAuth={onRequireAuth}
+        onSelectBoard={board=>setView({type:"board",board})}
+        card={card}
+        mkBtn={mkBtn}
+        timeAgo={timeAgo}
+      />
     );
   }
 
@@ -1889,7 +1458,7 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
       <div>
         <button onClick={()=>setView({type:"boards"})} style={{ ...mkBtn("ghost"), marginBottom:"1rem", fontSize:12 }}>All Boards</button>
         <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap" }}>
-          <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:20, flex:1 }}>{view.board.icon || BOARD_ICONS[view.board.slug] || "•"} {view.board.name}</h2>
+          <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:20, flex:1 }}>{view.board.icon || BOARD_ICONS[view.board.slug] || "â€¢"} {view.board.name}</h2>
           {profile && <button onClick={()=>setShowNewThread(!showNewThread)} style={mkBtn()}>+ New Thread</button>}
           {!profile && <button onClick={onRequireAuth} style={mkBtn("ghost")}>Sign In to Post</button>}
         </div>
@@ -1898,7 +1467,14 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
             <h3 style={{ margin:"0 0 0.75rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>New Thread in {view.board.name}</h3>
             <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
               <input placeholder="Thread title" value={threadForm.title} onChange={e=>setThreadForm({...threadForm,title:e.target.value})} style={inp} />
-              <textarea placeholder="Opening post. BBCode is supported: [b], [i], [quote], [url], [img]. Basic HTML tags like <b> and <blockquote> are also allowed." value={threadForm.body} onChange={e=>setThreadForm({...threadForm,body:e.target.value})} style={ta} />
+              <div className="editor-tabs">
+                <button onClick={()=>setThreadEditorTab("write")} style={{ ...mkBtn(threadEditorTab==="write"?"gold":"ghost"), fontSize:11 }}>Write</button>
+                <button onClick={()=>setThreadEditorTab("preview")} style={{ ...mkBtn(threadEditorTab==="preview"?"gold":"ghost"), fontSize:11 }}>Preview</button>
+              </div>
+              <BBCodeToolbar onInsert={appendThreadBBCode} mkBtn={mkBtn} />
+              {threadEditorTab==="write"
+                ? <textarea placeholder="Opening post. BBCode is supported. HTML is escaped except a tiny safe formatting subset." value={threadForm.body} onChange={e=>setThreadForm({...threadForm,body:e.target.value})} style={ta} />
+                : <div className="post-preview"><RichText>{threadForm.body || "Nothing to preview yet."}</RichText></div>}
               <div style={{ display:"flex", gap:"0.5rem" }}>
                 <button onClick={submitThread} style={mkBtn()}>Post Thread</button>
                 <button onClick={()=>setShowNewThread(false)} style={mkBtn("ghost")}>Cancel</button>
@@ -1990,7 +1566,14 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
         {profile && !view.thread.locked && (
           <div style={card}>
             <h3 style={{ margin:"0 0 0.75rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Post Reply</h3>
-            <textarea placeholder="Write your reply. BBCode is supported: [b], [i], [quote], [url], [img]. Basic HTML tags like <b> and <blockquote> are also allowed." value={replyBody} onChange={e=>setReplyBody(e.target.value)} style={ta} />
+            <div className="editor-tabs">
+              <button onClick={()=>setReplyEditorTab("write")} style={{ ...mkBtn(replyEditorTab==="write"?"gold":"ghost"), fontSize:11 }}>Write</button>
+              <button onClick={()=>setReplyEditorTab("preview")} style={{ ...mkBtn(replyEditorTab==="preview"?"gold":"ghost"), fontSize:11 }}>Preview</button>
+            </div>
+            <BBCodeToolbar onInsert={appendReplyBBCode} mkBtn={mkBtn} />
+            {replyEditorTab==="write"
+              ? <textarea placeholder="Write your reply. BBCode is supported. HTML is escaped except a tiny safe formatting subset." value={replyBody} onChange={e=>setReplyBody(e.target.value)} style={ta} />
+              : <div className="post-preview"><RichText>{replyBody || "Nothing to preview yet."}</RichText></div>}
             <button onClick={submitReply} style={{ ...mkBtn(), marginTop:"0.6rem" }}>Post Reply</button>
           </div>
         )}
@@ -2000,7 +1583,6 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
   }
 };
 
-// ─── ADMIN ────────────────────────────────────────────────────────
 const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
   const [tab, setTab] = useState("add");
   const blank = { name:"",government:"",ideology:"",population:"",gdp_usd:"",land_km2:"",army_rank:"",hdi:"",economy:"",bio:"",diplomatic_status:"",bloc:"" };
@@ -2111,9 +1693,7 @@ const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
   );
 };
 
-// ═══════════════════════════════════════════════════════════════════
 // ROOT APP
-// ═══════════════════════════════════════════════════════════════════
 const StaffTools = ({ isAdmin, page, navigate, setShowSetup, counts }) => (
   <div className="staff-tools" style={{ position:"sticky", top:50, zIndex:150, background:"rgba(3,7,13,0.96)", borderBottom:"1px solid rgba(78,128,190,0.24)", backdropFilter:"blur(16px)" }}>
     <div style={{ maxWidth:980, margin:"0 auto", padding:"0.45rem 1rem", display:"flex", gap:"0.4rem", alignItems:"center", overflowX:"auto", scrollbarWidth:"none" }}>
@@ -2127,7 +1707,7 @@ const StaffTools = ({ isAdmin, page, navigate, setShowSetup, counts }) => (
       ].map(([id,label])=>(
         <button key={id} onClick={()=>navigate(id)} style={{ ...mkBtn(page===id?"gold":"ghost"), minHeight:30, padding:"5px 9px", fontSize:10.5 }}>{label}</button>
       ))}
-      <button onClick={()=>setShowSetup(true)} style={{ ...mkBtn("ghost"), minHeight:30, padding:"5px 9px", fontSize:10.5, marginLeft:"auto" }}>Setup SQL</button>
+      <button onClick={()=>setShowSetup(true)} style={{ ...mkBtn("ghost"), minHeight:30, padding:"5px 9px", fontSize:10.5, marginLeft:"auto" }}>Setup</button>
     </div>
   </div>
 );
@@ -2222,8 +1802,8 @@ export default function App() {
   if (!SUPABASE_CONFIGURED) return <SetupModal onClose={()=>{}} />;
 
   const userNation = profile?.nation_id ? data.nations.find(n=>n.id===profile.nation_id) : null;
-  const isAdmin = profile?.role==="admin";
-  const isLoreTeam = ["lore","mod","admin"].includes(profile?.role);
+  const isAdmin = canManageRoles(profile);
+  const isLoreTeam = canAccessStaff(profile);
 
   const nav = [
     {id:"forums",label:"Boards"},
@@ -2270,7 +1850,7 @@ export default function App() {
           {user ? <>
             {userNation && <><Flag nation={userNation} size={20} /><span style={{ fontSize:11, color:"#9fb4d6", maxWidth:70, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{userNation.name}</span></>}
             <button onClick={()=>navigate("profile")} style={{ background:"transparent", border:"none", padding:0, minHeight:0, color:"#9fb4d6", fontSize:11, cursor:"pointer" }}>@{profile?.username || user.email?.split("@")[0] || "profile"}</button>
-            {isLoreTeam && <span style={{ fontSize:9, color:"#3498db", border:"1px solid #3498db33", borderRadius:3, padding:"1px 5px", letterSpacing:"0.06em" }}>{profile?.role === "lore" ? "LORE" : profile?.role?.toUpperCase()}</span>}
+            {isLoreTeam && <span style={{ fontSize:9, color:"#3498db", border:"1px solid #3498db33", borderRadius:3, padding:"1px 5px", letterSpacing:"0.06em" }}>{(ROLE_LABELS[profile?.role] || profile?.role || "Staff").toUpperCase()}</span>}
             {isLoreTeam && <button onClick={()=>navigate("admin")} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>{isAdmin ? "Admin" : "Lore"}</button>}
             <button onClick={()=>supabase.auth.signOut()} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>Sign Out</button>
           </> : (
@@ -2301,7 +1881,7 @@ export default function App() {
               Public pages are still loading with fallbacks, but profile media needs the latest setup SQL in Supabase.
             </p>
             <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
-              <button onClick={()=>setShowSetup(true)} style={{ ...mkBtn("ghost"), fontSize:11 }}>Open Setup SQL</button>
+              <button onClick={()=>setShowSetup(true)} style={{ ...mkBtn("ghost"), fontSize:11 }}>Open Setup</button>
               <span style={{ color:"#cfa0a0", fontSize:11, alignSelf:"center" }}>Run supabase-profile-setup.sql, then refresh.</span>
             </div>
           </div>
@@ -2351,6 +1931,34 @@ export default function App() {
         .rich-post pre{white-space:pre-wrap;overflow:auto;background:#030405;border:1px solid rgba(20,96,184,0.28);border-radius:6px;padding:0.75rem;color:#99dca7;}
         .rich-post a{color:#6fb7ff;text-decoration:underline;}
         .rich-post img{display:block;max-width:100%;height:auto;border-radius:6px;margin:0.75rem 0;border:1px solid rgba(255,255,255,0.12);}
+        .bb-center{text-align:center;}
+        .bb-spoiler{border:1px solid rgba(246,193,50,0.18);border-radius:6px;padding:0.5rem 0.65rem;background:rgba(255,255,255,0.035);}
+        .bb-mention{display:inline-flex;color:#f6c132;font-weight:800;}
+        .bbcode-toolbar,.editor-tabs{display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;}
+        .post-preview{min-height:120px;border:1px solid rgba(21,96,181,0.42);border-radius:6px;padding:0.85rem;background:rgba(255,255,255,0.035);}
+        .forum-index-head{display:flex;gap:1rem;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;}
+        .forum-index-head h2{margin:0 0 0.35rem;font-family:var(--display);color:#f6c132;font-size:22px;}
+        .forum-index-head p{margin:0;color:#9fb4d6;font-size:13px;line-height:1.65;}
+        .forum-categories{display:flex;flex-direction:column;gap:0.85rem;}
+        .forum-category{padding:0!important;overflow:hidden;}
+        .forum-category-toggle{width:100%;display:flex;align-items:center;gap:0.75rem;text-align:left;background:linear-gradient(90deg,rgba(20,96,184,0.18),rgba(246,193,50,0.06));border:0;border-bottom:1px solid rgba(78,128,190,0.18);padding:0.9rem 1rem;color:#edf4ff;cursor:pointer;}
+        .forum-category-toggle strong{display:block;font-size:14px;color:#f8fbff;}
+        .forum-category-toggle small{display:block;margin-top:0.2rem;color:#8fa0bd;font-size:12px;line-height:1.45;}
+        .unread-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.16);box-shadow:0 0 0 4px rgba(255,255,255,0.03);flex-shrink:0;}
+        .unread-dot.active{background:#f6c132;box-shadow:0 0 0 4px rgba(246,193,50,0.12);}
+        .category-collapse{margin-left:auto;color:#9fb4d6;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;}
+        .forum-board-grid{display:flex;flex-direction:column;}
+        .forum-board-row{width:100%;display:grid;grid-template-columns:42px minmax(0,1fr) minmax(112px,auto);gap:0.85rem;align-items:center;text-align:left;background:transparent;border:0;border-bottom:1px solid rgba(78,128,190,0.12);padding:0.95rem 1rem;color:#edf4ff;cursor:pointer;}
+        .forum-board-row:last-child{border-bottom:0;}
+        .forum-board-row:hover{background:rgba(255,255,255,0.035);opacity:1;}
+        .forum-board-icon{width:38px;height:38px;display:grid;place-items:center;border:1px solid rgba(78,128,190,0.24);border-radius:8px;background:rgba(255,255,255,0.04);font-size:20px;}
+        .forum-board-main{min-width:0;display:flex;flex-direction:column;gap:0.2rem;}
+        .forum-board-title{display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;font-weight:800;color:#f8fbff;font-size:14px;}
+        .forum-status-badge{border:1px solid;border-radius:999px;padding:1px 7px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;}
+        .forum-board-description,.forum-board-last{color:#8fa0bd;font-size:12px;line-height:1.45;}
+        .forum-board-last{color:#b7c7df;}
+        .forum-board-stats{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;color:#8fa0bd;font-size:11px;text-align:right;white-space:nowrap;}
+        .forum-board-stats strong{display:block;color:#f6c132;font-size:16px;}
         .post-signature{display:block;max-width:100%;max-height:120px;object-fit:contain;margin-top:1rem;padding-top:0.85rem;border-top:1px solid rgba(20,96,184,0.16);}
         .forum-post-layout{display:flex;gap:1.1rem;align-items:flex-start;}
         .post-author{border-right:1px solid rgba(20,96,184,0.16);padding-right:1rem;}
@@ -2397,6 +2005,11 @@ export default function App() {
           .board-card{padding:1rem!important;}
           .board-card-row{align-items:flex-start!important;gap:0.75rem!important;}
           .board-count{min-width:48px;}
+          .forum-index-head{display:block;}
+          .forum-index-head button{margin-top:0.75rem;}
+          .forum-board-row{grid-template-columns:36px minmax(0,1fr);gap:0.7rem;padding:0.85rem;}
+          .forum-board-icon{width:34px;height:34px;font-size:18px;}
+          .forum-board-stats{grid-column:2;grid-template-columns:repeat(2,auto);justify-content:start;text-align:left;}
           .thread-card{padding:0.85rem!important;gap:0.6rem!important;align-items:flex-start!important;}
           .post-card{padding:1rem!important;}
           .forum-post-layout{display:block!important;}
@@ -2419,4 +2032,3 @@ export default function App() {
     </div>
   );
 }
-
