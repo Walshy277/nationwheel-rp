@@ -1394,14 +1394,26 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
 
   const submitThread = async () => {
     if (!threadForm.title.trim()||!threadForm.body.trim()||view.type!=="board") return;
-    const {data} = await supabase.from("forum_threads").insert({ board_id:view.board.id, author_id:profile.id, nation_id:userNation?.id||null, title:threadForm.title }).select().single();
-    if (data) await supabase.from("forum_posts").insert({ thread_id:data.id, author_id:profile.id, nation_id:userNation?.id||null, body:threadForm.body });
+    const {data,error} = await supabase.from("forum_threads").insert({ board_id:view.board.id, author_id:profile.id, nation_id:userNation?.id||null, title:threadForm.title }).select().single();
+    if (error) {
+      alert(`Thread failed: ${error.message}`);
+      return;
+    }
+    const postResult = await supabase.from("forum_posts").insert({ thread_id:data.id, author_id:profile.id, nation_id:userNation?.id||null, body:threadForm.body });
+    if (postResult.error) {
+      alert(`Opening post failed: ${postResult.error.message}`);
+      return;
+    }
     setThreadForm({title:"",body:""}); setShowNewThread(false); onRefresh();
   };
 
   const submitReply = async () => {
     if (!replyBody.trim()||view.type!=="thread") return;
-    await supabase.from("forum_posts").insert({ thread_id:view.thread.id, author_id:profile.id, nation_id:userNation?.id||null, body:replyBody });
+    const { error } = await supabase.from("forum_posts").insert({ thread_id:view.thread.id, author_id:profile.id, nation_id:userNation?.id||null, body:replyBody });
+    if (error) {
+      alert(`Reply failed: ${error.message}`);
+      return;
+    }
     setReplyBody(""); onRefresh();
   };
   const toggleReaction = async (postId, emoji) => {
