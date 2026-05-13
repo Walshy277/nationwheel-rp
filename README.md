@@ -93,6 +93,31 @@ Publish directory: dist
 
 Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Netlify environment variables before deploying.
 
+## GitHub Pages Backup Deploy
+
+This repo also includes a GitHub Pages workflow so the app can deploy without Netlify credits.
+
+In GitHub:
+
+```text
+Settings > Secrets and variables > Actions > New repository secret
+```
+
+Add:
+
+```text
+VITE_SUPABASE_URL
+VITE_SUPABASE_ANON_KEY
+```
+
+Then enable:
+
+```text
+Settings > Pages > Source > GitHub Actions
+```
+
+The backup site will publish from the `main` branch workflow.
+
 ## Forum And News Formatting
 
 Thread posts and news articles support safe BBCode:
