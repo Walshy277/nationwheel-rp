@@ -82,20 +82,30 @@ python scripts/generate_nation_seed.py
 
 The frontend must use the Supabase anon or publishable key only. Do not commit service role or secret keys.
 
-## Netlify
+## Cloudflare Pages
 
-Netlify should use the settings in `netlify.toml`:
+This app should deploy as a static Vite site on Cloudflare Pages:
 
 ```text
 Build command: npm run build
-Publish directory: dist
+Build output directory: dist
+Node version: 22
 ```
 
-Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Netlify environment variables before deploying.
+Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Cloudflare Pages environment variables before deploying.
+
+The Vite build copies `public/_redirects` into `dist/_redirects` so client-side routes fall back to `index.html` on Cloudflare Pages.
+
+For the free-tier database/storage strategy, read:
+
+```text
+docs/free-tier-architecture.md
+supabase/migrations/20260514_scale_forum_limits.sql
+```
 
 ## GitHub Pages Backup Deploy
 
-This repo also includes a GitHub Pages workflow so the app can deploy without Netlify credits.
+This repo also includes a GitHub Pages workflow as a secondary static-hosting fallback.
 
 In GitHub:
 
