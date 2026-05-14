@@ -90,6 +90,15 @@ const PAGE_PATHS = {
 };
 const FORUM_PAGE_SIZE = 25;
 
+const mergeThreadPostPages = (current, nextRows) => {
+  const seen = new Set();
+  return [...current, ...nextRows].filter(post => {
+    if (seen.has(post.id)) return false;
+    seen.add(post.id);
+    return true;
+  });
+};
+
 const parseRoute = () => {
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
   const [, section, sub, id] = path.split("/");
@@ -1428,7 +1437,9 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
   const [editBody, setEditBody] = useState("");
   const [threadEditorTab, setThreadEditorTab] = useState("write");
   const [replyEditorTab, setReplyEditorTab] = useState("write");
+  const [replySort, setReplySort] = useState("desc");
   const reactEmojis = ["\u{1F44D}","\u2764\uFE0F","\u{1F602}","\u{1F525}","\u{1F440}","\u{1FAE1}"];
+  const composerTextarea = { ...ta, minHeight:240, lineHeight:1.7, padding:"1rem", fontSize:16 };
   const appendThreadBBCode = (open, close) => setThreadForm(current => ({ ...current, body:`${current.body}${open}${close}` }));
   const appendReplyBBCode = (open, close) => setReplyBody(current => `${current}${open}${close}`);
   const normalizeThread = thread => ({
@@ -1501,59 +1512,81 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
     setForumLoading(false);
   }, []);
 
-  const loadThreadPosts = useCallback(async (thread, afterPostNumber = 0, append = false) => {
+  const loadPostReactions = useCallback(async (postIds, append = false) => {
+    if (!postIds.length) {
+      if (!append) setReactions([]);
+      return;
+    }
+    const reactionResult = await supabase.from("forum_reactions").select("*").in("post_id", postIds);
+    if (!reactionResult.error) {
+      const nextReactions = reactionResult.data || [];
+      setReactions(current => append
+        ? [...current.filter(reaction => !postIds.includes(reaction.post_id)), ...nextReactions]
+        : nextReactions);
+    }
+  }, []);
+
+  const loadThreadPosts = useCallback(async (thread, replyOffset = 0, append = false, sortOrder = "desc") => {
     if (!thread || !supabase) return;
     setForumLoading(true);
     setForumError("");
-    const rpc = await supabase.rpc("list_thread_posts", {
-      p_thread_id: thread.id,
-      p_after_post_number: afterPostNumber,
-      p_limit: FORUM_PAGE_SIZE,
-    });
-    let rows = rpc.data;
-    let error = rpc.error;
-    if (error) {
-      const fallback = await supabase
-        .from("forum_posts")
-        .select("*, profiles:author_id(username,avatar_url,signature_url,bio)")
-        .eq("thread_id", thread.id)
-        .order("created_at", { ascending:true })
-        .range(append ? afterPostNumber : 0, append ? afterPostNumber + FORUM_PAGE_SIZE - 1 : FORUM_PAGE_SIZE - 1);
-      rows = fallback.data;
-      error = fallback.error;
-    }
-    if (!error && !append && afterPostNumber === 0 && (!rows || rows.length === 0)) {
-      const fallback = await supabase
-        .from("forum_posts")
-        .select("*, profiles:author_id(username,avatar_url,signature_url,bio)")
-        .eq("thread_id", thread.id)
-        .order("created_at", { ascending:true })
-        .limit(FORUM_PAGE_SIZE);
-      rows = fallback.data;
-      error = fallback.error;
-    }
-    if (error) {
-      setForumError(error.message);
+    const postSelect = "*, profiles:author_id(username,avatar_url,signature_url,bio), nations:nation_id(name,flag_url)";
+    const openingResult = await supabase
+      .from("forum_posts")
+      .select(postSelect)
+      .eq("thread_id", thread.id)
+      .or("is_deleted.is.null,is_deleted.eq.false")
+      .order("created_at", { ascending:true })
+      .order("id", { ascending:true })
+      .limit(1)
+      .maybeSingle();
+    if (openingResult.error) {
+      setForumError(openingResult.error.message);
       setForumLoading(false);
       return;
     }
-    const nextRows = (rows || []).map(normalizePost);
-    setThreadPosts(current => append ? [...current, ...nextRows] : nextRows);
-    setHasMorePosts(nextRows.length === FORUM_PAGE_SIZE);
-    const postIds = nextRows.map(post => post.id);
-    if (postIds.length) {
-      const reactionResult = await supabase.from("forum_reactions").select("*").in("post_id", postIds);
-      if (!reactionResult.error) {
-        const nextReactions = reactionResult.data || [];
-        setReactions(current => append
-          ? [...current.filter(reaction => !postIds.includes(reaction.post_id)), ...nextReactions]
-          : nextReactions);
+    const openingPost = openingResult.data ? normalizePost(openingResult.data) : null;
+    let replyQuery = supabase
+      .from("forum_posts")
+      .select(postSelect)
+      .eq("thread_id", thread.id)
+      .or("is_deleted.is.null,is_deleted.eq.false");
+    if (openingPost?.id) replyQuery = replyQuery.neq("id", openingPost.id);
+    const replyResult = await replyQuery
+      .order("created_at", { ascending:sortOrder === "asc" })
+      .order("id", { ascending:sortOrder === "asc" })
+      .range(replyOffset, replyOffset + FORUM_PAGE_SIZE - 1);
+    if (replyResult.error) {
+      const legacyFallback = await supabase
+        .from("forum_posts")
+        .select("*, profiles:author_id(username,avatar_url,signature_url,bio)")
+        .eq("thread_id", thread.id)
+        .or("is_deleted.is.null,is_deleted.eq.false")
+        .order("created_at", { ascending:sortOrder === "asc" })
+        .range(replyOffset, replyOffset + FORUM_PAGE_SIZE - 1);
+      if (legacyFallback.error) {
+        setForumError(legacyFallback.error.message);
+        setForumLoading(false);
+        return;
       }
-    } else {
-      if (!append) setReactions([]);
+      const legacyRows = (legacyFallback.data || []).map(normalizePost);
+      const legacyOpening = openingPost || legacyRows[0] || null;
+      const legacyReplies = legacyRows.filter(post => post.id !== legacyOpening?.id);
+      const merged = legacyOpening ? [legacyOpening, ...legacyReplies] : legacyReplies;
+      setThreadPosts(current => append ? mergeThreadPostPages(current, merged) : merged);
+      setHasMorePosts(legacyReplies.length === FORUM_PAGE_SIZE);
+      const postIds = merged.map(post => post.id);
+      await loadPostReactions(postIds, append);
+      setForumLoading(false);
+      return;
     }
+    const replyRows = (replyResult.data || []).map(normalizePost);
+    const nextRows = openingPost ? [openingPost, ...replyRows] : replyRows;
+    setThreadPosts(current => append ? mergeThreadPostPages(current, nextRows) : nextRows);
+    setHasMorePosts(replyRows.length === FORUM_PAGE_SIZE);
+    await loadPostReactions(nextRows.map(post => post.id), append);
     setForumLoading(false);
-  }, []);
+  }, [loadPostReactions]);
 
   useEffect(() => {
     const nextRoute = route || { type:"boards" };
@@ -1590,11 +1623,11 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
         }
         setView({ type:"thread", thread });
         setThreadPosts([]);
-        loadThreadPosts(thread);
+        loadThreadPosts(thread, 0, false, replySort);
       };
       loadThread();
     }
-  }, [route, boards, loadBoardThreads, loadThreadPosts]);
+  }, [route, boards, loadBoardThreads, loadThreadPosts, replySort]);
 
   useEffect(() => {
     if (view.type !== "thread" || !threadPosts.length || !window.location.hash) return;
@@ -1628,7 +1661,7 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
     }
     setReplyBody("");
     onRefresh();
-    await loadThreadPosts(view.thread);
+    await loadThreadPosts(view.thread, 0, false, replySort);
   };
   const toggleReaction = async (postId, emoji) => {
     if (!profile) return onRequireAuth();
@@ -1637,12 +1670,12 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
       ? await supabase.from("forum_reactions").delete().eq("id", existing.id)
       : await supabase.from("forum_reactions").insert({ post_id:postId, user_id:profile.id, emoji });
     if (result.error) alert(result.error.message);
-    else await loadThreadPosts(view.thread);
+    else await loadThreadPosts(view.thread, 0, false, replySort);
   };
   const savePost = async (postId) => {
     const { error } = await supabase.from("forum_posts").update({ body:editBody }).eq("id", postId);
     if (error) alert(error.message);
-    else { setEditingPost(null); setEditBody(""); await loadThreadPosts(view.thread); onRefresh(); }
+    else { setEditingPost(null); setEditBody(""); await loadThreadPosts(view.thread, 0, false, replySort); onRefresh(); }
   };
   const deletePost = async (postId) => {
     if (!confirm("Delete this post?")) return;
@@ -1650,7 +1683,7 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
     if (error) alert(error.message);
     else {
       await supabase.rpc("refresh_forum_counts");
-      await loadThreadPosts(view.thread);
+      await loadThreadPosts(view.thread, 0, false, replySort);
       onRefresh();
     }
   };
@@ -1697,7 +1730,7 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
           {!profile && <button onClick={onRequireAuth} style={mkBtn("ghost")}>Sign In to Post</button>}
         </div>
         {showNewThread && (
-          <div style={{ ...card, border:"1px solid rgba(212,175,55,0.28)", marginBottom:"1rem" }}>
+          <div className="forum-composer-card" style={{ ...card, border:"1px solid rgba(212,175,55,0.28)", marginBottom:"1rem" }}>
             <h3 style={{ margin:"0 0 0.75rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>New Thread in {view.board.name}</h3>
             <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
               <input placeholder="Thread title" value={threadForm.title} onChange={e=>setThreadForm({...threadForm,title:e.target.value})} style={inp} />
@@ -1707,7 +1740,7 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
               </div>
               <BBCodeToolbar onInsert={appendThreadBBCode} mkBtn={mkBtn} />
               {threadEditorTab==="write"
-                ? <textarea placeholder="Opening post. BBCode is supported. HTML is escaped except a tiny safe formatting subset." value={threadForm.body} onChange={e=>setThreadForm({...threadForm,body:e.target.value})} style={ta} />
+                ? <textarea className="forum-composer-textarea" placeholder="Opening post. BBCode is supported. HTML is escaped except a tiny safe formatting subset." value={threadForm.body} onChange={e=>setThreadForm({...threadForm,body:e.target.value})} style={composerTextarea} />
                 : <div className="post-preview"><RichText>{threadForm.body || "Nothing to preview yet."}</RichText></div>}
               <div style={{ display:"flex", gap:"0.5rem" }}>
                 <button onClick={submitThread} style={mkBtn()}>Post Thread</button>
@@ -1754,8 +1787,15 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
     return (
       <div>
         <button onClick={()=>board ? pushForumRoute({type:"board",board}) : pushForumRoute({type:"boards"})} style={{ ...mkBtn("ghost"), marginBottom:"1rem", fontSize:12 }}>{board?.name || "All Boards"}</button>
-        <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap", marginBottom:"1.25rem" }}>
+        <div style={{ display:"flex", gap:"0.6rem", alignItems:"center", flexWrap:"wrap", marginBottom:"1.25rem" }}>
           <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:18, lineHeight:1.4, flex:1 }}>{view.thread.title}</h2>
+          <label style={{ display:"inline-flex", alignItems:"center", gap:"0.4rem", color:"#8fa0bd", fontSize:11, fontWeight:800, letterSpacing:"0.04em", textTransform:"uppercase" }}>
+            Replies
+            <select value={replySort} onChange={e=>setReplySort(e.target.value)} style={{ ...inp, width:"auto", minHeight:36, padding:"7px 28px 7px 10px", fontSize:12, letterSpacing:0, textTransform:"none" }}>
+              <option value="desc">Newest first</option>
+              <option value="asc">Oldest first</option>
+            </select>
+          </label>
           {canManageThread && <button onClick={()=>setThreadLocked(!view.thread.locked)} style={{ ...mkBtn("ghost"), fontSize:11 }}>{view.thread.locked?"Open Thread":"Close Thread"}</button>}
           {canManageThread && <button onClick={deleteThread} style={{ ...mkBtn("red"), fontSize:11 }}>Delete Thread</button>}
         </div>
@@ -1802,10 +1842,10 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
             );
           })}
           {forumLoading && <p style={{ color:"#8493ad", textAlign:"center", padding:"1rem" }}>Loading...</p>}
-          {hasMorePosts && <button onClick={()=>loadThreadPosts(view.thread, tPosts[tPosts.length - 1]?.post_number || tPosts.length, true)} style={{ ...mkBtn("ghost"), alignSelf:"center" }}>Load More Posts</button>}
+          {hasMorePosts && <button onClick={()=>loadThreadPosts(view.thread, Math.max(tPosts.length - 1, 0), true, replySort)} style={{ ...mkBtn("ghost"), alignSelf:"center" }}>Load More Replies</button>}
         </div>
         {profile && !view.thread.locked && (
-          <div style={card}>
+          <div className="forum-composer-card" style={card}>
             <h3 style={{ margin:"0 0 0.75rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Post Reply</h3>
             <div className="editor-tabs">
               <button onClick={()=>setReplyEditorTab("write")} style={{ ...mkBtn(replyEditorTab==="write"?"gold":"ghost"), fontSize:11 }}>Write</button>
@@ -1813,7 +1853,7 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
             </div>
             <BBCodeToolbar onInsert={appendReplyBBCode} mkBtn={mkBtn} />
             {replyEditorTab==="write"
-              ? <textarea placeholder="Write your reply. BBCode is supported. HTML is escaped except a tiny safe formatting subset." value={replyBody} onChange={e=>setReplyBody(e.target.value)} style={ta} />
+              ? <textarea className="forum-composer-textarea" placeholder="Write your reply. BBCode is supported. HTML is escaped except a tiny safe formatting subset." value={replyBody} onChange={e=>setReplyBody(e.target.value)} style={composerTextarea} />
               : <div className="post-preview"><RichText>{replyBody || "Nothing to preview yet."}</RichText></div>}
             <button onClick={submitReply} style={{ ...mkBtn(), marginTop:"0.6rem" }}>Post Reply</button>
           </div>
@@ -2122,7 +2162,7 @@ export default function App() {
         />
       )}
 
-      <main className="app-main" style={{ maxWidth:980, margin:"0 auto", padding:"1.5rem 1rem", width:"100%", flex:1 }}>
+      <main className="app-main" style={{ maxWidth:1120, margin:"0 auto", padding:"1.5rem 1rem", width:"100%", flex:1 }}>
         {loading
           ? <div style={{ textAlign:"center", padding:"5rem", color:"#8493ad", fontFamily:"var(--display)", letterSpacing:"0.2em", fontSize:13 }}>LOADING WORLD</div>
           : <>
@@ -2171,8 +2211,12 @@ export default function App() {
         .bb-center{text-align:center;}
         .bb-spoiler{border:1px solid rgba(246,193,50,0.18);border-radius:6px;padding:0.5rem 0.65rem;background:rgba(255,255,255,0.035);}
         .bb-mention{display:inline-flex;color:#f6c132;font-weight:800;}
-        .bbcode-toolbar,.editor-tabs{display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;}
-        .post-preview{min-height:120px;border:1px solid rgba(21,96,181,0.42);border-radius:6px;padding:0.85rem;background:rgba(255,255,255,0.035);}
+        .bbcode-toolbar,.editor-tabs{display:flex;gap:0.45rem;flex-wrap:wrap;align-items:center;}
+        .forum-composer-card{padding:1.45rem!important;}
+        .forum-composer-card .editor-tabs{margin-bottom:0.55rem;}
+        .forum-composer-card .bbcode-toolbar{margin-bottom:0.75rem;}
+        .forum-composer-textarea{display:block;width:100%;max-width:100%;}
+        .post-preview{min-height:180px;border:1px solid rgba(21,96,181,0.42);border-radius:6px;padding:1rem;background:rgba(255,255,255,0.035);}
         .forum-index-head{display:flex;gap:1rem;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;}
         .forum-index-head h2{margin:0 0 0.35rem;font-family:var(--display);color:#f6c132;font-size:22px;}
         .forum-index-head p{margin:0;color:#9fb4d6;font-size:13px;line-height:1.65;}
@@ -2249,6 +2293,8 @@ export default function App() {
           .forum-board-stats{grid-column:2;grid-template-columns:repeat(2,auto);justify-content:start;text-align:left;}
           .thread-card{padding:0.85rem!important;gap:0.6rem!important;align-items:flex-start!important;}
           .post-card{padding:1rem!important;}
+          .forum-composer-card{padding:1rem!important;}
+          .forum-composer-textarea{min-height:220px!important;}
           .forum-post-layout{display:block!important;}
           .post-author{width:auto!important;border-right:none!important;border-bottom:1px solid rgba(20,96,184,0.16);padding:0 0 0.85rem!important;margin-bottom:0.85rem;display:grid;grid-template-columns:auto 1fr;column-gap:0.85rem;align-items:center;}
           .post-author img,.post-author > div:first-child{grid-row:1 / span 3;}
