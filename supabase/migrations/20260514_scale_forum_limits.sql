@@ -294,6 +294,42 @@ create trigger trg_after_forum_thread_insert
 after insert on forum_threads
 for each row execute function public.after_forum_thread_insert();
 
+create or replace function public.after_forum_count_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform public.refresh_forum_counts();
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists trg_after_forum_post_delete on forum_posts;
+create trigger trg_after_forum_post_delete
+after delete on forum_posts
+for each row execute function public.after_forum_count_change();
+
+drop trigger if exists trg_after_forum_post_soft_delete on forum_posts;
+create trigger trg_after_forum_post_soft_delete
+after update of is_deleted on forum_posts
+for each row
+when (old.is_deleted is distinct from new.is_deleted)
+execute function public.after_forum_count_change();
+
+drop trigger if exists trg_after_forum_thread_delete on forum_threads;
+create trigger trg_after_forum_thread_delete
+after delete on forum_threads
+for each row execute function public.after_forum_count_change();
+
+drop trigger if exists trg_after_forum_thread_soft_delete on forum_threads;
+create trigger trg_after_forum_thread_soft_delete
+after update of is_deleted on forum_threads
+for each row
+when (old.is_deleted is distinct from new.is_deleted)
+execute function public.after_forum_count_change();
+
 create or replace function public.list_board_threads(
   p_board_slug text,
   p_cursor_is_pinned boolean default null,

@@ -1483,7 +1483,7 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
     if (error) {
       const fallback = await supabase
         .from("forum_threads")
-        .select("*, profiles(username,avatar_url)")
+        .select("*, profiles:author_id(username,avatar_url)")
         .eq("board_id", board.id)
         .order("pinned", { ascending:false })
         .order("created_at", { ascending:false })
@@ -1515,7 +1515,7 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
     if (error) {
       const fallback = await supabase
         .from("forum_posts")
-        .select("*, profiles(username,avatar_url,signature_url,bio)")
+        .select("*, profiles:author_id(username,avatar_url,signature_url,bio)")
         .eq("thread_id", thread.id)
         .order("created_at", { ascending:true })
         .range(append ? afterPostNumber : 0, append ? afterPostNumber + FORUM_PAGE_SIZE - 1 : FORUM_PAGE_SIZE - 1);
@@ -1525,7 +1525,7 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
     if (!error && !append && afterPostNumber === 0 && (!rows || rows.length === 0)) {
       const fallback = await supabase
         .from("forum_posts")
-        .select("*, profiles(username,avatar_url,signature_url,bio)")
+        .select("*, profiles:author_id(username,avatar_url,signature_url,bio)")
         .eq("thread_id", thread.id)
         .order("created_at", { ascending:true })
         .limit(FORUM_PAGE_SIZE);
@@ -1579,7 +1579,7 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
         if (!thread) {
           const fallback = await supabase
             .from("forum_threads")
-            .select("*, profiles(username,avatar_url)")
+            .select("*, profiles:author_id(username,avatar_url)")
             .eq("id", nextRoute.threadId)
             .maybeSingle();
           thread = fallback.data ? normalizeThread(fallback.data) : null;
@@ -1647,7 +1647,12 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
   const deletePost = async (postId) => {
     if (!confirm("Delete this post?")) return;
     const { error } = await supabase.from("forum_posts").delete().eq("id", postId);
-    if (error) alert(error.message); else { await loadThreadPosts(view.thread); onRefresh(); }
+    if (error) alert(error.message);
+    else {
+      await supabase.rpc("refresh_forum_counts");
+      await loadThreadPosts(view.thread);
+      onRefresh();
+    }
   };
   const setThreadLocked = async (locked) => {
     const { error } = await supabase.from("forum_threads").update({ locked }).eq("id", view.thread.id);
@@ -1658,7 +1663,11 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
     if (!confirm("Delete this thread and all posts?")) return;
     const { error } = await supabase.from("forum_threads").delete().eq("id", view.thread.id);
     if (error) alert(error.message);
-    else { pushForumRoute({ type:"boards" }); onRefresh(); }
+    else {
+      await supabase.rpc("refresh_forum_counts");
+      pushForumRoute({ type:"boards" });
+      onRefresh();
+    }
   };
 
   if (view.type==="boards") {
