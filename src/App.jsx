@@ -75,6 +75,39 @@ const mkBtn = (v="gold") => ({
   whiteSpace:"nowrap",
 });
 const card = { background:"linear-gradient(180deg,rgba(10,16,27,0.97),rgba(3,7,13,0.96))", border:"1px solid rgba(78,128,190,0.24)", borderRadius:8, padding:"1.25rem", boxShadow:"0 18px 45px rgba(0,0,0,0.35)" };
+const PAGE_PATHS = {
+  forums: "/forums",
+  nations: "/nations",
+  leaderboards: "/leaderboards",
+  news: "/news",
+  profile: "/profile",
+  rp: "/dispatches",
+  actions: "/actions",
+  wars: "/wars",
+  home: "/overview",
+  auth: "/auth",
+  admin: "/admin",
+};
+const FORUM_PAGE_SIZE = 25;
+
+const parseRoute = () => {
+  const path = window.location.pathname.replace(/\/+$/, "") || "/";
+  const [, section, sub, id] = path.split("/");
+  if (section === "forums" && sub === "board" && id) {
+    return { page: "forums", forumRoute: { type: "board", boardSlug: decodeURIComponent(id) } };
+  }
+  if (section === "forums" && sub === "thread" && id) {
+    return { page: "forums", forumRoute: { type: "thread", threadId: decodeURIComponent(id) } };
+  }
+  const page = Object.entries(PAGE_PATHS).find(([, pagePath]) => pagePath === path)?.[0] || "forums";
+  return { page, forumRoute: { type: "boards" } };
+};
+
+const writeRoute = (path) => {
+  if (window.location.pathname + window.location.hash !== path) {
+    window.history.pushState({}, "", path);
+  }
+};
 
 const Flag = ({ nation, size = 36 }) => {
   if (nation?.flag_url) {
@@ -108,11 +141,11 @@ const SetupModal = ({ onClose }) => {
           <li>Go to <a href="https://supabase.com" target="_blank" rel="noreferrer" style={{color:"#d4af37"}}>supabase.com</a>, then create a free project</li>
           <li>Settings, API, then copy <strong style={{color:"#f8fbff"}}>Project URL</strong> and <strong style={{color:"#f8fbff"}}>anon key</strong></li>
           <li>Paste into <code style={{color:"#d4af37",fontSize:11}}>VITE_SUPABASE_URL</code> / <code style={{color:"#d4af37",fontSize:11}}>VITE_SUPABASE_ANON_KEY</code> in <code style={{color:"#d4af37",fontSize:11}}>.env.local</code></li>
-          <li>SQL Editor &gt; run the files in <code style={{color:"#d4af37",fontSize:11}}>supabase/</code> in this order: <code style={{color:"#d4af37",fontSize:11}}>schema.sql</code>, <code style={{color:"#d4af37",fontSize:11}}>functions.sql</code>, <code style={{color:"#d4af37",fontSize:11}}>migrations/20260513_forum_foundation.sql</code>, <code style={{color:"#d4af37",fontSize:11}}>policies.sql</code>, then <code style={{color:"#d4af37",fontSize:11}}>seed-forum.sql</code></li>
+          <li>SQL Editor &gt; run the files in <code style={{color:"#d4af37",fontSize:11}}>supabase/</code> in this order: <code style={{color:"#d4af37",fontSize:11}}>schema.sql</code>, <code style={{color:"#d4af37",fontSize:11}}>functions.sql</code>, <code style={{color:"#d4af37",fontSize:11}}>migrations/20260513_forum_foundation.sql</code>, <code style={{color:"#d4af37",fontSize:11}}>migrations/20260514_scale_forum_limits.sql</code>, <code style={{color:"#d4af37",fontSize:11}}>policies.sql</code>, then <code style={{color:"#d4af37",fontSize:11}}>seed-forum.sql</code></li>
           <li>Authentication, Providers, then enable <strong style={{color:"#f8fbff"}}>Email</strong></li>
           <li>Storage: check the <strong style={{color:"#f8fbff"}}>flags</strong> and <strong style={{color:"#f8fbff"}}>profile-media</strong> buckets were created, or create them manually and set them to Public</li>
           <li>The SQL promotes the first registered user to <code style={{color:"#d4af37",fontSize:11}}>admin</code></li>
-          <li>Deploy to <a href="https://vercel.com" target="_blank" rel="noreferrer" style={{color:"#d4af37"}}>Vercel</a> or <a href="https://netlify.com" target="_blank" rel="noreferrer" style={{color:"#d4af37"}}>Netlify</a> (both free)</li>
+          <li>Deploy to Cloudflare with <code style={{color:"#d4af37",fontSize:11}}>npm run build</code> and <code style={{color:"#d4af37",fontSize:11}}>npx wrangler deploy</code></li>
         </ol>
         <div style={{ ...card, background:"rgba(255,255,255,0.035)", boxShadow:"none", marginTop:"1rem", padding:"0.9rem" }}>
           <div style={{ color:"#edf4ff", fontWeight:800, fontSize:13, marginBottom:"0.35rem" }}>SQL is no longer bundled into the website.</div>
@@ -1379,8 +1412,15 @@ const Leaderboards = ({ nations }) => {
   );
 };
 
-const Forums = ({ boards, threads, posts, reactions, profile, userNation, nations, isMod, onRefresh, onRequireAuth }) => {
+const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, isMod, onRefresh, onRequireAuth }) => {
   const [view, setView] = useState({ type:"boards" });
+  const [boardThreads, setBoardThreads] = useState([]);
+  const [threadPosts, setThreadPosts] = useState([]);
+  const [reactions, setReactions] = useState([]);
+  const [forumLoading, setForumLoading] = useState(false);
+  const [forumError, setForumError] = useState("");
+  const [hasMoreThreads, setHasMoreThreads] = useState(false);
+  const [hasMorePosts, setHasMorePosts] = useState(false);
   const [threadForm, setThreadForm] = useState({ title:"", body:"" });
   const [replyBody, setReplyBody] = useState("");
   const [showNewThread, setShowNewThread] = useState(false);
@@ -1391,6 +1431,176 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
   const reactEmojis = ["\u{1F44D}","\u2764\uFE0F","\u{1F602}","\u{1F525}","\u{1F440}","\u{1FAE1}"];
   const appendThreadBBCode = (open, close) => setThreadForm(current => ({ ...current, body:`${current.body}${open}${close}` }));
   const appendReplyBBCode = (open, close) => setReplyBody(current => `${current}${open}${close}`);
+  const normalizeThread = thread => ({
+    ...thread,
+    pinned: thread.pinned ?? thread.legacy_pinned ?? thread.is_pinned ?? false,
+    locked: thread.locked ?? thread.legacy_locked ?? thread.is_locked ?? false,
+    profiles: thread.profiles || { username: thread.author_username, avatar_url: thread.author_avatar_url },
+  });
+  const normalizePost = post => ({
+    ...post,
+    profiles: post.profiles || {
+      username: post.author_username,
+      avatar_url: post.author_avatar_url,
+      signature_url: post.author_signature_url,
+      bio: post.author_bio,
+    },
+    nations: post.nations || {
+      name: post.nation_name,
+      flag_url: post.nation_flag_url,
+    },
+  });
+  const pushForumRoute = nextView => {
+    setView(nextView);
+    if (nextView.type === "boards") {
+      writeRoute("/forums");
+      onRouteChange({ type:"boards" });
+    }
+    if (nextView.type === "board") {
+      writeRoute(`/forums/board/${encodeURIComponent(nextView.board.slug)}`);
+      onRouteChange({ type:"board", boardSlug:nextView.board.slug });
+    }
+    if (nextView.type === "thread") {
+      writeRoute(`/forums/thread/${encodeURIComponent(nextView.thread.id)}`);
+      onRouteChange({ type:"thread", threadId:nextView.thread.id });
+    }
+  };
+  const postLink = post => `${window.location.origin}/forums/thread/${view.thread.id}#post-${post.post_number || post.id}`;
+
+  const loadBoardThreads = useCallback(async (board, cursor = null, append = false, offset = 0) => {
+    if (!board || !supabase) return;
+    setForumLoading(true);
+    setForumError("");
+    const rpc = await supabase.rpc("list_board_threads", {
+      p_board_slug: board.slug,
+      p_cursor_is_pinned: cursor?.pinned ?? cursor?.is_pinned ?? null,
+      p_cursor_last_post_at: cursor?.last_post_at ?? null,
+      p_cursor_id: cursor?.id ?? null,
+      p_limit: FORUM_PAGE_SIZE,
+    });
+    let rows = rpc.data;
+    let error = rpc.error;
+    if (error) {
+      const fallback = await supabase
+        .from("forum_threads")
+        .select("*, profiles(username,avatar_url)")
+        .eq("board_id", board.id)
+        .order("pinned", { ascending:false })
+        .order("created_at", { ascending:false })
+        .range(append ? offset : 0, append ? offset + FORUM_PAGE_SIZE - 1 : FORUM_PAGE_SIZE - 1);
+      rows = fallback.data;
+      error = fallback.error;
+    }
+    if (error) {
+      setForumError(error.message);
+    } else {
+      const nextRows = (rows || []).map(normalizeThread);
+      setBoardThreads(current => append ? [...current, ...nextRows] : nextRows);
+      setHasMoreThreads(nextRows.length === FORUM_PAGE_SIZE);
+    }
+    setForumLoading(false);
+  }, []);
+
+  const loadThreadPosts = useCallback(async (thread, afterPostNumber = 0, append = false) => {
+    if (!thread || !supabase) return;
+    setForumLoading(true);
+    setForumError("");
+    const rpc = await supabase.rpc("list_thread_posts", {
+      p_thread_id: thread.id,
+      p_after_post_number: afterPostNumber,
+      p_limit: FORUM_PAGE_SIZE,
+    });
+    let rows = rpc.data;
+    let error = rpc.error;
+    if (error) {
+      const fallback = await supabase
+        .from("forum_posts")
+        .select("*, profiles(username,avatar_url,signature_url,bio)")
+        .eq("thread_id", thread.id)
+        .order("created_at", { ascending:true })
+        .range(append ? afterPostNumber : 0, append ? afterPostNumber + FORUM_PAGE_SIZE - 1 : FORUM_PAGE_SIZE - 1);
+      rows = fallback.data;
+      error = fallback.error;
+    }
+    if (!error && !append && afterPostNumber === 0 && (!rows || rows.length === 0)) {
+      const fallback = await supabase
+        .from("forum_posts")
+        .select("*, profiles(username,avatar_url,signature_url,bio)")
+        .eq("thread_id", thread.id)
+        .order("created_at", { ascending:true })
+        .limit(FORUM_PAGE_SIZE);
+      rows = fallback.data;
+      error = fallback.error;
+    }
+    if (error) {
+      setForumError(error.message);
+      setForumLoading(false);
+      return;
+    }
+    const nextRows = (rows || []).map(normalizePost);
+    setThreadPosts(current => append ? [...current, ...nextRows] : nextRows);
+    setHasMorePosts(nextRows.length === FORUM_PAGE_SIZE);
+    const postIds = nextRows.map(post => post.id);
+    if (postIds.length) {
+      const reactionResult = await supabase.from("forum_reactions").select("*").in("post_id", postIds);
+      if (!reactionResult.error) {
+        const nextReactions = reactionResult.data || [];
+        setReactions(current => append
+          ? [...current.filter(reaction => !postIds.includes(reaction.post_id)), ...nextReactions]
+          : nextReactions);
+      }
+    } else {
+      if (!append) setReactions([]);
+    }
+    setForumLoading(false);
+  }, []);
+
+  useEffect(() => {
+    const nextRoute = route || { type:"boards" };
+    if (nextRoute.type === "boards") {
+      setView({ type:"boards" });
+      return;
+    }
+    if (nextRoute.type === "board") {
+      const board = boards.find(item => item.slug === nextRoute.boardSlug);
+      if (!board) return;
+      setView({ type:"board", board });
+      setBoardThreads([]);
+      loadBoardThreads(board);
+    }
+    if (nextRoute.type === "thread") {
+      const loadThread = async () => {
+        const result = await supabase
+          .from("forum_thread_summaries")
+          .select("*")
+          .eq("id", nextRoute.threadId)
+          .maybeSingle();
+        let thread = result.data ? normalizeThread(result.data) : null;
+        if (!thread) {
+          const fallback = await supabase
+            .from("forum_threads")
+            .select("*, profiles(username,avatar_url)")
+            .eq("id", nextRoute.threadId)
+            .maybeSingle();
+          thread = fallback.data ? normalizeThread(fallback.data) : null;
+        }
+        if (!thread) {
+          setForumError("Thread not found.");
+          return;
+        }
+        setView({ type:"thread", thread });
+        setThreadPosts([]);
+        loadThreadPosts(thread);
+      };
+      loadThread();
+    }
+  }, [route, boards, loadBoardThreads, loadThreadPosts]);
+
+  useEffect(() => {
+    if (view.type !== "thread" || !threadPosts.length || !window.location.hash) return;
+    const target = document.querySelector(window.location.hash);
+    if (target) target.scrollIntoView({ block:"start" });
+  }, [view.type, threadPosts]);
 
   const submitThread = async () => {
     if (!threadForm.title.trim()||!threadForm.body.trim()||view.type!=="board") return;
@@ -1404,7 +1614,9 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
       alert(`Opening post failed: ${postResult.error.message}`);
       return;
     }
+    const createdThread = normalizeThread({ ...data, reply_count:0, last_post_at:data.created_at });
     setThreadForm({title:"",body:""}); setShowNewThread(false); onRefresh();
+    pushForumRoute({ type:"thread", thread:createdThread });
   };
 
   const submitReply = async () => {
@@ -1414,7 +1626,9 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
       alert(`Reply failed: ${error.message}`);
       return;
     }
-    setReplyBody(""); onRefresh();
+    setReplyBody("");
+    onRefresh();
+    await loadThreadPosts(view.thread);
   };
   const toggleReaction = async (postId, emoji) => {
     if (!profile) return onRequireAuth();
@@ -1422,17 +1636,18 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
     const result = existing
       ? await supabase.from("forum_reactions").delete().eq("id", existing.id)
       : await supabase.from("forum_reactions").insert({ post_id:postId, user_id:profile.id, emoji });
-    if (result.error) alert(result.error.message); else onRefresh();
+    if (result.error) alert(result.error.message);
+    else await loadThreadPosts(view.thread);
   };
   const savePost = async (postId) => {
     const { error } = await supabase.from("forum_posts").update({ body:editBody }).eq("id", postId);
     if (error) alert(error.message);
-    else { setEditingPost(null); setEditBody(""); onRefresh(); }
+    else { setEditingPost(null); setEditBody(""); await loadThreadPosts(view.thread); onRefresh(); }
   };
   const deletePost = async (postId) => {
     if (!confirm("Delete this post?")) return;
     const { error } = await supabase.from("forum_posts").delete().eq("id", postId);
-    if (error) alert(error.message); else onRefresh();
+    if (error) alert(error.message); else { await loadThreadPosts(view.thread); onRefresh(); }
   };
   const setThreadLocked = async (locked) => {
     const { error } = await supabase.from("forum_threads").update({ locked }).eq("id", view.thread.id);
@@ -1443,18 +1658,16 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
     if (!confirm("Delete this thread and all posts?")) return;
     const { error } = await supabase.from("forum_threads").delete().eq("id", view.thread.id);
     if (error) alert(error.message);
-    else { setView({ type:"boards" }); onRefresh(); }
+    else { pushForumRoute({ type:"boards" }); onRefresh(); }
   };
 
   if (view.type==="boards") {
     return (
       <ForumIndex
         boards={boards}
-        threads={threads}
-        posts={posts}
         profile={profile}
         onRequireAuth={onRequireAuth}
-        onSelectBoard={board=>setView({type:"board",board})}
+        onSelectBoard={board=>pushForumRoute({type:"board",board})}
         card={card}
         mkBtn={mkBtn}
         timeAgo={timeAgo}
@@ -1463,12 +1676,12 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
   }
 
   if (view.type==="board") {
-    const bThreads = threads.filter(t=>t.board_id===view.board.id);
+    const bThreads = boardThreads;
     const pinned = bThreads.filter(t=>t.pinned);
     const regular = bThreads.filter(t=>!t.pinned);
     return (
       <div>
-        <button onClick={()=>setView({type:"boards"})} style={{ ...mkBtn("ghost"), marginBottom:"1rem", fontSize:12 }}>All Boards</button>
+        <button onClick={()=>pushForumRoute({type:"boards"})} style={{ ...mkBtn("ghost"), marginBottom:"1rem", fontSize:12 }}>All Boards</button>
         <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap" }}>
           <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:20, flex:1 }}>{view.board.icon || BOARD_ICONS[view.board.slug] || "*"} {view.board.name}</h2>
           {profile && <button onClick={()=>setShowNewThread(!showNewThread)} style={mkBtn()}>+ New Thread</button>}
@@ -1496,27 +1709,30 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
         )}
         {pinned.length>0 && <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.06em", textTransform:"uppercase", marginBottom:"0.4rem" }}>Pinned</div>}
         <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
+          {forumError && <p style={{ color:"#ff9d9d", textAlign:"center", padding:"1rem" }}>{forumError}</p>}
           {[...pinned,...regular].map(t=>{
-            const tPosts = posts.filter(p=>p.thread_id===t.id);
+            const replyCount = Number(t.reply_count || 0);
             const authorNation = nations.find(n=>n.id===t.nation_id);
             return (
               <div className="thread-card" key={t.id} style={{ ...card, cursor:"pointer", display:"flex", gap:"0.75rem", alignItems:"center", transition:"border-color 0.18s", padding:"0.9rem 1.25rem" }}
                 onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(212,175,55,0.38)"}
                 onMouseLeave={e=>e.currentTarget.style.borderColor=t.pinned?"rgba(212,175,55,0.2)":"rgba(212,175,55,0.1)"}
-                onClick={()=>setView({type:"thread",thread:t})}>
+                onClick={()=>pushForumRoute({type:"thread",thread:t})}>
                 {authorNation ? <Flag nation={authorNation} size={22} /> : <div style={{ width:22, height:14, background:"rgba(255,255,255,0.04)", borderRadius:2 }} />}
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:13, color:"#edf4ff", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.pinned&&"Pinned: "}{t.title}</div>
-                  <div style={{ fontSize:11, color:"#8fa0bd" }}>{authorNation?.name||t.profiles?.username||"?"} - {timeAgo(t.created_at)}</div>
+                  <div style={{ fontSize:11, color:"#8fa0bd" }}>{authorNation?.name||t.profiles?.username||t.author_username||"?"} - {timeAgo(t.last_post_at || t.created_at)}</div>
                 </div>
                 <div style={{ textAlign:"right", flexShrink:0 }}>
-                  <div style={{ fontFamily:"var(--display)", fontSize:16, color:"#8493ad" }}>{tPosts.length}</div>
+                  <div style={{ fontFamily:"var(--display)", fontSize:16, color:"#8493ad" }}>{replyCount}</div>
                   <div style={{ fontSize:10, color:"#8493ad", letterSpacing:"0.04em" }}>replies</div>
                 </div>
               </div>
             );
           })}
-          {bThreads.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No threads yet.</p>}
+          {!forumLoading && bThreads.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No threads yet.</p>}
+          {forumLoading && <p style={{ color:"#8493ad", textAlign:"center", padding:"1rem" }}>Loading...</p>}
+          {hasMoreThreads && <button onClick={()=>loadBoardThreads(view.board, bThreads[bThreads.length - 1], true, bThreads.length)} style={{ ...mkBtn("ghost"), alignSelf:"center" }}>Load More Threads</button>}
         </div>
       </div>
     );
@@ -1524,23 +1740,24 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
 
   if (view.type==="thread") {
     const board = boards.find(b=>b.id===view.thread.board_id);
-    const tPosts = posts.filter(p=>p.thread_id===view.thread.id);
+    const tPosts = threadPosts;
     const canManageThread = isMod || view.thread.author_id === profile?.id;
     return (
       <div>
-        <button onClick={()=>setView({type:"board",board})} style={{ ...mkBtn("ghost"), marginBottom:"1rem", fontSize:12 }}>{board?.name}</button>
+        <button onClick={()=>board ? pushForumRoute({type:"board",board}) : pushForumRoute({type:"boards"})} style={{ ...mkBtn("ghost"), marginBottom:"1rem", fontSize:12 }}>{board?.name || "All Boards"}</button>
         <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap", marginBottom:"1.25rem" }}>
           <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:18, lineHeight:1.4, flex:1 }}>{view.thread.title}</h2>
           {canManageThread && <button onClick={()=>setThreadLocked(!view.thread.locked)} style={{ ...mkBtn("ghost"), fontSize:11 }}>{view.thread.locked?"Open Thread":"Close Thread"}</button>}
           {canManageThread && <button onClick={deleteThread} style={{ ...mkBtn("red"), fontSize:11 }}>Delete Thread</button>}
         </div>
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem", marginBottom:"1.25rem" }}>
+          {forumError && <p style={{ color:"#ff9d9d", textAlign:"center", padding:"1rem" }}>{forumError}</p>}
           {tPosts.map((p,i)=>{
             const pNation = nations.find(n=>n.id===p.nation_id);
             const authorAvatar = p.profiles?.avatar_url;
             const authorName = p.profiles?.username || "Unknown";
             return (
-              <div className="post-card forum-post-layout" key={p.id} style={{ ...card, borderLeft:i===0?"2px solid rgba(212,175,55,0.3)":undefined }}>
+              <div id={`post-${p.post_number || p.id}`} className="post-card forum-post-layout" key={p.id} style={{ ...card, borderLeft:i===0?"2px solid rgba(212,175,55,0.3)":undefined, scrollMarginTop:70 }}>
                 <aside className="post-author" style={{ width:150, flexShrink:0 }}>
                   {authorAvatar
                     ? <img src={authorAvatar} alt="" style={{ width:96, height:96, borderRadius:"50%", objectFit:"cover", border:"1px solid rgba(246,193,50,0.2)" }} />
@@ -1548,7 +1765,7 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
                   <div style={{ marginTop:"0.65rem", fontSize:13, color:"#d4af37", fontWeight:800, lineHeight:1.35 }}>@{authorName}</div>
                   {pNation && <div style={{ marginTop:"0.25rem", fontSize:11, color:"#8fa0bd", lineHeight:1.35 }}>{pNation.name}</div>}
                   {i===0 && <div style={{ display:"inline-block", marginTop:"0.45rem", fontSize:10, color:"#d4af37", border:"1px solid rgba(212,175,55,0.25)", borderRadius:3, padding:"1px 5px" }}>OP</div>}
-                  <div style={{ marginTop:"0.45rem", fontSize:11, color:"#8fa0bd" }}>{timeAgo(p.created_at)}</div>
+                  <a href={`/forums/thread/${view.thread.id}#post-${p.post_number || p.id}`} style={{ display:"inline-block", marginTop:"0.45rem", fontSize:11, color:"#8fa0bd", textDecoration:"none" }}>#{p.post_number || i + 1} - {timeAgo(p.created_at)}</a>
                 </aside>
                 <div className="post-body" style={{ flex:1, minWidth:0 }}>
                   {editingPost===p.id ? (
@@ -1569,11 +1786,14 @@ const Forums = ({ boards, threads, posts, reactions, profile, userNation, nation
                     })}
                     {(isMod || p.author_id===profile?.id) && <button onClick={()=>{setEditingPost(p.id);setEditBody(p.body);}} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Edit</button>}
                     {(isMod || p.author_id===profile?.id) && <button onClick={()=>deletePost(p.id)} style={{ ...mkBtn("red"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Delete</button>}
+                    <button onClick={()=>navigator.clipboard?.writeText(postLink(p))} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Copy Link</button>
                   </div>
                 </div>
               </div>
             );
           })}
+          {forumLoading && <p style={{ color:"#8493ad", textAlign:"center", padding:"1rem" }}>Loading...</p>}
+          {hasMorePosts && <button onClick={()=>loadThreadPosts(view.thread, tPosts[tPosts.length - 1]?.post_number || tPosts.length, true)} style={{ ...mkBtn("ghost"), alignSelf:"center" }}>Load More Posts</button>}
         </div>
         {profile && !view.thread.locked && (
           <div style={card}>
@@ -1724,9 +1944,11 @@ const StaffTools = ({ isAdmin, page, navigate, counts }) => (
 );
 
 export default function App() {
+  const initialRoute = parseRoute();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [page, setPage] = useState("forums");
+  const [page, setPage] = useState(initialRoute.page);
+  const [forumRoute, setForumRoute] = useState(initialRoute.forumRoute);
   const [menuOpen, setMenuOpen] = useState(false);
   const [data, setData] = useState({ nations:[], profiles:[], news:[], posts:[], actions:[], wars:[], warParticipants:[], alliances:[], allianceMembers:[], boards:[], threads:[], forumPosts:[], forumReactions:[] });
   const [loading, setLoading] = useState(true);
@@ -1751,25 +1973,20 @@ export default function App() {
       }
       return retry.data || [];
     };
-    const [nations, profiles, news, posts, actions, wars, warParticipants, alliances, allianceMembers, boards, threads, forumPosts, forumReactions] = await Promise.all([
+    const [nations, profiles, news, posts, actions, wars, warParticipants, alliances, allianceMembers, boards] = await Promise.all([
       run("Nations", supabase.from("nations").select("*, owner:owner_id(username)").order("name"),
         () => supabase.from("nations").select("*").order("name")),
-      supabase.from("profiles").select("*").order("username"),
-      supabase.from("news").select("*").order("created_at",{ascending:false}),
+      supabase.from("profiles").select("id,username,role,nation_id,avatar_url").order("username").limit(1000),
+      supabase.from("news").select("*").order("pinned",{ascending:false}).order("created_at",{ascending:false}).limit(25),
       supabase.from("rp_posts").select("*, nations(name,flag_url), target_nation_id").order("created_at",{ascending:false}).limit(100),
-      supabase.from("canon_actions").select("*, nations(name,flag_url), action_updates(*, profiles(username))").order("created_at",{ascending:false}),
-      supabase.from("wars").select("*, aggressor:aggressor_id(name,flag_url), defender:defender_id(name,flag_url)").order("started_at",{ascending:false}),
-      run("War participants", supabase.from("war_participants").select("*").order("created_at"),
+      supabase.from("canon_actions").select("*, nations(name,flag_url), action_updates(*, profiles(username))").order("created_at",{ascending:false}).limit(50),
+      supabase.from("wars").select("*, aggressor:aggressor_id(name,flag_url), defender:defender_id(name,flag_url)").order("started_at",{ascending:false}).limit(50),
+      run("War participants", supabase.from("war_participants").select("*").order("created_at").limit(500),
         error => /could not find|does not exist|schema cache/i.test(error.message || "") ? Promise.resolve({ data:[], error:null }) : Promise.resolve({ data:null, error })),
-      supabase.from("alliances").select("*").order("created_at",{ascending:false}),
-      supabase.from("alliance_members").select("*"),
-      supabase.from("forum_boards").select("*").order("sort_order"),
-      run("Forum threads", supabase.from("forum_threads").select("*, profiles(username,avatar_url)").order("created_at",{ascending:false}),
-        error => isMissingOptionalProfileSchema(error) ? supabase.from("forum_threads").select("*, profiles(username)").order("created_at",{ascending:false}) : Promise.resolve({ data:null, error })),
-      run("Forum posts", supabase.from("forum_posts").select("*, profiles(username,avatar_url,signature_url,bio)").order("created_at",{ascending:true}),
-        error => isMissingOptionalProfileSchema(error) ? supabase.from("forum_posts").select("*, profiles(username)").order("created_at",{ascending:true}) : Promise.resolve({ data:null, error })),
-      run("Forum reactions", supabase.from("forum_reactions").select("*").order("created_at"),
-        error => /could not find|does not exist|schema cache/i.test(error.message || "") ? Promise.resolve({ data:[], error:null }) : Promise.resolve({ data:null, error })),
+      supabase.from("alliances").select("*").order("created_at",{ascending:false}).limit(100),
+      supabase.from("alliance_members").select("*").limit(1000),
+      run("Forum boards", supabase.from("forum_board_summaries").select("*").order("sort_order"),
+        () => supabase.from("forum_boards").select("*").order("sort_order")),
     ]);
     const unwrap = result => Array.isArray(result) ? result : (result.data || []);
     const plainWars = unwrap(wars);
@@ -1778,7 +1995,7 @@ export default function App() {
       ...w,
       war_participants: plainWarParticipants.filter(p => p.war_id === w.id),
     }));
-    setData({ nations, profiles:unwrap(profiles), news:unwrap(news), posts:unwrap(posts), actions:unwrap(actions), wars:warsWithParticipants, warParticipants:plainWarParticipants, alliances:unwrap(alliances), allianceMembers:unwrap(allianceMembers), boards:unwrap(boards), threads, forumPosts, forumReactions });
+    setData({ nations, profiles:unwrap(profiles), news:unwrap(news), posts:unwrap(posts), actions:unwrap(actions), wars:warsWithParticipants, warParticipants:plainWarParticipants, alliances:unwrap(alliances), allianceMembers:unwrap(allianceMembers), boards:unwrap(boards), threads:[], forumPosts:[], forumReactions:[] });
     setDbIssues(issues);
     setLoading(false);
   }, []);
@@ -1809,6 +2026,17 @@ export default function App() {
     });
   }, [fetchAll]);
 
+  useEffect(() => {
+    const handlePopState = () => {
+      const nextRoute = parseRoute();
+      setPage(nextRoute.page);
+      setForumRoute(nextRoute.forumRoute);
+      setMenuOpen(false);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   if (!SUPABASE_CONFIGURED) return <SetupModal onClose={()=>{}} />;
 
   const userNation = profile?.nation_id ? data.nations.find(n=>n.id===profile.nation_id) : null;
@@ -1829,7 +2057,12 @@ export default function App() {
     ] : []),
   ];
 
-  const navigate = (id) => { setPage(id); setMenuOpen(false); };
+  const navigate = (id) => {
+    setPage(id);
+    setForumRoute({ type:"boards" });
+    setMenuOpen(false);
+    writeRoute(PAGE_PATHS[id] || "/forums");
+  };
   const updateProfile = (nextProfile) => {
     setProfile(nextProfile);
     setData(prev => ({
@@ -1892,8 +2125,8 @@ export default function App() {
               {page==="news"         && <NewsPage news={data.news} profile={profile} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="leaderboards" && <Leaderboards nations={data.nations} />}
               {page==="profile" && user && profile && <ProfilePage user={user} profile={profile} userNation={userNation} onProfileUpdate={updateProfile} />}
-              {page==="forums"       && <Forums boards={data.boards} threads={data.threads} posts={data.forumPosts} reactions={data.forumReactions} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} onRequireAuth={()=>navigate("auth")} />}
-              {page==="auth"         && <Auth setupRequired={setupRequired} onAuth={(u,p)=>{setUser(u);if(p)setProfile(p);else ensureProfile(u).then(next=>{if(next)setProfile(next);}).catch(console.error);fetchAll();setPage("forums");}} />}
+              {page==="forums"       && <Forums boards={data.boards} route={forumRoute} onRouteChange={setForumRoute} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} onRequireAuth={()=>navigate("auth")} />}
+              {page==="auth"         && <Auth setupRequired={setupRequired} onAuth={(u,p)=>{setUser(u);if(p)setProfile(p);else ensureProfile(u).then(next=>{if(next)setProfile(next);}).catch(console.error);fetchAll();setPage("forums");setForumRoute({ type:"boards" });writeRoute("/forums");}} />}
               {page==="admin" && isLoreTeam && <Admin nations={data.nations} profiles={data.profiles} onRefresh={fetchAll} isAdmin={isAdmin} />}
             </>
         }

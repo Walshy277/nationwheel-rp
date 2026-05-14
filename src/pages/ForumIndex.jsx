@@ -1,18 +1,6 @@
 import { useMemo, useState } from "react";
 import { BOARD_ICONS, FORUM_CATEGORIES, boardMeta, boardStatusLabel, boardVisibility } from "../lib/forumUtils";
 
-const countPostsForBoard = (board, threads, posts) => {
-  const ids = new Set(threads.filter(thread => thread.board_id === board.id).map(thread => thread.id));
-  return posts.filter(post => ids.has(post.thread_id)).length;
-};
-
-const lastPostForBoard = (board, threads, posts) => {
-  const ids = new Set(threads.filter(thread => thread.board_id === board.id).map(thread => thread.id));
-  return posts
-    .filter(post => ids.has(post.thread_id))
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-};
-
 const visibilityTone = visibility => {
   if (visibility === "staff") return { color: "#8bd3ff", border: "rgba(52,152,219,0.38)" };
   if (visibility === "archived") return { color: "#c4cad5", border: "rgba(196,202,213,0.25)" };
@@ -21,7 +9,7 @@ const visibilityTone = visibility => {
   return { color: "#86efac", border: "rgba(46,204,113,0.32)" };
 };
 
-const ForumIndex = ({ boards, threads, posts, profile, onSelectBoard, onRequireAuth, card, mkBtn, timeAgo }) => {
+const ForumIndex = ({ boards, profile, onSelectBoard, onRequireAuth, card, mkBtn, timeAgo }) => {
   const [collapsed, setCollapsed] = useState({});
 
   const grouped = useMemo(() => {
@@ -48,7 +36,7 @@ const ForumIndex = ({ boards, threads, posts, profile, onSelectBoard, onRequireA
       <div className="forum-categories">
         {grouped.map(category => {
           const isCollapsed = collapsed[category.slug];
-          const unread = category.boards.some(board => threads.some(thread => thread.board_id === board.id));
+          const unread = category.boards.some(board => Number(board.thread_count || 0) > 0);
           return (
             <section key={category.slug} className="forum-category" style={card}>
               <button
@@ -68,12 +56,10 @@ const ForumIndex = ({ boards, threads, posts, profile, onSelectBoard, onRequireA
                   {category.boards.map(board => {
                     const visibility = boardVisibility(board);
                     const tone = visibilityTone(visibility);
-                    const bThreads = threads.filter(thread => thread.board_id === board.id);
-                    const postCount = countPostsForBoard(board, threads, posts);
-                    const lastPost = lastPostForBoard(board, threads, posts);
-                    const latestThread = lastPost
-                      ? threads.find(thread => thread.id === lastPost.thread_id)
-                      : bThreads[0];
+                    const threadCount = Number(board.thread_count || 0);
+                    const postCount = Number(board.post_count || 0);
+                    const latestThreadTitle = board.last_thread_title || board.last_thread?.title;
+                    const lastPostAuthor = board.last_post_author_username || board.last_post_author?.username;
                     const meta = boardMeta(board);
                     return (
                       <button key={board.id} className="forum-board-row" onClick={() => onSelectBoard(board)}>
@@ -84,14 +70,14 @@ const ForumIndex = ({ boards, threads, posts, profile, onSelectBoard, onRequireA
                             <span className="forum-status-badge" style={{ color: tone.color, borderColor: tone.border }}>{boardStatusLabel(visibility)}</span>
                           </span>
                           <span className="forum-board-description">{board.description || meta.desc}</span>
-                          {latestThread && (
+                          {latestThreadTitle && (
                             <span className="forum-board-last">
-                              Last: {latestThread.title} {lastPost?.profiles?.username ? `by @${lastPost.profiles.username}` : ""} - {timeAgo(lastPost?.created_at || latestThread.created_at)}
+                              Last: {latestThreadTitle} {lastPostAuthor ? `by @${lastPostAuthor}` : ""} - {timeAgo(board.last_post_at)}
                             </span>
                           )}
                         </span>
                         <span className="forum-board-stats">
-                          <span><strong>{bThreads.length}</strong> threads</span>
+                          <span><strong>{threadCount}</strong> threads</span>
                           <span><strong>{postCount}</strong> posts</span>
                         </span>
                       </button>
@@ -108,4 +94,3 @@ const ForumIndex = ({ boards, threads, posts, profile, onSelectBoard, onRequireA
 };
 
 export default ForumIndex;
-

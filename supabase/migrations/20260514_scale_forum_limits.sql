@@ -210,6 +210,18 @@ create trigger trg_assign_post_number
 before insert on forum_posts
 for each row execute function public.assign_post_number();
 
+with numbered_posts as (
+  select
+    id,
+    row_number() over (partition by thread_id order by created_at asc, id asc)::int as next_post_number
+  from forum_posts
+  where post_number is null
+)
+update forum_posts p
+set post_number = numbered_posts.next_post_number
+from numbered_posts
+where p.id = numbered_posts.id;
+
 create or replace function public.after_forum_post_insert()
 returns trigger
 language plpgsql
