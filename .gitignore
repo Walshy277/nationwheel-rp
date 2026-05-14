@@ -12,3 +12,9 @@ mobile-public.png
 code.jsx
 code.jsx.txt
 /nationwheel_logo.jpg
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
