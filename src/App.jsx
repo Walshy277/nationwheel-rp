@@ -2375,8 +2375,6 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
                       )}
                     </div>
                   )}
-  }}
-/>}
                   <div style={{
   display: "flex",
   flexWrap: "wrap",
