@@ -2198,205 +2198,127 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
           {canManageThread && <button onClick={()=>setThreadLocked(!view.thread.locked)} style={{ ...mkBtn("ghost"), fontSize:11 }}>{view.thread.locked?"Open Thread":"Close Thread"}</button>}
           {canManageThread && <button onClick={deleteThread} style={{ ...mkBtn("red"), fontSize:11 }}>Delete Thread</button>}
         </div>
-        <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem", marginBottom:"1.25rem" }}>
+        <div style={{ display:"flex", flexDirection:"column", gap:"1.5rem", marginBottom:"1.25rem" }}>
           {forumError && <p style={{ color:"#ff9d9d", textAlign:"center", padding:"1rem" }}>{forumError}</p>}
 
-          {tPosts.map((p,i)=>{
-            const pNation = nations.find(n=>n.id===p.nation_id);
-            const authorAvatar = p.profiles?.avatar_url;
-            const authorName = p.profiles?.username || "Unknown";
-            const canonStatus = p.canon_status || null;
+          {tPosts.length > 0 && (() => {
+            const original = tPosts[0];
+            const replies = tPosts.slice(1);
+            const origNation = nations.find(n=>n.id===original.nation_id);
+            const origAvatar = original.profiles?.avatar_url;
+            const origName = original.profiles?.username || "Unknown";
+            const origCanon = original.canon_status || null;
 
             return (
-              <div
-                id={`post-${p.post_number || p.id}`}
-                className="post-card forum-post-layout"
-                key={p.id}
-                style={{
-                  ...card,
-                  borderLeft: i === 0
-                    ? "3px solid #d4af37"
-                    : "1px solid rgba(255,255,255,0.06)",
-                  background: i === 0
-                    ? "rgba(212,175,55,0.04)"
-                    : "rgba(255,255,255,0.02)",
-                  padding: "1.25rem",
-                  scrollMarginTop: 70
-                }}
-              >
-                <aside className="post-author" style={{ width:150, flexShrink:0 }}>
-                  {authorAvatar
-                    ? (
-                      <img
-                        src={authorAvatar}
-                        alt=""
-                        style={{
-                          width:96,
-                          height:96,
-                          borderRadius:"50%",
-                          objectFit:"cover",
-                          border:"1px solid rgba(246,193,50,0.2)"
-                        }}
-                      />
-                    )
-                    : pNation
-                      ? <Flag nation={pNation} size={96} />
-                      : (
-                        <div
-                          style={{
-                            width:96,
-                            height:96,
-                            background:"rgba(255,255,255,0.04)",
-                            borderRadius:"50%"
-                          }}
-                        />
-                      )
-                  }
-
-                  <ProfileButton
-                    profile={p.profiles}
-                    onViewProfile={onViewProfile}
-                    style={{
-                      marginTop:"0.65rem",
-                      fontSize:13,
-                      color:"#d4af37",
-                      fontWeight:800,
-                      lineHeight:1.35,
-                      display:"block"
-                    }}
-                  >
-                    {authorName}
-                  </ProfileButton>
-
-                  {pNation && (
-                    <div style={{ marginTop:"0.25rem", fontSize:11, color:"#8fa0bd", lineHeight:1.35 }}>
-                      {pNation.name}
-                    </div>
-                  )}
-
-                  {i === 0 && (
-                    <div
-                      style={{
-                        display: "inline-block",
-                        marginTop: "0.5rem",
-                        fontSize: 10,
-                        fontWeight: 900,
-                        color: "#111",
-                        background: "#d4af37",
-                        borderRadius: 3,
-                        padding: "2px 6px",
-                        letterSpacing: "0.06em"
-                      }}
-                    >
-                      ORIGINAL POST
-                    </div>
-                  )}
-
-                  <a
-                    href={`/forums/thread/${view.thread.id}#post-${p.post_number || p.id}`}
-                    style={{
-                      display:"inline-block",
-                      marginTop:"0.45rem",
-                      fontSize:11,
-                      color:"#8fa0bd",
-                      textDecoration:"none"
-                    }}
-                  >
-                    #{p.post_number || i + 1} - {timeAgo(p.created_at)}
-                  </a>
-                </aside>
-
-                <div className="post-body" style={{ flex:1, minWidth:0 }}>
-                  {canonStatus && (
-                    <div
-                      style={{
-                        display:"inline-flex",
-                        marginBottom:"0.75rem",
-                        color: canonStatus === "canon" ? "#111" : "#f5f8ff",
-                        background: canonStatus === "canon"
-                          ? "#f6c132"
-                          : "rgba(231,76,60,0.2)",
-                        border: `1px solid ${
-                          canonStatus === "canon"
-                            ? "rgba(246,193,50,0.35)"
-                            : "rgba(231,76,60,0.35)"
-                        }`,
-                        borderRadius:4,
-                        padding:"3px 8px",
-                        fontSize:10,
-                        fontWeight:900,
-                        letterSpacing:"0.08em",
-                        textTransform:"uppercase"
-                      }}
-                    >
-                      {canonStatus === "canon" ? "Canon" : "Non-Canon"}
-                    </div>
-                  )}
-
-                  {editingPost === p.id ? (
-                    <div>
-                      <textarea
-                        value={editBody}
-                        onChange={e => setEditBody(e.target.value)}
-                        style={{ ...ta, minHeight:120 }}
-                      />
-
-                      <div style={{ display:"flex", gap:"0.4rem", marginTop:"0.5rem" }}>
-                        <button onClick={() => savePost(p.id)} style={{ ...mkBtn(), fontSize:11 }}>
-                          Save
-                        </button>
-                        <button onClick={() => setEditingPost(null)} style={{ ...mkBtn("ghost"), fontSize:11 }}>
-                          Cancel
-                        </button>
+              <>
+                <div style={{ ...card, border:"1px solid rgba(212,175,55,0.32)", background:"rgba(212,175,55,0.06)", padding:"1.5rem", scrollMarginTop:70 }} id={`post-${original.post_number || original.id}`}>
+                  <div className="forum-post-layout" style={{ display:"flex", gap:"1.25rem" }}>
+                    <aside className="post-author" style={{ width:150, flexShrink:0 }}>
+                      {origAvatar
+                        ? <img src={origAvatar} alt="" style={{ width:96, height:96, borderRadius:"50%", objectFit:"cover", border:"1px solid rgba(246,193,50,0.2)" }} />
+                        : origNation
+                          ? <Flag nation={origNation} size={96} />
+                          : <div style={{ width:96, height:96, background:"rgba(255,255,255,0.04)", borderRadius:"50%" }} />
+                      }
+                      <ProfileButton profile={original.profiles} onViewProfile={onViewProfile} style={{ marginTop:"0.65rem", fontSize:13, color:"#d4af37", fontWeight:800, lineHeight:1.35, display:"block" }}>{origName}</ProfileButton>
+                      {origNation && <div style={{ marginTop:"0.25rem", fontSize:11, color:"#8fa0bd", lineHeight:1.35 }}>{origNation.name}</div>}
+                      <div style={{ display:"inline-block", marginTop:"0.5rem", fontSize:10, fontWeight:900, color:"#111", background:"#d4af37", borderRadius:3, padding:"2px 6px", letterSpacing:"0.06em" }}>ORIGINAL POST</div>
+                      <a href={`/forums/thread/${view.thread.id}#post-${original.post_number || original.id}`} style={{ display:"inline-block", marginTop:"0.45rem", fontSize:11, color:"#8fa0bd", textDecoration:"none" }}>#{original.post_number || 1} - {timeAgo(original.created_at)}</a>
+                    </aside>
+                    <div className="post-body" style={{ flex:1, minWidth:0 }}>
+                      {origCanon && <div style={{ display:"inline-flex", marginBottom:"0.75rem", color:origCanon==="canon"?"#111":"#f5f8ff", background:origCanon==="canon"?"#f6c132":"rgba(231,76,60,0.2)", border:`1px solid ${origCanon==="canon"?"rgba(246,193,50,0.35)":"rgba(231,76,60,0.35)"}`, borderRadius:4, padding:"3px 8px", fontSize:10, fontWeight:900, letterSpacing:"0.08em", textTransform:"uppercase" }}>{origCanon==="canon"?"Canon":"Non-Canon"}</div>}
+                      <RichText>{original.body}</RichText>
+                      {original.profiles?.signature_url && <img className="post-signature" src={original.profiles.signature_url} alt="" style={{ marginTop:"0.75rem", maxWidth:"100%", opacity:0.9 }} />}
+                      <div style={{ display:"flex", flexWrap:"wrap", gap:"0.6rem", marginTop:"0.9rem", alignItems:"center" }}>
+                        {reactEmojis.map(e=>{
+                          const count = reactions.filter(r=>r.post_id===original.id && r.emoji===e).length;
+                          const active = reactions.some(r=>r.post_id===original.id && r.user_id===profile?.id && r.emoji===e);
+                          return <button key={e} onClick={()=>toggleReaction(original.id,e)} style={{ ...mkBtn(active?"gold":"ghost"), minHeight:28, padding:"3px 7px", fontSize:12 }}>{e}{count>0?` ${count}`:""}</button>;
+                        })}
+                        {(isMod || original.author_id===profile?.id) && <button onClick={()=>{setEditingPost(original.id);setEditBody(original.body);}} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Edit</button>}
+                        {(isMod || original.author_id===profile?.id) && <button onClick={()=>deletePost(original.id)} style={{ ...mkBtn("red"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Delete</button>}
+                        {isMod && <button onClick={()=>setPostCanonStatus(original.id, "canon")} style={{ ...mkBtn(origCanon==="canon"?"gold":"ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Canon</button>}
+                        {isMod && <button onClick={()=>setPostCanonStatus(original.id, "non_canon")} style={{ ...mkBtn(origCanon==="non_canon"?"red":"ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Non-Canon</button>}
+                        {isMod && origCanon && <button onClick={()=>setPostCanonStatus(original.id, null)} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Clear Tag</button>}
+                        <button onClick={()=>navigator.clipboard?.writeText(postLink(original))} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Copy Link</button>
                       </div>
                     </div>
-                  ) : (
-                    <div
-                      style={{
-                        fontSize: "14px",
-                        lineHeight: "1.7",
-                        color: "#d6deeb",
-                        maxWidth: "720px",
-                        marginTop: "0.5rem"
-                      }}
-                    >
-                      {p.profiles?.signature_url && (
-                        <img
-                          className="post-signature"
-                          src={p.profiles.signature_url}
-                          alt=""
-                          style={{
-                            marginTop: "0.75rem",
-                            maxWidth: "100%",
-                            opacity: 0.9
-                          }}
-                        />
-                      )}
-                    </div>
-                  )}
-                  <div style={{
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "0.6rem",
-  marginTop: "0.9rem",
-  alignItems: "center"
-}}>
-                    {reactEmojis.map(e=>{
-                      const count = reactions.filter(r=>r.post_id===p.id && r.emoji===e).length;
-                      const active = reactions.some(r=>r.post_id===p.id && r.user_id===profile?.id && r.emoji===e);
-                      return <button key={e} onClick={()=>toggleReaction(p.id,e)} style={{ ...mkBtn(active?"gold":"ghost"), minHeight:28, padding:"3px 7px", fontSize:12 }}>{e}{count>0?` ${count}`:""}</button>;
-                    })}
-                    {(isMod || p.author_id===profile?.id) && <button onClick={()=>{setEditingPost(p.id);setEditBody(p.body);}} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Edit</button>}
-                    {(isMod || p.author_id===profile?.id) && <button onClick={()=>deletePost(p.id)} style={{ ...mkBtn("red"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Delete</button>}
-                    {isMod && <button onClick={()=>setPostCanonStatus(p.id, "canon")} style={{ ...mkBtn(canonStatus==="canon"?"gold":"ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Canon</button>}
-                    {isMod && <button onClick={()=>setPostCanonStatus(p.id, "non_canon")} style={{ ...mkBtn(canonStatus==="non_canon"?"red":"ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Non-Canon</button>}
-                    {isMod && canonStatus && <button onClick={()=>setPostCanonStatus(p.id, null)} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Clear Tag</button>}
-                    <button onClick={()=>navigator.clipboard?.writeText(postLink(p))} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Copy Link</button>
                   </div>
                 </div>
-              </div>
+
+                {replies.length > 0 && (
+                  <div>
+                    <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"0.75rem" }}>Replies ({replies.length})</div>
+                    <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
+                      {replies.map((p,i)=>{
+                        const pNation = nations.find(n=>n.id===p.nation_id);
+                        const authorAvatar = p.profiles?.avatar_url;
+                        const authorName = p.profiles?.username || "Unknown";
+                        const canonStatus = p.canon_status || null;
+
+                        return (
+                          <div
+                            id={`post-${p.post_number || p.id}`}
+                            className="post-card forum-post-layout"
+                            key={p.id}
+                            style={{
+                              ...card,
+                              borderLeft:"1px solid rgba(255,255,255,0.06)",
+                              background:"rgba(255,255,255,0.02)",
+                              padding:"1.25rem",
+                              scrollMarginTop:70
+                            }}
+                          >
+                            <aside className="post-author" style={{ width:150, flexShrink:0 }}>
+                              {authorAvatar
+                                ? <img src={authorAvatar} alt="" style={{ width:96, height:96, borderRadius:"50%", objectFit:"cover", border:"1px solid rgba(246,193,50,0.2)" }} />
+                                : pNation
+                                  ? <Flag nation={pNation} size={96} />
+                                  : <div style={{ width:96, height:96, background:"rgba(255,255,255,0.04)", borderRadius:"50%" }} />
+                              }
+                              <ProfileButton profile={p.profiles} onViewProfile={onViewProfile} style={{ marginTop:"0.65rem", fontSize:13, color:"#d4af37", fontWeight:800, lineHeight:1.35, display:"block" }}>{authorName}</ProfileButton>
+                              {pNation && <div style={{ marginTop:"0.25rem", fontSize:11, color:"#8fa0bd", lineHeight:1.35 }}>{pNation.name}</div>}
+                              <a href={`/forums/thread/${view.thread.id}#post-${p.post_number || p.id}`} style={{ display:"inline-block", marginTop:"0.45rem", fontSize:11, color:"#8fa0bd", textDecoration:"none" }}>#{p.post_number || i + 1} - {timeAgo(p.created_at)}</a>
+                            </aside>
+                            <div className="post-body" style={{ flex:1, minWidth:0 }}>
+                              {canonStatus && <div style={{ display:"inline-flex", marginBottom:"0.75rem", color:canonStatus==="canon"?"#111":"#f5f8ff", background:canonStatus==="canon"?"#f6c132":"rgba(231,76,60,0.2)", border:`1px solid ${canonStatus==="canon"?"rgba(246,193,50,0.35)":"rgba(231,76,60,0.35)"}`, borderRadius:4, padding:"3px 8px", fontSize:10, fontWeight:900, letterSpacing:"0.08em", textTransform:"uppercase" }}>{canonStatus==="canon"?"Canon":"Non-Canon"}</div>}
+                              {editingPost === p.id ? (
+                                <div>
+                                  <textarea value={editBody} onChange={e=>setEditBody(e.target.value)} style={{ ...ta, minHeight:120 }} />
+                                  <div style={{ display:"flex", gap:"0.4rem", marginTop:"0.5rem" }}>
+                                    <button onClick={()=>savePost(p.id)} style={{ ...mkBtn(), fontSize:11 }}>Save</button>
+                                    <button onClick={()=>setEditingPost(null)} style={{ ...mkBtn("ghost"), fontSize:11 }}>Cancel</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div style={{ fontSize:"14px", lineHeight:"1.7", color:"#d6deeb", maxWidth:"720px", marginTop:"0.5rem" }}>
+                                  <RichText>{p.body}</RichText>
+                                  {p.profiles?.signature_url && <img className="post-signature" src={p.profiles.signature_url} alt="" style={{ marginTop:"0.75rem", maxWidth:"100%", opacity:0.9 }} />}
+                                </div>
+                              )}
+                              <div style={{ display:"flex", flexWrap:"wrap", gap:"0.6rem", marginTop:"0.9rem", alignItems:"center" }}>
+                                {reactEmojis.map(e=>{
+                                  const count = reactions.filter(r=>r.post_id===p.id && r.emoji===e).length;
+                                  const active = reactions.some(r=>r.post_id===p.id && r.user_id===profile?.id && r.emoji===e);
+                                  return <button key={e} onClick={()=>toggleReaction(p.id,e)} style={{ ...mkBtn(active?"gold":"ghost"), minHeight:28, padding:"3px 7px", fontSize:12 }}>{e}{count>0?` ${count}`:""}</button>;
+                                })}
+                                {(isMod || p.author_id===profile?.id) && <button onClick={()=>{setEditingPost(p.id);setEditBody(p.body);}} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Edit</button>}
+                                {(isMod || p.author_id===profile?.id) && <button onClick={()=>deletePost(p.id)} style={{ ...mkBtn("red"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Delete</button>}
+                                {isMod && <button onClick={()=>setPostCanonStatus(p.id, "canon")} style={{ ...mkBtn(canonStatus==="canon"?"gold":"ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Canon</button>}
+                                {isMod && <button onClick={()=>setPostCanonStatus(p.id, "non_canon")} style={{ ...mkBtn(canonStatus==="non_canon"?"red":"ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Non-Canon</button>}
+                                {isMod && canonStatus && <button onClick={()=>setPostCanonStatus(p.id, null)} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Clear Tag</button>}
+                                <button onClick={()=>navigator.clipboard?.writeText(postLink(p))} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Copy Link</button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
             );
-          })}
+          })()}
           {forumLoading && <p style={{ color:"#8493ad", textAlign:"center", padding:"1rem" }}>Loading...</p>}
           {hasMorePosts && <button onClick={()=>loadThreadPosts(view.thread, Math.max(tPosts.length - 1, 0), true, replySort)} style={{ ...mkBtn("ghost"), alignSelf:"center" }}>Load More Replies</button>}
         </div>
