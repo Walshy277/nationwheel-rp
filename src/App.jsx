@@ -2679,6 +2679,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
   const [dbIssues, setDbIssues] = useState([]);
+  const [showUnconfiguredGuide, setShowUnconfiguredGuide] = useState(false);
 
   const fetchAll = useCallback(async () => {
     if (!SUPABASE_CONFIGURED) {
@@ -2773,7 +2774,25 @@ export default function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  if (!SUPABASE_CONFIGURED) return <SetupModal onClose={()=>{}} />;
+  if (!SUPABASE_CONFIGURED) {
+    return (
+      <>
+        {showUnconfiguredGuide && <SetupModal onClose={()=>setShowUnconfiguredGuide(false)} />}
+        {!showUnconfiguredGuide && (
+          <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"1rem", background:"#030712", color:"#d7e2f2", gap:"1rem" }}>
+            <div style={{ textAlign:"center", maxWidth:420 }}>
+              <h2 style={{ fontFamily:"var(--brand)", color:"#d4af37", fontSize:"1.5rem", margin:"0 0 0.5rem" }}>Supabase Not Configured</h2>
+              <p style={{ fontSize:13, lineHeight:1.6, margin:0 }}>Set <code style={{ color:"#d4af37" }}>VITE_SUPABASE_URL</code> and <code style={{ color:"#d4af37" }}>VITE_SUPABASE_ANON_KEY</code> in your <code style={{ color:"#d4af37" }}>.env</code> file, then refresh.</p>
+            </div>
+            <div style={{ display:"flex", gap:"0.5rem" }}>
+              <button onClick={()=>setShowUnconfiguredGuide(true)} style={mkBtn("ghost")}>Setup Guide</button>
+              <button onClick={()=>window.location.reload()} style={mkBtn()}>Refresh</button>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
 
   const userNation = profile?.nation_id ? data.nations.find(n=>n.id===profile.nation_id) : null;
   const isAdmin = canManageRoles(profile);
