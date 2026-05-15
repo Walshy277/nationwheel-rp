@@ -2198,76 +2198,183 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
           {canManageThread && <button onClick={()=>setThreadLocked(!view.thread.locked)} style={{ ...mkBtn("ghost"), fontSize:11 }}>{view.thread.locked?"Open Thread":"Close Thread"}</button>}
           {canManageThread && <button onClick={deleteThread} style={{ ...mkBtn("red"), fontSize:11 }}>Delete Thread</button>}
         </div>
+                </div>
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem", marginBottom:"1.25rem" }}>
           {forumError && <p style={{ color:"#ff9d9d", textAlign:"center", padding:"1rem" }}>{forumError}</p>}
+
           {tPosts.map((p,i)=>{
             const pNation = nations.find(n=>n.id===p.nation_id);
             const authorAvatar = p.profiles?.avatar_url;
             const authorName = p.profiles?.username || "Unknown";
             const canonStatus = p.canon_status || null;
+
             return (
-              <div id={`post-${p.post_number || p.id}`} className="post-card forum-post-layout" key={p.id} style={{
-  ...card,
-  borderLeft: i === 0 ? "3px solid #d4af37" : "1px solid rgba(255,255,255,0.06)",
-  background: i === 0 ? "rgba(212,175,55,0.04)" : "rgba(255,255,255,0.02)",
-  padding: "1.25rem",
-  scrollMarginTop: 70
-}}>
+              <div
+                id={`post-${p.post_number || p.id}`}
+                className="post-card forum-post-layout"
+                key={p.id}
+                style={{
+                  ...card,
+                  borderLeft: i === 0
+                    ? "3px solid #d4af37"
+                    : "1px solid rgba(255,255,255,0.06)",
+                  background: i === 0
+                    ? "rgba(212,175,55,0.04)"
+                    : "rgba(255,255,255,0.02)",
+                  padding: "1.25rem",
+                  scrollMarginTop: 70
+                }}
+              >
                 <aside className="post-author" style={{ width:150, flexShrink:0 }}>
                   {authorAvatar
-                    ? <img src={authorAvatar} alt="" style={{ width:96, height:96, borderRadius:"50%", objectFit:"cover", border:"1px solid rgba(246,193,50,0.2)" }} />
-                    : pNation ? <Flag nation={pNation} size={96} /> : <div style={{ width:96, height:96, background:"rgba(255,255,255,0.04)", borderRadius:"50%" }} />}
-                  <ProfileButton profile={p.profiles} onViewProfile={onViewProfile} style={{ marginTop:"0.65rem", fontSize:13, color:"#d4af37", fontWeight:800, lineHeight:1.35, display:"block" }}>{authorName}</ProfileButton>
-                  {pNation && <div style={{ marginTop:"0.25rem", fontSize:11, color:"#8fa0bd", lineHeight:1.35 }}>{pNation.name}</div>}
+                    ? (
+                      <img
+                        src={authorAvatar}
+                        alt=""
+                        style={{
+                          width:96,
+                          height:96,
+                          borderRadius:"50%",
+                          objectFit:"cover",
+                          border:"1px solid rgba(246,193,50,0.2)"
+                        }}
+                      />
+                    )
+                    : pNation
+                      ? <Flag nation={pNation} size={96} />
+                      : (
+                        <div
+                          style={{
+                            width:96,
+                            height:96,
+                            background:"rgba(255,255,255,0.04)",
+                            borderRadius:"50%"
+                          }}
+                        />
+                      )
+                  }
+
+                  <ProfileButton
+                    profile={p.profiles}
+                    onViewProfile={onViewProfile}
+                    style={{
+                      marginTop:"0.65rem",
+                      fontSize:13,
+                      color:"#d4af37",
+                      fontWeight:800,
+                      lineHeight:1.35,
+                      display:"block"
+                    }}
+                  >
+                    {authorName}
+                  </ProfileButton>
+
+                  {pNation && (
+                    <div style={{ marginTop:"0.25rem", fontSize:11, color:"#8fa0bd", lineHeight:1.35 }}>
+                      {pNation.name}
+                    </div>
+                  )}
+
                   {i === 0 && (
-  <div
-    style={{
-      display: "inline-block",
-      marginTop: "0.5rem",
-      fontSize: 10,
-      fontWeight: 900,
-      color: "#111",
-      background: "#d4af37",
-      borderRadius: 3,
-      padding: "2px 6px",
-      letterSpacing: "0.06em"
-    }}
-  >
-    ORIGINAL POST
-  </div>
-)}
-                  <a href={`/forums/thread/${view.thread.id}#post-${p.post_number || p.id}`} style={{ display:"inline-block", marginTop:"0.45rem", fontSize:11, color:"#8fa0bd", textDecoration:"none" }}>#{p.post_number || i + 1} - {timeAgo(p.created_at)}</a>
+                    <div
+                      style={{
+                        display: "inline-block",
+                        marginTop: "0.5rem",
+                        fontSize: 10,
+                        fontWeight: 900,
+                        color: "#111",
+                        background: "#d4af37",
+                        borderRadius: 3,
+                        padding: "2px 6px",
+                        letterSpacing: "0.06em"
+                      }}
+                    >
+                      ORIGINAL POST
+                    </div>
+                  )}
+
+                  <a
+                    href={`/forums/thread/${view.thread.id}#post-${p.post_number || p.id}`}
+                    style={{
+                      display:"inline-block",
+                      marginTop:"0.45rem",
+                      fontSize:11,
+                      color:"#8fa0bd",
+                      textDecoration:"none"
+                    }}
+                  >
+                    #{p.post_number || i + 1} - {timeAgo(p.created_at)}
+                  </a>
                 </aside>
+
                 <div className="post-body" style={{ flex:1, minWidth:0 }}>
                   {canonStatus && (
-                    <div style={{ display:"inline-flex", marginBottom:"0.75rem", color:canonStatus==="canon"?"#111":"#f5f8ff", background:canonStatus==="canon"?"#f6c132":"rgba(231,76,60,0.2)", border:`1px solid ${canonStatus==="canon"?"rgba(246,193,50,0.35)":"rgba(231,76,60,0.35)"}`, borderRadius:4, padding:"3px 8px", fontSize:10, fontWeight:900, letterSpacing:"0.08em", textTransform:"uppercase" }}>
+                    <div
+                      style={{
+                        display:"inline-flex",
+                        marginBottom:"0.75rem",
+                        color: canonStatus === "canon" ? "#111" : "#f5f8ff",
+                        background: canonStatus === "canon"
+                          ? "#f6c132"
+                          : "rgba(231,76,60,0.2)",
+                        border: `1px solid ${
+                          canonStatus === "canon"
+                            ? "rgba(246,193,50,0.35)"
+                            : "rgba(231,76,60,0.35)"
+                        }`,
+                        borderRadius:4,
+                        padding:"3px 8px",
+                        fontSize:10,
+                        fontWeight:900,
+                        letterSpacing:"0.08em",
+                        textTransform:"uppercase"
+                      }}
+                    >
                       {canonStatus === "canon" ? "Canon" : "Non-Canon"}
                     </div>
                   )}
-                  {editingPost===p.id ? (
+
+                  {editingPost === p.id ? (
                     <div>
-                      <textarea value={editBody} onChange={e=>setEditBody(e.target.value)} style={{ ...ta, minHeight:120 }} />
+                      <textarea
+                        value={editBody}
+                        onChange={e => setEditBody(e.target.value)}
+                        style={{ ...ta, minHeight:120 }}
+                      />
+
                       <div style={{ display:"flex", gap:"0.4rem", marginTop:"0.5rem" }}>
-                        <button onClick={()=>savePost(p.id)} style={{ ...mkBtn(), fontSize:11 }}>Save</button>
-                        <button onClick={()=>setEditingPost(null)} style={{ ...mkBtn("ghost"), fontSize:11 }}>Cancel</button>
+                        <button onClick={() => savePost(p.id)} style={{ ...mkBtn(), fontSize:11 }}>
+                          Save
+                        </button>
+                        <button onClick={() => setEditingPost(null)} style={{ ...mkBtn("ghost"), fontSize:11 }}>
+                          Cancel
+                        </button>
                       </div>
                     </div>
-                  } : (
-<div style={{
-  fontSize: "14px",
-  lineHeight: "1.7",
-  color: "#d6deeb",
-  maxWidth: "720px",
-  marginTop: "0.5rem"
-}}>
-                  {p.profiles?.signature_url && <img
-  className="post-signature"
-  src={p.profiles.signature_url}
-  alt=""
-  style={{
-    marginTop: "0.75rem",
-    maxWidth: "100%",
-    opacity: 0.9
+                  ) : (
+                    <div
+                      style={{
+                        fontSize: "14px",
+                        lineHeight: "1.7",
+                        color: "#d6deeb",
+                        maxWidth: "720px",
+                        marginTop: "0.5rem"
+                      }}
+                    >
+                      {p.profiles?.signature_url && (
+                        <img
+                          className="post-signature"
+                          src={p.profiles.signature_url}
+                          alt=""
+                          style={{
+                            marginTop: "0.75rem",
+                            maxWidth: "100%",
+                            opacity: 0.9
+                          }}
+                        />
+                      )}
+                    </div>
+                  )}
   }}
 />}
                   <div style={{
