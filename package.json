@@ -12,6 +12,7 @@
     "check": "npm run lint && npm run build"
   },
   "dependencies": {
+    "@marsidev/react-turnstile": "^1.5.2",
     "@supabase/supabase-js": "2.105.4",
     "@vitejs/plugin-react": "6.0.1",
     "react": "19.2.6",

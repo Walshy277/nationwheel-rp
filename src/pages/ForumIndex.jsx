@@ -72,7 +72,7 @@ const ForumIndex = ({ boards, profile, onSelectBoard, onRequireAuth, card, mkBtn
                           <span className="forum-board-description">{board.description || meta.desc}</span>
                           {latestThreadTitle && (
                             <span className="forum-board-last">
-                              Last: {latestThreadTitle} {lastPostAuthor ? `by @${lastPostAuthor}` : ""} - {timeAgo(board.last_post_at)}
+                              Last: {latestThreadTitle} {lastPostAuthor ? `by ${lastPostAuthor}` : ""} - {timeAgo(board.last_post_at)}
                             </span>
                           )}
                         </span>

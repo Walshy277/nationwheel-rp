@@ -9,6 +9,12 @@ const tools = [
   ["Image", "[img]", "[/img]"],
   ["Spoiler", "[spoiler]", "[/spoiler]"],
   ["Center", "[center]", "[/center]"],
+  ["Color", "[color=#f6c132]", "[/color]"],
+  ["Size", "[size=18]", "[/size]"],
+  ["HR", "\n[hr]\n", ""],
+  ["List", "[list]\n[*]Item\n[/list]", ""],
+  ["Left", "[left]", "[/left]"],
+  ["Right", "[right]", "[/right]"],
   ["Nation", "[mention=nation:slug]", "[/mention]"],
   ["User", "[mention=user:username]", "[/mention]"],
 ];
@@ -24,4 +30,3 @@ const BBCodeToolbar = ({ onInsert, mkBtn }) => (
 );
 
 export default BBCodeToolbar;
-

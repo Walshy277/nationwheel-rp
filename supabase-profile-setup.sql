@@ -20,7 +20,9 @@ create table if not exists public.profiles (
   warning_count int default 0,
   last_active_at timestamptz,
   privacy jsonb default '{}'::jsonb,
+  status text default 'active',
   suspended_until timestamptz,
+  ban_reason text,
   suspension_reason text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -36,7 +38,9 @@ alter table public.profiles add column if not exists custom_title text;
 alter table public.profiles add column if not exists warning_count int default 0;
 alter table public.profiles add column if not exists last_active_at timestamptz;
 alter table public.profiles add column if not exists privacy jsonb default '{}'::jsonb;
+alter table public.profiles add column if not exists status text default 'active';
 alter table public.profiles add column if not exists suspended_until timestamptz;
+alter table public.profiles add column if not exists ban_reason text;
 alter table public.profiles add column if not exists suspension_reason text;
 alter table public.profiles add column if not exists created_at timestamptz default now();
 alter table public.profiles add column if not exists updated_at timestamptz default now();
@@ -44,6 +48,7 @@ alter table public.profiles add column if not exists updated_at timestamptz defa
 alter table public.profiles alter column role set default 'player';
 alter table public.profiles alter column warning_count set default 0;
 alter table public.profiles alter column privacy set default '{}'::jsonb;
+alter table public.profiles alter column status set default 'active';
 alter table public.profiles alter column created_at set default now();
 alter table public.profiles alter column updated_at set default now();
 

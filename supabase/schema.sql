@@ -24,12 +24,20 @@ create table if not exists profiles (
   avatar_url text,
   signature_url text,
   bio text,
+  status text default 'active',
+  suspended_until timestamptz,
+  ban_reason text,
+  last_active_at timestamptz,
   created_at timestamptz default now()
 );
 
 alter table profiles add column if not exists avatar_url text;
 alter table profiles add column if not exists signature_url text;
 alter table profiles add column if not exists bio text;
+alter table profiles add column if not exists status text default 'active';
+alter table profiles add column if not exists suspended_until timestamptz;
+alter table profiles add column if not exists ban_reason text;
+alter table profiles add column if not exists last_active_at timestamptz;
 
 notify pgrst, 'reload schema';
 
@@ -154,7 +162,27 @@ create table if not exists forum_posts (
   author_id uuid references profiles(id) on delete cascade,
   nation_id uuid references nations(id) on delete set null,
   body text not null,
+  canon_status text,
+  canon_marked_by uuid references profiles(id) on delete set null,
+  canon_marked_at timestamptz,
   created_at timestamptz default now()
+);
+
+create table if not exists site_code_notes (
+  id uuid primary key default gen_random_uuid(),
+  file_path text not null,
+  note text not null,
+  created_by uuid references profiles(id) on delete set null default auth.uid(),
+  created_at timestamptz default now(),
+  status text default 'open'
+);
+
+create table if not exists site_changelog (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  body text not null,
+  created_by uuid references profiles(id) on delete set null default auth.uid(),
+  published_at timestamptz default now()
 );
 
 create table if not exists forum_reactions (
@@ -181,6 +209,8 @@ alter table forum_boards enable row level security;
 alter table forum_threads enable row level security;
 alter table forum_posts enable row level security;
 alter table forum_reactions enable row level security;
+alter table site_code_notes enable row level security;
+alter table site_changelog enable row level security;
 
 drop policy if exists "pub_read" on profiles;
 drop policy if exists "pub_read" on nations;
@@ -196,6 +226,7 @@ drop policy if exists "pub_read" on forum_boards;
 drop policy if exists "pub_read" on forum_threads;
 drop policy if exists "pub_read" on forum_posts;
 drop policy if exists "pub_read" on forum_reactions;
+drop policy if exists "pub_read" on site_changelog;
 create policy "pub_read" on profiles for select using (true);
 create policy "pub_read" on nations for select using (true);
 create policy "pub_read" on rp_posts for select using (true);
@@ -210,6 +241,7 @@ create policy "pub_read" on forum_boards for select using (true);
 create policy "pub_read" on forum_threads for select using (true);
 create policy "pub_read" on forum_posts for select using (true);
 create policy "pub_read" on forum_reactions for select using (true);
+create policy "pub_read" on site_changelog for select using (true);
 
 drop policy if exists "own_insert" on profiles;
 drop policy if exists "own_update" on profiles;
@@ -310,6 +342,8 @@ drop policy if exists "admin_manage_forum_boards" on forum_boards;
 drop policy if exists "staff_manage_forum_threads" on forum_threads;
 drop policy if exists "staff_manage_forum_posts" on forum_posts;
 drop policy if exists "staff_manage_forum_reactions" on forum_reactions;
+drop policy if exists "staff_manage_site_code_notes" on site_code_notes;
+drop policy if exists "staff_manage_site_changelog" on site_changelog;
 create policy "admin_manage_profiles" on profiles for all using (public.is_admin(auth.uid())) with check (public.is_admin(auth.uid()));
 create policy "admin_manage_nations" on nations for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
 create policy "admin_manage_canon_actions" on canon_actions for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
@@ -322,6 +356,8 @@ create policy "admin_manage_forum_boards" on forum_boards for all using (public.
 create policy "staff_manage_forum_threads" on forum_threads for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
 create policy "staff_manage_forum_posts" on forum_posts for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
 create policy "staff_manage_forum_reactions" on forum_reactions for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
+create policy "staff_manage_site_code_notes" on site_code_notes for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
+create policy "staff_manage_site_changelog" on site_changelog for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
 
 insert into profiles (id, username, role)
 select u.id, split_part(u.email, '@', 1), 'admin'

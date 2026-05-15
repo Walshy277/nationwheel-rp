@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Turnstile } from "@marsidev/react-turnstile";
 import { SUPABASE_CONFIGURED, supabase } from "./lib/supabase";
 import { canAccessStaff, canManageRoles, ROLE_LABELS } from "./lib/permissions";
 import { RichText } from "./lib/richText";
@@ -7,6 +8,29 @@ import BBCodeToolbar from "./components/forum/BBCodeToolbar";
 import ForumIndex from "./pages/ForumIndex";
 
 const LOGO_SRC = "/nationwheel_logo.jpg";
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "";
+const SITE_CODE_FILES = import.meta.glob("./**/*.{js,jsx}", { query: "?raw", import: "default", eager: true });
+const CHANGELOG_ENTRIES = [
+  {
+    date: "2026-05-15",
+    title: "Forum moderation and profile polish",
+    items: [
+      "Added canon and non-canon forum post labels for lore team moderation.",
+      "Expanded BBCode formatting with color, size, horizontal rules, lists, and alignment.",
+      "Added Admin CP user controls, code viewer, and changelog tools.",
+      "Removed public email display and cleaned profile name presentation.",
+    ],
+  },
+  {
+    date: "2026-05-15",
+    title: "Thread reply layout",
+    items: [
+      "Opening posts stay pinned above replies.",
+      "Replies can be sorted newest-first or oldest-first.",
+      "Forum editors gained more writing space.",
+    ],
+  },
+];
 const ACTION_SIZES = {
   small:  { days: 1,  label: "Small",  color: "#4caf50" },
   medium: { days: 3,  label: "Medium", color: "#f39c12" },
@@ -79,6 +103,7 @@ const PAGE_PATHS = {
   forums: "/forums",
   nations: "/nations",
   leaderboards: "/leaderboards",
+  changelog: "/changelog",
   news: "/news",
   profile: "/profile",
   rp: "/dispatches",
@@ -88,6 +113,14 @@ const PAGE_PATHS = {
   auth: "/auth",
   admin: "/admin",
 };
+const fmtDate = ts => ts ? new Date(ts).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" }) : "";
+const isProfileActive = profile => {
+  if (!profile?.last_active_at) return false;
+  return Date.now() - new Date(profile.last_active_at).getTime() < 1000 * 60 * 60 * 24 * 7;
+};
+const isProfileBlocked = profile =>
+  profile?.status === "banned" ||
+  (profile?.status === "suspended" && (!profile.suspended_until || new Date(profile.suspended_until) > new Date()));
 const FORUM_PAGE_SIZE = 25;
 
 const mergeThreadPostPages = (current, nextRows) => {
@@ -174,6 +207,7 @@ const Auth = ({ onAuth, setupRequired }) => {
   const [email,setEmail]=useState(""); const [pw,setPw]=useState(""); const [username,setUsername]=useState("");
   const [err,setErr]=useState(""); const [loading,setLoading]=useState(false);
   const [showSetup,setShowSetup]=useState(false);
+  const [captchaToken,setCaptchaToken]=useState("");
 
   const submit = async () => {
     setErr(""); setLoading(true);
@@ -184,7 +218,16 @@ const Auth = ({ onAuth, setupRequired }) => {
         const nextProfile = await ensureProfile(data.user);
         onAuth(data.user, nextProfile);
       } else {
-        const {data,error} = await supabase.auth.signUp({email,password:pw});
+        if (TURNSTILE_SITE_KEY && !captchaToken) {
+          setErr("Complete the captcha before registering.");
+          setLoading(false);
+          return;
+        }
+        const {data,error} = await supabase.auth.signUp({
+          email,
+          password:pw,
+          options: TURNSTILE_SITE_KEY ? { captchaToken } : undefined,
+        });
         if (error) throw error;
         if (data.session?.user) {
           const nextProfile = await ensureProfile(data.session.user, username);
@@ -253,6 +296,9 @@ const Auth = ({ onAuth, setupRequired }) => {
               {mode==="signup" && <input placeholder="Choose a username" value={username} onChange={e=>setUsername(e.target.value)} style={inp} />}
               <input placeholder="Email address" type="email" value={email} onChange={e=>setEmail(e.target.value)} style={inp} />
               <input placeholder="Password" type="password" value={pw} onChange={e=>setPw(e.target.value)} style={inp} onKeyDown={e=>e.key==="Enter"&&submit()} />
+              {mode==="signup" && TURNSTILE_SITE_KEY && (
+                <Turnstile siteKey={TURNSTILE_SITE_KEY} onSuccess={setCaptchaToken} onError={()=>setCaptchaToken("")} onExpire={()=>setCaptchaToken("")} options={{ theme:"dark" }} />
+              )}
               {err && <p style={{ color:err.startsWith("Account created")?"#2ecc71":"#e74c3c", fontSize:12, margin:0 }}>{err}</p>}
               <button onClick={submit} disabled={loading} style={{ ...mkBtn(), marginTop:"0.4rem", padding:"10px", fontSize:13, letterSpacing:"0.08em" }}>
                 {loading?"Loading":mode==="login"?"ENTER THE WORLD":"JOIN THE WORLD"}
@@ -386,7 +432,39 @@ const ProfileMediaUploader = ({ profileId, field, currentUrl, label, onUploaded,
   );
 };
 
-const ProfilePage = ({ user, profile, userNation, onProfileUpdate }) => {
+const CommunityUsers = ({ profiles }) => {
+  const activeUsers = [...profiles]
+    .filter(isProfileActive)
+    .sort((a,b)=>new Date(b.last_active_at || 0) - new Date(a.last_active_at || 0))
+    .slice(0, 8);
+  const recentUsers = [...profiles]
+    .sort((a,b)=>new Date(b.created_at || 0) - new Date(a.created_at || 0))
+    .slice(0, 8);
+  const renderUser = (item, mode) => (
+    <div key={`${mode}-${item.id}`} style={{ display:"flex", gap:"0.65rem", alignItems:"center", padding:"0.6rem 0", borderBottom:"1px solid rgba(78,128,190,0.12)" }}>
+      {item.avatar_url ? <img src={item.avatar_url} alt="" style={{ width:34, height:34, borderRadius:"50%", objectFit:"cover", border:"1px solid rgba(246,193,50,0.18)" }} /> : <div style={{ width:34, height:34, borderRadius:"50%", background:"rgba(255,255,255,0.055)", border:"1px solid rgba(246,193,50,0.12)" }} />}
+      <div style={{ minWidth:0, flex:1 }}>
+        <div style={{ color:"#edf4ff", fontSize:12, fontWeight:800, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.username}</div>
+        <div style={{ color:"#8fa0bd", fontSize:10 }}>{mode === "active" ? `Active ${timeAgo(item.last_active_at)}` : `Joined ${fmtDate(item.created_at)}`}</div>
+      </div>
+      {item.status && item.status !== "active" && <span style={{ color:"#ffb4b4", fontSize:9, textTransform:"uppercase", letterSpacing:"0.08em" }}>{item.status}</span>}
+    </div>
+  );
+  return (
+    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1rem" }} className="profile-community-grid">
+      <div style={card}>
+        <h3 style={{ margin:"0 0 0.45rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Active Users</h3>
+        {(activeUsers.length ? activeUsers : profiles.slice(0, 4)).map(item=>renderUser(item, "active"))}
+      </div>
+      <div style={card}>
+        <h3 style={{ margin:"0 0 0.45rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Newest Users</h3>
+        {recentUsers.map(item=>renderUser(item, "recent"))}
+      </div>
+    </div>
+  );
+};
+
+const ProfilePage = ({ profile, profiles, userNation, onProfileUpdate }) => {
   const [form, setForm] = useState({ username:profile?.username||"", bio:profile?.bio||"" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -468,15 +546,21 @@ const ProfilePage = ({ user, profile, userNation, onProfileUpdate }) => {
 
       <div className="profile-preview" style={card}>
         <div style={{ display:"flex", gap:"1rem", alignItems:"flex-start", flexWrap:"wrap" }}>
-          {profile.avatar_url ? <img src={profile.avatar_url} alt="" style={{ width:92, height:92, borderRadius:"50%", objectFit:"cover", border:"1px solid rgba(246,193,50,0.22)" }} /> : <div style={{ width:92, height:92, borderRadius:"50%", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(246,193,50,0.18)" }} />}
+          {profile.avatar_url ? <img src={profile.avatar_url} alt="" style={{ width:108, height:108, borderRadius:"50%", objectFit:"cover", border:"1px solid rgba(246,193,50,0.28)", boxShadow:"0 14px 35px rgba(0,0,0,0.35)" }} /> : <div style={{ width:108, height:108, borderRadius:"50%", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(246,193,50,0.18)" }} />}
           <div style={{ flex:1, minWidth:180 }}>
-            <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:18, fontWeight:800 }}>@{profile.username}</div>
-            <div style={{ color:"#8fa0bd", fontSize:12, marginTop:2 }}>{profile.role || "player"}{user?.email ? ` - ${user.email}` : ""}</div>
+            <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+              <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:22, fontWeight:900 }}>{profile.username}</div>
+              <span style={{ color:"#9fb4d6", border:"1px solid rgba(78,128,190,0.24)", borderRadius:999, padding:"2px 8px", fontSize:10, textTransform:"uppercase", letterSpacing:"0.08em" }}>{profile.role || "player"}</span>
+            </div>
+            <div style={{ color:"#8fa0bd", fontSize:12, marginTop:4 }}>
+              {profile.status && profile.status !== "active" ? `${profile.status} - ` : ""}{profile.last_active_at ? `Last active ${timeAgo(profile.last_active_at)}` : "Activity not recorded yet"}
+            </div>
             {profile.bio && <p style={{ margin:"0.75rem 0 0", color:"#d7e2f2", lineHeight:1.75, fontSize:13, whiteSpace:"pre-wrap" }}>{profile.bio}</p>}
             {profile.signature_url && <img src={profile.signature_url} alt="" style={{ marginTop:"0.85rem", maxWidth:"100%", maxHeight:110, objectFit:"contain", borderTop:"1px solid rgba(20,96,184,0.16)", paddingTop:"0.75rem" }} />}
           </div>
         </div>
       </div>
+      <CommunityUsers profiles={profiles} />
     </div>
   );
 };
@@ -1421,6 +1505,26 @@ const Leaderboards = ({ nations }) => {
   );
 };
 
+const Changelog = () => (
+  <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+    <div style={{ display:"flex", gap:"0.75rem", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap" }}>
+      <div>
+        <h2 style={{ margin:"0 0 0.35rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:22 }}>Changelog</h2>
+        <p style={{ margin:0, color:"#9fb4d6", fontSize:13, lineHeight:1.65 }}>Recent site changes, forum fixes, and staff tooling updates.</p>
+      </div>
+    </div>
+    {CHANGELOG_ENTRIES.map(entry=>(
+      <article key={`${entry.date}-${entry.title}`} style={card}>
+        <div style={{ color:"#8fa0bd", fontSize:11, letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"0.35rem" }}>{fmtDate(entry.date)}</div>
+        <h3 style={{ margin:"0 0 0.75rem", fontFamily:"var(--display)", color:"#edf4ff", fontSize:16 }}>{entry.title}</h3>
+        <ul style={{ margin:0, paddingLeft:"1.1rem", color:"#d7e2f2", fontSize:13, lineHeight:1.8 }}>
+          {entry.items.map(item=><li key={item}>{item}</li>)}
+        </ul>
+      </article>
+    ))}
+  </div>
+);
+
 const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, isMod, onRefresh, onRequireAuth }) => {
   const [view, setView] = useState({ type:"boards" });
   const [boardThreads, setBoardThreads] = useState([]);
@@ -1637,6 +1741,10 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
 
   const submitThread = async () => {
     if (!threadForm.title.trim()||!threadForm.body.trim()||view.type!=="board") return;
+    if (isProfileBlocked(profile)) {
+      alert("Your account is not currently allowed to post.");
+      return;
+    }
     const {data,error} = await supabase.from("forum_threads").insert({ board_id:view.board.id, author_id:profile.id, nation_id:userNation?.id||null, title:threadForm.title }).select().single();
     if (error) {
       alert(`Thread failed: ${error.message}`);
@@ -1654,6 +1762,10 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
 
   const submitReply = async () => {
     if (!replyBody.trim()||view.type!=="thread") return;
+    if (isProfileBlocked(profile)) {
+      alert("Your account is not currently allowed to reply.");
+      return;
+    }
     const { error } = await supabase.from("forum_posts").insert({ thread_id:view.thread.id, author_id:profile.id, nation_id:userNation?.id||null, body:replyBody });
     if (error) {
       alert(`Reply failed: ${error.message}`);
@@ -1686,6 +1798,16 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
       await loadThreadPosts(view.thread, 0, false, replySort);
       onRefresh();
     }
+  };
+  const setPostCanonStatus = async (postId, canonStatus) => {
+    const payload = {
+      canon_status: canonStatus,
+      canon_marked_by: profile?.id || null,
+      canon_marked_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from("forum_posts").update(payload).eq("id", postId);
+    if (error) alert(error.message);
+    else await loadThreadPosts(view.thread, 0, false, replySort);
   };
   const setThreadLocked = async (locked) => {
     const { error } = await supabase.from("forum_threads").update({ locked }).eq("id", view.thread.id);
@@ -1726,7 +1848,7 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
         <button onClick={()=>pushForumRoute({type:"boards"})} style={{ ...mkBtn("ghost"), marginBottom:"1rem", fontSize:12 }}>All Boards</button>
         <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap" }}>
           <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:20, flex:1 }}>{view.board.icon || BOARD_ICONS[view.board.slug] || "*"} {view.board.name}</h2>
-          {profile && <button onClick={()=>setShowNewThread(!showNewThread)} style={mkBtn()}>+ New Thread</button>}
+          {profile && !isProfileBlocked(profile) && <button onClick={()=>setShowNewThread(!showNewThread)} style={mkBtn()}>+ New Thread</button>}
           {!profile && <button onClick={onRequireAuth} style={mkBtn("ghost")}>Sign In to Post</button>}
         </div>
         {showNewThread && (
@@ -1805,18 +1927,24 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
             const pNation = nations.find(n=>n.id===p.nation_id);
             const authorAvatar = p.profiles?.avatar_url;
             const authorName = p.profiles?.username || "Unknown";
+            const canonStatus = p.canon_status || null;
             return (
               <div id={`post-${p.post_number || p.id}`} className="post-card forum-post-layout" key={p.id} style={{ ...card, borderLeft:i===0?"2px solid rgba(212,175,55,0.3)":undefined, scrollMarginTop:70 }}>
                 <aside className="post-author" style={{ width:150, flexShrink:0 }}>
                   {authorAvatar
                     ? <img src={authorAvatar} alt="" style={{ width:96, height:96, borderRadius:"50%", objectFit:"cover", border:"1px solid rgba(246,193,50,0.2)" }} />
                     : pNation ? <Flag nation={pNation} size={96} /> : <div style={{ width:96, height:96, background:"rgba(255,255,255,0.04)", borderRadius:"50%" }} />}
-                  <div style={{ marginTop:"0.65rem", fontSize:13, color:"#d4af37", fontWeight:800, lineHeight:1.35 }}>@{authorName}</div>
+                  <div style={{ marginTop:"0.65rem", fontSize:13, color:"#d4af37", fontWeight:800, lineHeight:1.35 }}>{authorName}</div>
                   {pNation && <div style={{ marginTop:"0.25rem", fontSize:11, color:"#8fa0bd", lineHeight:1.35 }}>{pNation.name}</div>}
                   {i===0 && <div style={{ display:"inline-block", marginTop:"0.45rem", fontSize:10, color:"#d4af37", border:"1px solid rgba(212,175,55,0.25)", borderRadius:3, padding:"1px 5px" }}>OP</div>}
                   <a href={`/forums/thread/${view.thread.id}#post-${p.post_number || p.id}`} style={{ display:"inline-block", marginTop:"0.45rem", fontSize:11, color:"#8fa0bd", textDecoration:"none" }}>#{p.post_number || i + 1} - {timeAgo(p.created_at)}</a>
                 </aside>
                 <div className="post-body" style={{ flex:1, minWidth:0 }}>
+                  {canonStatus && (
+                    <div style={{ display:"inline-flex", marginBottom:"0.75rem", color:canonStatus==="canon"?"#111":"#f5f8ff", background:canonStatus==="canon"?"#f6c132":"rgba(231,76,60,0.2)", border:`1px solid ${canonStatus==="canon"?"rgba(246,193,50,0.35)":"rgba(231,76,60,0.35)"}`, borderRadius:4, padding:"3px 8px", fontSize:10, fontWeight:900, letterSpacing:"0.08em", textTransform:"uppercase" }}>
+                      {canonStatus === "canon" ? "Canon" : "Non-Canon"}
+                    </div>
+                  )}
                   {editingPost===p.id ? (
                     <div>
                       <textarea value={editBody} onChange={e=>setEditBody(e.target.value)} style={{ ...ta, minHeight:120 }} />
@@ -1835,6 +1963,9 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
                     })}
                     {(isMod || p.author_id===profile?.id) && <button onClick={()=>{setEditingPost(p.id);setEditBody(p.body);}} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Edit</button>}
                     {(isMod || p.author_id===profile?.id) && <button onClick={()=>deletePost(p.id)} style={{ ...mkBtn("red"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Delete</button>}
+                    {isMod && <button onClick={()=>setPostCanonStatus(p.id, "canon")} style={{ ...mkBtn(canonStatus==="canon"?"gold":"ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Canon</button>}
+                    {isMod && <button onClick={()=>setPostCanonStatus(p.id, "non_canon")} style={{ ...mkBtn(canonStatus==="non_canon"?"red":"ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Non-Canon</button>}
+                    {isMod && canonStatus && <button onClick={()=>setPostCanonStatus(p.id, null)} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Clear Tag</button>}
                     <button onClick={()=>navigator.clipboard?.writeText(postLink(p))} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Copy Link</button>
                   </div>
                 </div>
@@ -1844,7 +1975,7 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
           {forumLoading && <p style={{ color:"#8493ad", textAlign:"center", padding:"1rem" }}>Loading...</p>}
           {hasMorePosts && <button onClick={()=>loadThreadPosts(view.thread, Math.max(tPosts.length - 1, 0), true, replySort)} style={{ ...mkBtn("ghost"), alignSelf:"center" }}>Load More Replies</button>}
         </div>
-        {profile && !view.thread.locked && (
+        {profile && !view.thread.locked && !isProfileBlocked(profile) && (
           <div className="forum-composer-card" style={card}>
             <h3 style={{ margin:"0 0 0.75rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Post Reply</h3>
             <div className="editor-tabs">
@@ -1858,6 +1989,7 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
             <button onClick={submitReply} style={{ ...mkBtn(), marginTop:"0.6rem" }}>Post Reply</button>
           </div>
         )}
+        {profile && !view.thread.locked && isProfileBlocked(profile) && <div style={{ ...card, textAlign:"center", color:"#ffb4b4", fontSize:13 }}>Your account is not currently allowed to reply.</div>}
         {view.thread.locked && <div style={{ ...card, textAlign:"center", color:"#8fa0bd", fontSize:13, fontStyle:"italic" }}>This thread is locked.</div>}
       </div>
     );
@@ -1871,6 +2003,11 @@ const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
   const [editId, setEditId] = useState(null);
   const [assignNId, setAssignNId] = useState(""); const [assignPId, setAssignPId] = useState("");
   const [roleId, setRoleId] = useState(""); const [role, setRole] = useState("player");
+  const [selectedCodeFile, setSelectedCodeFile] = useState(Object.keys(SITE_CODE_FILES).sort()[0] || "");
+  const [codeNote, setCodeNote] = useState("");
+  const [userStatusId, setUserStatusId] = useState("");
+  const [suspendDays, setSuspendDays] = useState("7");
+  const [moderationReason, setModerationReason] = useState("");
 
   const submitNation = async () => {
     if (!nf.name.trim()) return;
@@ -1895,7 +2032,40 @@ const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
   };
 
   const fields = [["name","Nation Name *"],["government","Government"],["ideology","Ideology"],["population","Population"],["gdp_usd","GDP (USD number)"],["land_km2","Land km2"],["army_rank","Army Rank 0-11"],["hdi","HDI 0.00-1.00"],["economy","Economy Sectors"],["diplomatic_status","Diplomatic Status"],["bloc","Bloc / Alliance"]];
-  const tabs = [["add",editId?"Edit Nation":"Add Nation"],["assign","Assign Nations"],...(isAdmin ? [["roles","Manage Roles"]] : []),["list","Nation List"]];
+  const tabs = [["add",editId?"Edit Nation":"Add Nation"],["assign","Assign Nations"],...(isAdmin ? [["users","Users"],["roles","Manage Roles"],["code","Site Code"],["changes","Changelog"]] : []),["list","Nation List"]];
+  const codeEntries = Object.entries(SITE_CODE_FILES).sort(([a],[b])=>a.localeCompare(b));
+  const selectedCode = SITE_CODE_FILES[selectedCodeFile] || "";
+  const setUserModeration = async (status) => {
+    if (!userStatusId) return;
+    const suspendedUntil = status === "suspended"
+      ? new Date(Date.now() + Math.max(Number(suspendDays) || 1, 1) * 86400000).toISOString()
+      : null;
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        status,
+        suspended_until: suspendedUntil,
+        ban_reason: status === "active" ? null : moderationReason.trim() || null,
+      })
+      .eq("id", userStatusId);
+    if (error) alert(error.message);
+    else {
+      setModerationReason("");
+      onRefresh();
+    }
+  };
+  const saveCodeNote = async () => {
+    if (!codeNote.trim()) return;
+    const { error } = await supabase.from("site_code_notes").insert({
+      file_path: selectedCodeFile,
+      note: codeNote.trim(),
+    });
+    if (error) alert(error.message);
+    else {
+      setCodeNote("");
+      alert("Code change note saved for deployment.");
+    }
+  };
 
   return (
     <div>
@@ -1932,7 +2102,7 @@ const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
           </select>
           <select value={assignPId} onChange={e=>setAssignPId(e.target.value)} style={inp}>
             <option value="">Select player</option>
-            {profiles.map(p=><option key={p.id} value={p.id}>@{p.username} {p.nation_id?"(has nation)":""}</option>)}
+            {profiles.map(p=><option key={p.id} value={p.id}>{p.username} {p.nation_id?"(has nation)":""}</option>)}
           </select>
           <button onClick={assignNation} style={mkBtn()}>Assign Nation</button>
         </div>
@@ -1943,7 +2113,7 @@ const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
           <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Assign Player Role</h3>
           <select value={roleId} onChange={e=>setRoleId(e.target.value)} style={inp}>
             <option value="">Select player</option>
-            {profiles.map(p=><option key={p.id} value={p.id}>@{p.username} - {p.role}</option>)}
+            {profiles.map(p=><option key={p.id} value={p.id}>{p.username} - {p.role}</option>)}
           </select>
           <select value={role} onChange={e=>setRole(e.target.value)} style={inp}>
             <option value="player">Player</option>
@@ -1955,6 +2125,67 @@ const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
         </div>
       )}
 
+      {isAdmin && tab==="users" && (
+        <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) 360px", gap:"1rem" }} className="admin-user-grid">
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
+            {profiles.map(p=>(
+              <div key={p.id} style={{ ...card, padding:"0.85rem", display:"flex", gap:"0.75rem", alignItems:"center" }}>
+                {p.avatar_url ? <img src={p.avatar_url} alt="" style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover" }} /> : <div style={{ width:36, height:36, borderRadius:"50%", background:"rgba(255,255,255,0.05)" }} />}
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ color:"#edf4ff", fontSize:13, fontWeight:800 }}>{p.username}</div>
+                  <div style={{ color:"#8fa0bd", fontSize:11 }}>{p.role || "player"} - {p.status || "active"}{p.last_active_at ? ` - active ${timeAgo(p.last_active_at)}` : ""}</div>
+                </div>
+                <button onClick={()=>setUserStatusId(p.id)} style={{ ...mkBtn("ghost"), fontSize:11 }}>Manage</button>
+              </div>
+            ))}
+          </div>
+          <div style={{ ...card, display:"flex", flexDirection:"column", gap:"0.75rem" }}>
+            <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>User Moderation</h3>
+            <select value={userStatusId} onChange={e=>setUserStatusId(e.target.value)} style={inp}>
+              <option value="">Select user</option>
+              {profiles.map(p=><option key={p.id} value={p.id}>{p.username} - {p.status || "active"}</option>)}
+            </select>
+            <input value={suspendDays} onChange={e=>setSuspendDays(e.target.value)} placeholder="Suspension days" style={inp} />
+            <textarea value={moderationReason} onChange={e=>setModerationReason(e.target.value)} placeholder="Moderation reason" style={{ ...ta, minHeight:90 }} />
+            <div style={{ display:"flex", gap:"0.45rem", flexWrap:"wrap" }}>
+              <button onClick={()=>setUserModeration("active")} style={mkBtn("green")}>Reinstate</button>
+              <button onClick={()=>setUserModeration("suspended")} style={mkBtn("ghost")}>Suspend</button>
+              <button onClick={()=>setUserModeration("banned")} style={mkBtn("red")}>Ban</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && tab==="code" && (
+        <div style={{ display:"grid", gridTemplateColumns:"280px minmax(0,1fr)", gap:"1rem" }} className="admin-code-grid">
+          <div style={{ ...card, display:"flex", flexDirection:"column", gap:"0.75rem" }}>
+            <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Site Code</h3>
+            <select value={selectedCodeFile} onChange={e=>setSelectedCodeFile(e.target.value)} style={inp}>
+              {codeEntries.map(([path])=><option key={path} value={path}>{path.replace("./", "src/")}</option>)}
+            </select>
+            <p style={{ margin:0, color:"#8fa0bd", fontSize:12, lineHeight:1.6 }}>
+              This static app cannot safely rewrite deployed source files from the browser. Use this viewer to inspect code and save deployment notes for an admin/developer pass.
+            </p>
+            <textarea value={codeNote} onChange={e=>setCodeNote(e.target.value)} placeholder="Describe the code change to make in this file" style={{ ...ta, minHeight:150 }} />
+            <button onClick={saveCodeNote} style={mkBtn()}>Save Code Change Note</button>
+          </div>
+          <pre style={{ ...card, margin:0, minHeight:520, maxHeight:"70vh", overflow:"auto", whiteSpace:"pre-wrap", color:"#d7e2f2", fontSize:11, lineHeight:1.65 }}>{selectedCode}</pre>
+        </div>
+      )}
+
+      {isAdmin && tab==="changes" && (
+        <div style={{ ...card, display:"flex", flexDirection:"column", gap:"0.75rem" }}>
+          <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Changelog Management</h3>
+          <p style={{ margin:0, color:"#9fb4d6", fontSize:13, lineHeight:1.7 }}>Current public changelog entries are maintained in the frontend release log so they ship with deployments.</p>
+          {CHANGELOG_ENTRIES.map(entry=>(
+            <div key={entry.title} style={{ borderTop:"1px solid rgba(78,128,190,0.16)", paddingTop:"0.75rem" }}>
+              <strong style={{ color:"#edf4ff", fontSize:13 }}>{entry.title}</strong>
+              <div style={{ color:"#8fa0bd", fontSize:11 }}>{fmtDate(entry.date)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {tab==="list" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
           {nations.map(n=>(
@@ -1962,7 +2193,7 @@ const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
               <Flag nation={n} size={28} />
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontSize:13, color:"#edf4ff", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{n.name}</div>
-                <div style={{ fontSize:11, color:"#8fa0bd" }}>{n.government||"?"} - {(n.owner || n.profiles)?`@${(n.owner || n.profiles).username}`:"unassigned"}</div>
+                <div style={{ fontSize:11, color:"#8fa0bd" }}>{n.government||"?"} - {(n.owner || n.profiles)?(n.owner || n.profiles).username:"unassigned"}</div>
               </div>
               <button onClick={()=>loadEdit(n)} style={{ ...mkBtn("ghost"), fontSize:11, padding:"5px 10px" }}>Edit</button>
               <button onClick={async()=>{if(!confirm("Delete this nation?"))return;await supabase.from("nations").delete().eq("id",n.id);onRefresh();}} style={{ ...mkBtn("red"), fontSize:11, padding:"5px 10px" }}>Del</button>
@@ -2025,7 +2256,7 @@ export default function App() {
     const [nations, profiles, news, posts, actions, wars, warParticipants, alliances, allianceMembers, boards] = await Promise.all([
       run("Nations", supabase.from("nations").select("*, owner:owner_id(username)").order("name"),
         () => supabase.from("nations").select("*").order("name")),
-      supabase.from("profiles").select("id,username,role,nation_id,avatar_url").order("username").limit(1000),
+      supabase.from("profiles").select("id,username,role,nation_id,avatar_url,signature_url,bio,status,suspended_until,ban_reason,last_active_at,created_at").order("username").limit(1000),
       supabase.from("news").select("*").order("pinned",{ascending:false}).order("created_at",{ascending:false}).limit(25),
       supabase.from("rp_posts").select("*, nations(name,flag_url), target_nation_id").order("created_at",{ascending:false}).limit(100),
       supabase.from("canon_actions").select("*, nations(name,flag_url), action_updates(*, profiles(username))").order("created_at",{ascending:false}).limit(50),
@@ -2060,14 +2291,24 @@ export default function App() {
     supabase.auth.getSession().then(({data:s}) => {
       if (s.session?.user) {
         setUser(s.session.user);
-        ensureProfile(s.session.user).then(p=>{if(p)setProfile(p);}).catch(console.error);
+        ensureProfile(s.session.user).then(async p=>{
+          if(p) {
+            setProfile(p);
+            await supabase.from("profiles").update({ last_active_at:new Date().toISOString() }).eq("id", p.id);
+          }
+        }).catch(console.error);
       }
       fetchAll();
     });
     supabase.auth.onAuthStateChange((_,session) => {
       if(session?.user) {
         setUser(session.user);
-        ensureProfile(session.user).then(p=>{if(p)setProfile(p);}).catch(console.error);
+        ensureProfile(session.user).then(async p=>{
+          if(p) {
+            setProfile(p);
+            await supabase.from("profiles").update({ last_active_at:new Date().toISOString() }).eq("id", p.id);
+          }
+        }).catch(console.error);
       } else {
         setUser(null);
         setProfile(null);
@@ -2093,10 +2334,11 @@ export default function App() {
   const isLoreTeam = canAccessStaff(profile);
 
   const nav = [
-    {id:"forums",label:"Boards"},
-    {id:"nations",label:"Nations"},
-    {id:"leaderboards",label:"Leaderboards"},
-    {id:"news",label:"News"},
+      {id:"forums",label:"Boards"},
+      {id:"nations",label:"Nations"},
+      {id:"leaderboards",label:"Leaderboards"},
+      {id:"changelog",label:"Changelog"},
+      {id:"news",label:"News"},
     ...(user ? [
       {id:"profile",label:"Profile"},
       {id:"rp",label:"Dispatches"},
@@ -2139,7 +2381,7 @@ export default function App() {
         <div className="user-tools" style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexShrink:0 }}>
           {user ? <>
             {userNation && <><Flag nation={userNation} size={20} /><span style={{ fontSize:11, color:"#9fb4d6", maxWidth:70, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{userNation.name}</span></>}
-            <button onClick={()=>navigate("profile")} style={{ background:"transparent", border:"none", padding:0, minHeight:0, color:"#9fb4d6", fontSize:11, cursor:"pointer" }}>@{profile?.username || user.email?.split("@")[0] || "profile"}</button>
+            <button onClick={()=>navigate("profile")} style={{ background:"transparent", border:"none", padding:0, minHeight:0, color:"#9fb4d6", fontSize:11, cursor:"pointer" }}>{profile?.username || "profile"}</button>
             {isLoreTeam && <span style={{ fontSize:9, color:"#3498db", border:"1px solid #3498db33", borderRadius:3, padding:"1px 5px", letterSpacing:"0.06em" }}>{(ROLE_LABELS[profile?.role] || profile?.role || "Staff").toUpperCase()}</span>}
             {isLoreTeam && <button onClick={()=>navigate("admin")} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>{isAdmin ? "Admin" : "Lore"}</button>}
             <button onClick={()=>supabase.auth.signOut()} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>Sign Out</button>
@@ -2173,7 +2415,8 @@ export default function App() {
               {page==="wars"         && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="news"         && <NewsPage news={data.news} profile={profile} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="leaderboards" && <Leaderboards nations={data.nations} />}
-              {page==="profile" && user && profile && <ProfilePage user={user} profile={profile} userNation={userNation} onProfileUpdate={updateProfile} />}
+              {page==="changelog"    && <Changelog />}
+              {page==="profile" && user && profile && <ProfilePage profile={profile} profiles={data.profiles} userNation={userNation} onProfileUpdate={updateProfile} />}
               {page==="forums"       && <Forums boards={data.boards} route={forumRoute} onRouteChange={setForumRoute} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} onRequireAuth={()=>navigate("auth")} />}
               {page==="auth"         && <Auth setupRequired={setupRequired} onAuth={(u,p)=>{setUser(u);if(p)setProfile(p);else ensureProfile(u).then(next=>{if(next)setProfile(next);}).catch(console.error);fetchAll();setPage("forums");setForumRoute({ type:"boards" });writeRoute("/forums");}} />}
               {page==="admin" && isLoreTeam && <Admin nations={data.nations} profiles={data.profiles} onRefresh={fetchAll} isAdmin={isAdmin} />}
@@ -2209,6 +2452,10 @@ export default function App() {
         .rich-post a{color:#6fb7ff;text-decoration:underline;}
         .rich-post img{display:block;max-width:100%;height:auto;border-radius:6px;margin:0.75rem 0;border:1px solid rgba(255,255,255,0.12);}
         .bb-center{text-align:center;}
+        .bb-left{text-align:left;}
+        .bb-right{text-align:right;}
+        .bb-hr{border:0;border-top:1px solid rgba(246,193,50,0.28);margin:1rem 0;}
+        .bb-list{margin:0.75rem 0;padding-left:1.35rem;}
         .bb-spoiler{border:1px solid rgba(246,193,50,0.18);border-radius:6px;padding:0.5rem 0.65rem;background:rgba(255,255,255,0.035);}
         .bb-mention{display:inline-flex;color:#f6c132;font-weight:800;}
         .bbcode-toolbar,.editor-tabs{display:flex;gap:0.45rem;flex-wrap:wrap;align-items:center;}
@@ -2299,6 +2546,7 @@ export default function App() {
           .post-author{width:auto!important;border-right:none!important;border-bottom:1px solid rgba(20,96,184,0.16);padding:0 0 0.85rem!important;margin-bottom:0.85rem;display:grid;grid-template-columns:auto 1fr;column-gap:0.85rem;align-items:center;}
           .post-author img,.post-author > div:first-child{grid-row:1 / span 3;}
           .profile-grid{grid-template-columns:1fr!important;}
+          .profile-community-grid,.admin-user-grid,.admin-code-grid{grid-template-columns:1fr!important;}
           .war-participant-form{grid-template-columns:1fr!important;}
         }
         @media (max-width: 430px) {

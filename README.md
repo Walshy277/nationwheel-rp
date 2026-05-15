@@ -15,6 +15,7 @@ Create `.env.local`:
 ```env
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_or_publishable_key
+VITE_TURNSTILE_SITE_KEY=optional_cloudflare_turnstile_site_key
 ```
 
 Start the dev server:
@@ -39,6 +40,8 @@ Recommended order:
 supabase/schema.sql
 supabase/functions.sql
 supabase/migrations/20260513_forum_foundation.sql
+supabase/migrations/20260514_scale_forum_limits.sql
+supabase/migrations/20260515_admin_profile_forum_tools.sql
 supabase/policies.sql
 supabase/seed-forum.sql
 supabase-nation-seed.sql
@@ -61,6 +64,8 @@ To add profile avatars, signatures, and bios to an existing database, run:
 ```text
 supabase-profile-setup.sql
 ```
+
+To enable registration captcha, create a Cloudflare Turnstile widget, set `VITE_TURNSTILE_SITE_KEY` in the frontend environment, and configure the matching Turnstile secret in Supabase Auth captcha settings.
 
 To enable multi-nation and alliance wars on an existing database, run:
 
@@ -118,6 +123,7 @@ Add:
 ```text
 VITE_SUPABASE_URL
 VITE_SUPABASE_ANON_KEY
+VITE_TURNSTILE_SITE_KEY
 ```
 
 Then enable:
@@ -138,6 +144,12 @@ Thread posts and news articles support safe BBCode:
 [quote]quoted text[/quote]
 [url=https://example.com]link text[/url]
 [img]https://example.com/image.png[/img]
+[color=#f6c132]gold text[/color]
+[size=18]larger text[/size]
+[hr]
+[list]
+[*]item
+[/list]
 ```
 
 HTML is escaped by default. Only a very small attribute-free formatting subset is restored, such as `<b>`, `<i>`, `<blockquote>`, and `<code>`.

@@ -25,6 +25,19 @@ export const safeImageUrl = value => {
   return /\.(png|jpe?g|gif|webp)(\?.*)?$/i.test(url) ? url : "";
 };
 
+const safeColor = value => {
+  const color = String(value || "").trim();
+  if (/^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(color)) return color;
+  if (/^(red|blue|green|yellow|orange|purple|white|black|gray|grey|silver|gold|cyan|magenta)$/i.test(color)) return color.toLowerCase();
+  return "";
+};
+
+const safeSize = value => {
+  const size = Number(String(value || "").trim());
+  if (!Number.isFinite(size)) return "";
+  return `${Math.min(Math.max(size, 10), 28)}px`;
+};
+
 export const renderRichText = value => {
   let html = escapeHtml(value);
   html = html
@@ -33,9 +46,32 @@ export const renderRichText = value => {
     .replace(/\[u\]([\s\S]*?)\[\/u\]/gi, "<u>$1</u>")
     .replace(/\[s\]([\s\S]*?)\[\/s\]/gi, "<s>$1</s>")
     .replace(/\[center\]([\s\S]*?)\[\/center\]/gi, '<div class="bb-center">$1</div>')
+    .replace(/\[left\]([\s\S]*?)\[\/left\]/gi, '<div class="bb-left">$1</div>')
+    .replace(/\[right\]([\s\S]*?)\[\/right\]/gi, '<div class="bb-right">$1</div>')
     .replace(/\[spoiler\]([\s\S]*?)\[\/spoiler\]/gi, '<details class="bb-spoiler"><summary>Spoiler</summary>$1</details>')
     .replace(/\[quote\]([\s\S]*?)\[\/quote\]/gi, "<blockquote>$1</blockquote>")
-    .replace(/\[code\]([\s\S]*?)\[\/code\]/gi, "<pre><code>$1</code></pre>");
+    .replace(/\[code\]([\s\S]*?)\[\/code\]/gi, "<pre><code>$1</code></pre>")
+    .replace(/\[hr\]/gi, '<hr class="bb-hr" />');
+
+  html = html.replace(/\[color=(.*?)\]([\s\S]*?)\[\/color\]/gi, (_, color, text) => {
+    const nextColor = safeColor(color);
+    return nextColor ? `<span style="color:${nextColor}">${text}</span>` : text;
+  });
+
+  html = html.replace(/\[size=(.*?)\]([\s\S]*?)\[\/size\]/gi, (_, size, text) => {
+    const nextSize = safeSize(size);
+    return nextSize ? `<span style="font-size:${nextSize}">${text}</span>` : text;
+  });
+
+  html = html.replace(/\[list\]([\s\S]*?)\[\/list\]/gi, (_, body) => {
+    const items = body
+      .split(/\[\*\]/i)
+      .map(item => item.trim())
+      .filter(Boolean)
+      .map(item => `<li>${item}</li>`)
+      .join("");
+    return items ? `<ul class="bb-list">${items}</ul>` : body;
+  });
 
   html = html.replace(/\[url=(.*?)\]([\s\S]*?)\[\/url\]/gi, (_, url, text) => {
     const href = safeUrl(url);
@@ -66,4 +102,3 @@ export const RichText = ({ children }) =>
     className: "rich-post",
     dangerouslySetInnerHTML: { __html: renderRichText(children) },
   });
-
