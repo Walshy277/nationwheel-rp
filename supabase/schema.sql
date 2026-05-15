@@ -297,7 +297,7 @@ language sql
 security definer
 set search_path = public
 as $$
-  select exists(select 1 from public.profiles where id = uid and role = 'admin');
+  select exists(select 1 from public.profiles where id = uid and role in ('admin','owner'));
 $$;
 
 create or replace function public.is_lore_team(uid uuid)
@@ -306,7 +306,7 @@ language sql
 security definer
 set search_path = public
 as $$
-  select exists(select 1 from public.profiles where id = uid and role in ('admin','lore','mod'));
+  select exists(select 1 from public.profiles where id = uid and role in ('admin','owner','lore','lore_team','mod','moderator'));
 $$;
 
 create or replace function public.assign_nation_as_staff(target_profile uuid, target_nation uuid)

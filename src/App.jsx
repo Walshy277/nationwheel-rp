@@ -8,7 +8,7 @@ import BBCodeToolbar from "./components/forum/BBCodeToolbar";
 import ForumIndex from "./pages/ForumIndex";
 
 const LOGO_SRC = "/nationwheel_logo.jpg";
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "";
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "0x4AAAAAADPbfZKKuhz6dC9R";
 const SITE_CODE_FILES = import.meta.glob("./**/*.{js,jsx}", { query: "?raw", import: "default", eager: true });
 const CHANGELOG_ENTRIES = [
   {
@@ -141,6 +141,9 @@ const parseRoute = () => {
   if (section === "forums" && sub === "thread" && id) {
     return { page: "forums", forumRoute: { type: "thread", threadId: decodeURIComponent(id) } };
   }
+  if (section === "profile" && sub) {
+    return { page: "profile", profileId: decodeURIComponent(sub), forumRoute: { type: "boards" } };
+  }
   const page = Object.entries(PAGE_PATHS).find(([, pagePath]) => pagePath === path)?.[0] || "forums";
   return { page, forumRoute: { type: "boards" } };
 };
@@ -170,6 +173,18 @@ const NationPill = ({ nation }) => nation ? (
     <span style={{ fontSize:11, color:"#d4af37", fontWeight:700 }}>{nation.name}</span>
   </span>
 ) : null;
+
+const ProfileButton = ({ profile, onViewProfile, children, style = {} }) => {
+  if (!profile?.id || !onViewProfile) return <span style={style}>{children || profile?.username || "Unknown"}</span>;
+  return (
+    <button
+      onClick={(event) => { event.stopPropagation(); onViewProfile(profile.id); }}
+      style={{ background:"transparent", border:"none", padding:0, minHeight:0, color:"inherit", cursor:"pointer", font:"inherit", textAlign:"left", ...style }}
+    >
+      {children || profile.username || "Unknown"}
+    </button>
+  );
+};
 
 const SetupModal = ({ onClose }) => {
   return (
@@ -208,25 +223,41 @@ const Auth = ({ onAuth, setupRequired }) => {
   const [err,setErr]=useState(""); const [loading,setLoading]=useState(false);
   const [showSetup,setShowSetup]=useState(false);
   const [captchaToken,setCaptchaToken]=useState("");
+  const turnstileRef = useRef(null);
+
+  const resetCaptcha = () => {
+    setCaptchaToken("");
+    turnstileRef.current?.reset();
+  };
+
+  const getCaptchaToken = async () => {
+    if (!TURNSTILE_SITE_KEY) return "";
+    return captchaToken || await turnstileRef.current?.getResponsePromise(10000).catch(() => turnstileRef.current?.getResponse()) || "";
+  };
 
   const submit = async () => {
     setErr(""); setLoading(true);
     try {
+      const currentCaptchaToken = await getCaptchaToken();
+      if (TURNSTILE_SITE_KEY && !currentCaptchaToken) {
+        setErr(`Complete the captcha before ${mode === "login" ? "signing in" : "registering"}.`);
+        setLoading(false);
+        return;
+      }
       if (mode==="login") {
-        const {data,error} = await supabase.auth.signInWithPassword({email,password:pw});
+        const {data,error} = await supabase.auth.signInWithPassword({
+          email,
+          password:pw,
+          options: TURNSTILE_SITE_KEY ? { captchaToken: currentCaptchaToken } : undefined,
+        });
         if (error) throw error;
         const nextProfile = await ensureProfile(data.user);
         onAuth(data.user, nextProfile);
       } else {
-        if (TURNSTILE_SITE_KEY && !captchaToken) {
-          setErr("Complete the captcha before registering.");
-          setLoading(false);
-          return;
-        }
         const {data,error} = await supabase.auth.signUp({
           email,
           password:pw,
-          options: TURNSTILE_SITE_KEY ? { captchaToken } : undefined,
+          options: TURNSTILE_SITE_KEY ? { captchaToken: currentCaptchaToken } : undefined,
         });
         if (error) throw error;
         if (data.session?.user) {
@@ -234,13 +265,16 @@ const Auth = ({ onAuth, setupRequired }) => {
           onAuth(data.session.user, nextProfile);
           return;
         }
-        setErr("Account created - check your email, then sign in."); setMode("login");
+        setErr("Account created - check your email, then sign in."); setMode("login"); resetCaptcha();
       }
     } catch(e){
-      const msg = e.message === "email rate limit exceeded"
+      const msg = mode === "login" && /captcha|captcha_token/i.test(e.message || "")
+        ? "Captcha verification failed. Complete the captcha and try signing in again."
+        : e.message === "email rate limit exceeded"
         ? "Supabase email limit hit. Wait a bit, or disable email confirmations in Supabase Auth settings while testing."
         : e.message;
       setErr(msg);
+      resetCaptcha();
     }
     setLoading(false);
   };
@@ -287,7 +321,7 @@ const Auth = ({ onAuth, setupRequired }) => {
             )}
             <div style={{ display:"flex", gap:"0.4rem", marginBottom:"1.25rem" }}>
               {["login","signup"].map(m=>(
-                <button key={m} onClick={()=>setMode(m)} style={{ flex:1, padding:"8px", borderRadius:6, cursor:"pointer", fontWeight:800, fontSize:12, letterSpacing:"0.06em", border:mode===m?"none":"1px solid rgba(20,96,184,0.36)", background:mode===m?"#f6c132":"rgba(255,255,255,0.035)", color:mode===m?"#050505":"#f5f8ff", fontFamily:"inherit" }}>
+                <button key={m} onClick={()=>{ if (mode !== m) resetCaptcha(); setMode(m); }} style={{ flex:1, padding:"8px", borderRadius:6, cursor:"pointer", fontWeight:800, fontSize:12, letterSpacing:"0.06em", border:mode===m?"none":"1px solid rgba(20,96,184,0.36)", background:mode===m?"#f6c132":"rgba(255,255,255,0.035)", color:mode===m?"#050505":"#f5f8ff", fontFamily:"inherit" }}>
                   {m==="login"?"SIGN IN":"REGISTER"}
                 </button>
               ))}
@@ -296,8 +330,8 @@ const Auth = ({ onAuth, setupRequired }) => {
               {mode==="signup" && <input placeholder="Choose a username" value={username} onChange={e=>setUsername(e.target.value)} style={inp} />}
               <input placeholder="Email address" type="email" value={email} onChange={e=>setEmail(e.target.value)} style={inp} />
               <input placeholder="Password" type="password" value={pw} onChange={e=>setPw(e.target.value)} style={inp} onKeyDown={e=>e.key==="Enter"&&submit()} />
-              {mode==="signup" && TURNSTILE_SITE_KEY && (
-                <Turnstile siteKey={TURNSTILE_SITE_KEY} onSuccess={setCaptchaToken} onError={()=>setCaptchaToken("")} onExpire={()=>setCaptchaToken("")} options={{ theme:"dark" }} />
+              {TURNSTILE_SITE_KEY && (
+                <Turnstile ref={turnstileRef} siteKey={TURNSTILE_SITE_KEY} onSuccess={setCaptchaToken} onError={()=>setCaptchaToken("")} onExpire={()=>setCaptchaToken("")} options={{ theme:"dark" }} />
               )}
               {err && <p style={{ color:err.startsWith("Account created")?"#2ecc71":"#e74c3c", fontSize:12, margin:0 }}>{err}</p>}
               <button onClick={submit} disabled={loading} style={{ ...mkBtn(), marginTop:"0.4rem", padding:"10px", fontSize:13, letterSpacing:"0.08em" }}>
@@ -432,7 +466,7 @@ const ProfileMediaUploader = ({ profileId, field, currentUrl, label, onUploaded,
   );
 };
 
-const CommunityUsers = ({ profiles }) => {
+const CommunityUsers = ({ profiles, onViewProfile }) => {
   const activeUsers = [...profiles]
     .filter(isProfileActive)
     .sort((a,b)=>new Date(b.last_active_at || 0) - new Date(a.last_active_at || 0))
@@ -444,7 +478,7 @@ const CommunityUsers = ({ profiles }) => {
     <div key={`${mode}-${item.id}`} style={{ display:"flex", gap:"0.65rem", alignItems:"center", padding:"0.6rem 0", borderBottom:"1px solid rgba(78,128,190,0.12)" }}>
       {item.avatar_url ? <img src={item.avatar_url} alt="" style={{ width:34, height:34, borderRadius:"50%", objectFit:"cover", border:"1px solid rgba(246,193,50,0.18)" }} /> : <div style={{ width:34, height:34, borderRadius:"50%", background:"rgba(255,255,255,0.055)", border:"1px solid rgba(246,193,50,0.12)" }} />}
       <div style={{ minWidth:0, flex:1 }}>
-        <div style={{ color:"#edf4ff", fontSize:12, fontWeight:800, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.username}</div>
+        <ProfileButton profile={item} onViewProfile={onViewProfile} style={{ color:"#edf4ff", fontSize:12, fontWeight:800, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"block" }} />
         <div style={{ color:"#8fa0bd", fontSize:10 }}>{mode === "active" ? `Active ${timeAgo(item.last_active_at)}` : `Joined ${fmtDate(item.created_at)}`}</div>
       </div>
       {item.status && item.status !== "active" && <span style={{ color:"#ffb4b4", fontSize:9, textTransform:"uppercase", letterSpacing:"0.08em" }}>{item.status}</span>}
@@ -464,7 +498,7 @@ const CommunityUsers = ({ profiles }) => {
   );
 };
 
-const ProfilePage = ({ profile, profiles, userNation, onProfileUpdate }) => {
+const ProfilePage = ({ profile, profiles, userNation, onProfileUpdate, onViewProfile }) => {
   const [form, setForm] = useState({ username:profile?.username||"", bio:profile?.bio||"" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -560,7 +594,70 @@ const ProfilePage = ({ profile, profiles, userNation, onProfileUpdate }) => {
           </div>
         </div>
       </div>
-      <CommunityUsers profiles={profiles} />
+      <CommunityUsers profiles={profiles} onViewProfile={onViewProfile} />
+    </div>
+  );
+};
+
+const PublicProfilePage = ({ viewedProfile, nations, posts, actions, onBack }) => {
+  const nation = viewedProfile?.nation_id ? nations.find(n => n.id === viewedProfile.nation_id) : null;
+  const recentPosts = posts.filter(post => post.author_id === viewedProfile?.id).slice(0, 6);
+  const recentActions = nation ? actions.filter(action => action.nation_id === nation.id).slice(0, 5) : [];
+
+  if (!viewedProfile) {
+    return (
+      <div style={card}>
+        <h2 style={{ margin:"0 0 0.5rem", color:"#d4af37", fontFamily:"var(--display)" }}>Profile Not Found</h2>
+        <p style={{ margin:"0 0 1rem", color:"#9fb4d6", fontSize:13 }}>That user profile is not available.</p>
+        <button onClick={onBack} style={mkBtn("ghost")}>Back</button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+      <button onClick={onBack} style={{ ...mkBtn("ghost"), alignSelf:"flex-start" }}>Back</button>
+      <section style={{ ...card, border:"1px solid rgba(212,175,55,0.24)" }}>
+        <div style={{ display:"flex", gap:"1rem", alignItems:"flex-start", flexWrap:"wrap" }}>
+          {viewedProfile.avatar_url
+            ? <img src={viewedProfile.avatar_url} alt="" style={{ width:112, height:112, borderRadius:"50%", objectFit:"cover", border:"1px solid rgba(246,193,50,0.28)" }} />
+            : <div style={{ width:112, height:112, borderRadius:"50%", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(246,193,50,0.18)" }} />}
+          <div style={{ flex:1, minWidth:220 }}>
+            <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+              <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:26 }}>{viewedProfile.username}</h2>
+              <span style={{ color:"#9fb4d6", border:"1px solid rgba(78,128,190,0.24)", borderRadius:999, padding:"2px 8px", fontSize:10, textTransform:"uppercase", letterSpacing:"0.08em" }}>{ROLE_LABELS[viewedProfile.role] || viewedProfile.role || "Player"}</span>
+              {viewedProfile.status && viewedProfile.status !== "active" && <span style={{ color:"#ffb4b4", border:"1px solid rgba(231,76,60,0.32)", borderRadius:999, padding:"2px 8px", fontSize:10, textTransform:"uppercase" }}>{viewedProfile.status}</span>}
+            </div>
+            <div style={{ color:"#8fa0bd", fontSize:12, marginTop:5 }}>{viewedProfile.last_active_at ? `Last active ${timeAgo(viewedProfile.last_active_at)}` : "Activity not recorded yet"}</div>
+            {nation && <div style={{ marginTop:"0.75rem" }}><NationPill nation={nation} /></div>}
+            {viewedProfile.bio && <p style={{ margin:"0.85rem 0 0", color:"#d7e2f2", fontSize:13, lineHeight:1.75, whiteSpace:"pre-wrap" }}>{viewedProfile.bio}</p>}
+            {viewedProfile.signature_url && <img src={viewedProfile.signature_url} alt="" style={{ marginTop:"0.85rem", maxWidth:"100%", maxHeight:110, objectFit:"contain", borderTop:"1px solid rgba(20,96,184,0.16)", paddingTop:"0.75rem" }} />}
+          </div>
+        </div>
+      </section>
+
+      <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)", gap:"1rem" }} className="profile-community-grid">
+        <section style={card}>
+          <h3 style={{ margin:"0 0 0.75rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Recent Dispatches</h3>
+          {recentPosts.length === 0 && <p style={{ margin:0, color:"#8493ad", fontSize:13, fontStyle:"italic" }}>No dispatches posted.</p>}
+          {recentPosts.map(post => (
+            <div key={post.id} style={{ borderTop:"1px solid rgba(78,128,190,0.14)", paddingTop:"0.65rem", marginTop:"0.65rem" }}>
+              <div style={{ color:"#edf4ff", fontSize:13, fontWeight:800 }}>{post.title}</div>
+              <div style={{ color:"#8fa0bd", fontSize:11 }}>{post.post_type} - {timeAgo(post.created_at)}</div>
+            </div>
+          ))}
+        </section>
+        <section style={card}>
+          <h3 style={{ margin:"0 0 0.75rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Nation Actions</h3>
+          {recentActions.length === 0 && <p style={{ margin:0, color:"#8493ad", fontSize:13, fontStyle:"italic" }}>No canon actions recorded.</p>}
+          {recentActions.map(action => (
+            <div key={action.id} style={{ borderTop:"1px solid rgba(78,128,190,0.14)", paddingTop:"0.65rem", marginTop:"0.65rem" }}>
+              <div style={{ color:"#edf4ff", fontSize:13, fontWeight:800 }}>{action.title}</div>
+              <div style={{ color:STATUS_COL[action.status] || "#8fa0bd", fontSize:11, textTransform:"uppercase" }}>{action.status}</div>
+            </div>
+          ))}
+        </section>
+      </div>
     </div>
   );
 };
@@ -654,6 +751,20 @@ const Section = ({ title, children, empty }) => (
 
 const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMembers, nations, onBack, profile, userNation, isMod, isAdmin, onRefresh }) => {
   const [tab, setTab] = useState("overview");
+  const [editingNation, setEditingNation] = useState(false);
+  const [nationForm, setNationForm] = useState({
+    government:nation.government || "",
+    ideology:nation.ideology || "",
+    population:nation.population || "",
+    gdp_usd:nation.gdp_usd || "",
+    land_km2:nation.land_km2 || "",
+    army_rank:nation.army_rank || "",
+    hdi:nation.hdi || "",
+    economy:nation.economy || "",
+    diplomatic_status:nation.diplomatic_status || "",
+    bloc:nation.bloc || "",
+    bio:nation.bio || "",
+  });
   const nPosts = posts.filter(p => p.nation_id === nation.id);
   const nActions = actions.filter(a => a.nation_id === nation.id);
   const nAllyIds = allianceMembers.filter(m => m.nation_id === nation.id).map(m => m.alliance_id);
@@ -664,6 +775,43 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
   );
   const nAlliances = alliances.filter(a => nAllyIds.includes(a.id));
   const isOwner = profile?.nation_id === nation.id;
+  const canEditNation = isMod || isAdmin;
+
+  useEffect(() => {
+    setEditingNation(false);
+    setNationForm({
+      government:nation.government || "",
+      ideology:nation.ideology || "",
+      population:nation.population || "",
+      gdp_usd:nation.gdp_usd || "",
+      land_km2:nation.land_km2 || "",
+      army_rank:nation.army_rank || "",
+      hdi:nation.hdi || "",
+      economy:nation.economy || "",
+      diplomatic_status:nation.diplomatic_status || "",
+      bloc:nation.bloc || "",
+      bio:nation.bio || "",
+    });
+  }, [nation.id, nation.government, nation.ideology, nation.population, nation.gdp_usd, nation.land_km2, nation.army_rank, nation.hdi, nation.economy, nation.diplomatic_status, nation.bloc, nation.bio]);
+
+  const saveNationStats = async () => {
+    const payload = {
+      government:nationForm.government || null,
+      ideology:nationForm.ideology || null,
+      population:nationForm.population ? parseInt(nationForm.population) : null,
+      gdp_usd:nationForm.gdp_usd ? parseInt(nationForm.gdp_usd) : null,
+      land_km2:nationForm.land_km2 ? parseInt(nationForm.land_km2) : null,
+      army_rank:nationForm.army_rank ? parseInt(nationForm.army_rank) : null,
+      hdi:nationForm.hdi ? parseFloat(nationForm.hdi) : null,
+      economy:nationForm.economy || null,
+      diplomatic_status:nationForm.diplomatic_status || null,
+      bloc:nationForm.bloc || null,
+      bio:nationForm.bio || null,
+    };
+    const { error } = await supabase.from("nations").update(payload).eq("id", nation.id);
+    if (error) alert(error.message);
+    else { setEditingNation(false); onRefresh(); }
+  };
 
   const stats = [
     ["Population", fmtPop(nation.population)],
@@ -686,7 +834,7 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
         <div style={{ position:"relative", display:"flex", gap:"1.25rem", alignItems:"flex-start", flexWrap:"wrap" }}>
           <div style={{ position:"relative" }}>
             <Flag nation={nation} size={72} />
-            {(isOwner || isAdmin) && (
+            {(isOwner || canEditNation) && (
               <FlagUploader nationId={nation.id} currentUrl={nation.flag_url}
                 onUploaded={(url) => { nation.flag_url = url; onRefresh(); }} />
             )}
@@ -699,6 +847,7 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
               {nation.diplomatic_status && <span style={{ fontSize:11, color:"#d4af37", border:"1px solid rgba(212,175,55,0.25)", borderRadius:4, padding:"1px 8px" }}>{nation.diplomatic_status}</span>}
               {nation.bloc && <span style={{ fontSize:11, color:"#3498db", border:"1px solid rgba(52,152,219,0.25)", borderRadius:4, padding:"1px 8px" }}>{nation.bloc}</span>}
             </div>
+            {canEditNation && <button onClick={()=>setEditingNation(!editingNation)} style={{ ...mkBtn("ghost"), marginTop:"0.75rem", fontSize:11 }}>{editingNation ? "Close Nation Editor" : "Edit Nation Stats"}</button>}
           </div>
         </div>
       </div>
@@ -712,6 +861,32 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
 
       {tab==="overview" && (
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:"0.65rem" }}>
+          {editingNation && (
+            <div style={{ ...card, gridColumn:"1/-1", border:"1px solid rgba(52,152,219,0.28)" }}>
+              <h3 style={{ margin:"0 0 0.8rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Nation Stat Editor</h3>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:"0.55rem" }}>
+                {[
+                  ["government","Government"],
+                  ["ideology","Ideology"],
+                  ["population","Population"],
+                  ["gdp_usd","GDP USD"],
+                  ["land_km2","Land km2"],
+                  ["army_rank","Army Rank"],
+                  ["hdi","HDI"],
+                  ["economy","Economy"],
+                  ["diplomatic_status","Diplomatic Status"],
+                  ["bloc","Bloc"],
+                ].map(([key,label]) => (
+                  <input key={key} placeholder={label} value={nationForm[key]} onChange={e=>setNationForm({...nationForm,[key]:e.target.value})} style={inp} />
+                ))}
+                <textarea placeholder="Nation bio or lore" value={nationForm.bio} onChange={e=>setNationForm({...nationForm,bio:e.target.value})} style={{ ...ta, gridColumn:"1/-1", minHeight:90 }} />
+              </div>
+              <div style={{ display:"flex", gap:"0.45rem", marginTop:"0.75rem" }}>
+                <button onClick={saveNationStats} style={mkBtn()}>Save Nation Stats</button>
+                <button onClick={()=>setEditingNation(false)} style={mkBtn("ghost")}>Cancel</button>
+              </div>
+            </div>
+          )}
           {stats.map(([l,v])=>(
             <div key={l} style={{ ...card, padding:"1rem" }}>
               <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.06em", textTransform:"uppercase", marginBottom:4 }}>{l}</div>
@@ -730,14 +905,14 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
       {tab==="feed" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
           {nPosts.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No dispatches from this nation yet.</p>}
-          {nPosts.map(p=><PostCard key={p.id} post={p} nations={nations} />)}
+          {nPosts.map(p=><PostCard key={p.id} post={p} nations={nations} isMod={isMod} onRefresh={onRefresh} />)}
         </div>
       )}
 
       {tab==="actions" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
           {nActions.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No canon actions submitted yet.</p>}
-          {nActions.map(a=><ActionCard key={a.id} action={a} nations={nations} expandable />)}
+          {nActions.map(a=><ActionCard key={a.id} action={a} nations={nations} expandable isMod={isMod} profile={profile} onRefresh={onRefresh} />)}
         </div>
       )}
 
@@ -769,8 +944,21 @@ const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMember
   );
 };
 
-const PostCard = ({ post, nations }) => {
+const PostCard = ({ post, nations, isMod, onRefresh }) => {
   const targetNation = nations?.find(n => n.id === post.target_nation_id);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ title:post.title || "", body:post.body || "", post_type:post.post_type || "Dispatch" });
+  const savePost = async () => {
+    const { error } = await supabase.from("rp_posts").update(editForm).eq("id", post.id);
+    if (error) alert(error.message);
+    else { setEditing(false); onRefresh?.(); }
+  };
+  const deletePost = async () => {
+    if (!confirm("Remove this dispatch permanently?")) return;
+    const { error } = await supabase.from("rp_posts").delete().eq("id", post.id);
+    if (error) alert(error.message);
+    else onRefresh?.();
+  };
   return (
     <div style={card}>
       <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", flexWrap:"wrap", marginBottom:"0.75rem" }}>
@@ -784,8 +972,30 @@ const PostCard = ({ post, nations }) => {
         </div>
         <span style={{ fontSize:11, fontWeight:800, color:POST_COLS[post.post_type]||"#d4af37", background:"rgba(0,0,0,0.5)", borderRadius:4, padding:"2px 8px", letterSpacing:"0.04em", border:`1px solid ${POST_COLS[post.post_type]||"#d4af37"}30` }}>{post.post_type}</span>
       </div>
-      <h3 style={{ margin:"0 0 0.6rem", color:"#f8fbff", fontFamily:"var(--display)", fontSize:15 }}>{post.title}</h3>
-      <p style={{ margin:0, color:"#d7e2f2", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{post.body}</p>
+      {editing ? (
+        <div style={{ display:"flex", flexDirection:"column", gap:"0.55rem" }}>
+          <input value={editForm.title} onChange={e=>setEditForm({...editForm,title:e.target.value})} style={inp} />
+          <select value={editForm.post_type} onChange={e=>setEditForm({...editForm,post_type:e.target.value})} style={inp}>
+            {POST_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+          </select>
+          <textarea value={editForm.body} onChange={e=>setEditForm({...editForm,body:e.target.value})} style={{ ...ta, minHeight:120 }} />
+          <div style={{ display:"flex", gap:"0.4rem" }}>
+            <button onClick={savePost} style={{ ...mkBtn(), fontSize:11 }}>Save Dispatch</button>
+            <button onClick={()=>setEditing(false)} style={{ ...mkBtn("ghost"), fontSize:11 }}>Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <h3 style={{ margin:"0 0 0.6rem", color:"#f8fbff", fontFamily:"var(--display)", fontSize:15 }}>{post.title}</h3>
+          <p style={{ margin:0, color:"#d7e2f2", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{post.body}</p>
+        </>
+      )}
+      {isMod && !editing && (
+        <div style={{ display:"flex", gap:"0.35rem", marginTop:"0.75rem", flexWrap:"wrap" }}>
+          <button onClick={()=>setEditing(true)} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Edit Dispatch</button>
+          <button onClick={deletePost} style={{ ...mkBtn("red"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Remove Dispatch</button>
+        </div>
+      )}
     </div>
   );
 };
@@ -793,6 +1003,7 @@ const PostCard = ({ post, nations }) => {
 const ActionCard = ({ action, nations, expandable, isMod, onRefresh, profile }) => {
   const [open, setOpen] = useState(false);
   const [updateText, setUpdateText] = useState("");
+  const [loreNotes, setLoreNotes] = useState(action.lore_notes || "");
   const nation = nations?.find(n=>n.id===action.nation_id) || action.nations;
 
   const addUpdate = async () => {
@@ -801,8 +1012,13 @@ const ActionCard = ({ action, nations, expandable, isMod, onRefresh, profile }) 
     setUpdateText(""); if (onRefresh) onRefresh();
   };
   const updateStatus = async (status, extra={}) => {
-    await supabase.from("canon_actions").update({ status, ...extra }).eq("id", action.id);
+    await supabase.from("canon_actions").update({ status, lore_notes:loreNotes.trim() || null, ...extra }).eq("id", action.id);
     if (onRefresh) onRefresh();
+  };
+  const saveLoreNotes = async () => {
+    const { error } = await supabase.from("canon_actions").update({ lore_notes:loreNotes.trim() || null }).eq("id", action.id);
+    if (error) alert(error.message);
+    else onRefresh?.();
   };
 
   return (
@@ -846,11 +1062,14 @@ const ActionCard = ({ action, nations, expandable, isMod, onRefresh, profile }) 
             <div style={{ borderTop:"1px solid rgba(255,215,0,0.07)", paddingTop:"0.75rem", display:"flex", flexDirection:"column", gap:"0.6rem" }}>
               <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.06em", textTransform:"uppercase" }}>Lore Team Controls</div>
               <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
-                {action.status==="pending" && <button onClick={()=>updateStatus("active",{started_at:new Date().toISOString()})} style={{ ...mkBtn("blue"), fontSize:11 }}>Activate</button>}
+                {action.status==="pending" && <button onClick={()=>updateStatus("active",{started_at:new Date().toISOString()})} style={{ ...mkBtn("blue"), fontSize:11 }}>Approve</button>}
+                {action.status==="pending" && <button onClick={()=>updateStatus("cancelled")} style={{ ...mkBtn("red"), fontSize:11 }}>Reject</button>}
                 {action.status==="active" && <button onClick={()=>updateStatus("complete",{completed_at:new Date().toISOString()})} style={{ ...mkBtn("green"), fontSize:11 }}>Complete</button>}
                 <button onClick={()=>updateStatus("cancelled")} style={{ ...mkBtn("red"), fontSize:11 }}>Cancel</button>
               </div>
-              <textarea placeholder="Post progress update or lore notes" value={updateText} onChange={e=>setUpdateText(e.target.value)} style={{ ...ta, minHeight:55 }} />
+              <textarea placeholder="Private lore notes, approval conditions, or rejection reason" value={loreNotes} onChange={e=>setLoreNotes(e.target.value)} style={{ ...ta, minHeight:70 }} />
+              <button onClick={saveLoreNotes} style={{ ...mkBtn("ghost"), alignSelf:"flex-start" }}>Save Lore Notes</button>
+              <textarea placeholder="Post visible progress update" value={updateText} onChange={e=>setUpdateText(e.target.value)} style={{ ...ta, minHeight:55 }} />
               <button onClick={addUpdate} style={{ ...mkBtn(), alignSelf:"flex-start" }}>Post Update</button>
             </div>
           )}
@@ -1128,7 +1347,7 @@ const Nations = ({ nations, posts, actions, wars, alliances, allianceMembers, pr
   );
 };
 
-const RPBoard = ({ posts, profile, userNation, nations, onRefresh }) => {
+const RPBoard = ({ posts, profile, userNation, nations, isMod, onRefresh }) => {
   const [showForm, setShowForm] = useState(false);
   const [pType, setPType] = useState("Dispatch");
   const [title, setTitle] = useState(""); const [body, setBody] = useState(""); const [targetId, setTargetId] = useState("");
@@ -1178,7 +1397,7 @@ const RPBoard = ({ posts, profile, userNation, nations, onRefresh }) => {
       )}
       <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
         {filtered.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"3rem", fontStyle:"italic" }}>No dispatches yet. The world waits.</p>}
-        {filtered.map(p=><PostCard key={p.id} post={p} nations={nations} />)}
+        {filtered.map(p=><PostCard key={p.id} post={p} nations={nations} isMod={isMod} onRefresh={onRefresh} />)}
       </div>
     </div>
   );
@@ -1393,6 +1612,63 @@ const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, 
   );
 };
 
+const NewsArticle = ({ article, isMod, onRefresh }) => {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({
+    title:article.title || "",
+    body:article.body || "",
+    category:article.category || "announcement",
+    pinned:Boolean(article.pinned),
+  });
+  const save = async () => {
+    const { error } = await supabase.from("news").update(form).eq("id", article.id);
+    if (error) alert(error.message);
+    else { setEditing(false); onRefresh(); }
+  };
+  const remove = async () => {
+    if (!confirm("Remove this news article permanently?")) return;
+    const { error } = await supabase.from("news").delete().eq("id", article.id);
+    if (error) alert(error.message);
+    else onRefresh();
+  };
+  return (
+    <div style={card}>
+      {editing ? (
+        <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
+          <input value={form.title} onChange={e=>setForm({...form,title:e.target.value})} style={inp} />
+          <div style={{ display:"flex", gap:"0.35rem", flexWrap:"wrap" }}>
+            {NEWS_CATS.map(category=><button key={category} onClick={()=>setForm({...form,category})} style={{ ...mkBtn(form.category===category?"gold":"ghost"), fontSize:11 }}>{category}</button>)}
+          </div>
+          <textarea value={form.body} onChange={e=>setForm({...form,body:e.target.value})} style={{ ...ta, minHeight:140 }} />
+          <label style={{ display:"flex", gap:"0.5rem", alignItems:"center", color:"#b7c6dc", fontSize:12, cursor:"pointer" }}>
+            <input type="checkbox" checked={form.pinned} onChange={e=>setForm({...form,pinned:e.target.checked})} /> Pin this article
+          </label>
+          <div style={{ display:"flex", gap:"0.45rem" }}>
+            <button onClick={save} style={mkBtn()}>Save Article</button>
+            <button onClick={()=>setEditing(false)} style={mkBtn("ghost")}>Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", marginBottom:"0.6rem", flexWrap:"wrap" }}>
+            <span style={{ fontSize:10, fontWeight:800, color:"#0a0806", background:NEWS_COL[article.category]||"#d4af37", borderRadius:3, padding:"2px 8px" }}>{article.category?.toUpperCase()}</span>
+            {article.pinned && <span style={{ fontSize:10, fontWeight:800, color:"#d4af37", border:"1px solid rgba(212,175,55,0.25)", borderRadius:3, padding:"2px 8px" }}>PINNED</span>}
+            <span style={{ marginLeft:"auto", fontSize:11, color:"#8fa0bd" }}>{timeAgo(article.created_at)}</span>
+          </div>
+          <h3 style={{ margin:"0 0 0.6rem", fontFamily:"var(--display)", color:"#f8fbff", fontSize:17 }}>{article.title}</h3>
+          <RichText>{article.body}</RichText>
+          {isMod && (
+            <div style={{ display:"flex", gap:"0.35rem", marginTop:"0.75rem", flexWrap:"wrap" }}>
+              <button onClick={()=>setEditing(true)} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Edit Article</button>
+              <button onClick={remove} style={{ ...mkBtn("red"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Remove Article</button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
 const NewsPage = ({ news, profile, isMod, onRefresh }) => {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title:"", body:"", category:"announcement", pinned:false });
@@ -1432,28 +1708,14 @@ const NewsPage = ({ news, profile, isMod, onRefresh }) => {
         <div style={{ marginBottom:"1.25rem" }}>
           <div style={{ fontSize:10, color:"#8fa0bd", letterSpacing:"0.15em", textTransform:"uppercase", marginBottom:"0.5rem" }}>Pinned</div>
           {news.filter(n=>n.pinned).map(n=>(
-            <div key={n.id} style={{ ...card, marginBottom:"0.75rem" }}>
-              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", marginBottom:"0.6rem", flexWrap:"wrap" }}>
-                <span style={{ fontSize:10, fontWeight:800, color:"#0a0806", background:NEWS_COL[n.category]||"#d4af37", borderRadius:3, padding:"2px 8px" }}>{n.category?.toUpperCase()}</span>
-                <span style={{ marginLeft:"auto", fontSize:11, color:"#8fa0bd" }}>{timeAgo(n.created_at)}</span>
-              </div>
-              <h3 style={{ margin:"0 0 0.6rem", fontFamily:"var(--display)", color:"#f8fbff", fontSize:17 }}>{n.title}</h3>
-              <RichText>{n.body}</RichText>
-            </div>
+            <div key={n.id} style={{ marginBottom:"0.75rem" }}><NewsArticle article={n} isMod={isMod} onRefresh={onRefresh} /></div>
           ))}
         </div>
       )}
       <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
         {news.filter(n=>!n.pinned).length===0 && news.filter(n=>n.pinned).length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No news published yet.</p>}
         {news.filter(n=>!n.pinned).map(n=>(
-          <div key={n.id} style={card}>
-            <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", marginBottom:"0.6rem", flexWrap:"wrap" }}>
-              <span style={{ fontSize:10, fontWeight:800, color:"#0a0806", background:NEWS_COL[n.category]||"#d4af37", borderRadius:3, padding:"2px 8px" }}>{n.category?.toUpperCase()}</span>
-              <span style={{ marginLeft:"auto", fontSize:11, color:"#8fa0bd" }}>{timeAgo(n.created_at)}</span>
-            </div>
-            <h3 style={{ margin:"0 0 0.6rem", fontFamily:"var(--display)", color:"#f8fbff", fontSize:17 }}>{n.title}</h3>
-            <RichText>{n.body}</RichText>
-          </div>
+          <NewsArticle key={n.id} article={n} isMod={isMod} onRefresh={onRefresh} />
         ))}
       </div>
     </div>
@@ -1525,7 +1787,7 @@ const Changelog = () => (
   </div>
 );
 
-const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, isMod, onRefresh, onRequireAuth }) => {
+const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, isMod, onRefresh, onRequireAuth, onViewProfile }) => {
   const [view, setView] = useState({ type:"boards" });
   const [boardThreads, setBoardThreads] = useState([]);
   const [threadPosts, setThreadPosts] = useState([]);
@@ -1550,11 +1812,12 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
     ...thread,
     pinned: thread.pinned ?? thread.legacy_pinned ?? thread.is_pinned ?? false,
     locked: thread.locked ?? thread.legacy_locked ?? thread.is_locked ?? false,
-    profiles: thread.profiles || { username: thread.author_username, avatar_url: thread.author_avatar_url },
+    profiles: thread.profiles || { id: thread.author_id, username: thread.author_username, avatar_url: thread.author_avatar_url },
   });
   const normalizePost = post => ({
     ...post,
     profiles: post.profiles || {
+      id: post.author_id,
       username: post.author_username,
       avatar_url: post.author_avatar_url,
       signature_url: post.author_signature_url,
@@ -1598,7 +1861,7 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
     if (error) {
       const fallback = await supabase
         .from("forum_threads")
-        .select("*, profiles:author_id(username,avatar_url)")
+        .select("*, profiles:author_id(id,username,avatar_url)")
         .eq("board_id", board.id)
         .order("pinned", { ascending:false })
         .order("created_at", { ascending:false })
@@ -1634,7 +1897,7 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
     if (!thread || !supabase) return;
     setForumLoading(true);
     setForumError("");
-    const postSelect = "*, profiles:author_id(username,avatar_url,signature_url,bio), nations:nation_id(name,flag_url)";
+    const postSelect = "*, profiles:author_id(id,username,role,status,avatar_url,signature_url,bio,last_active_at,created_at,nation_id), nations:nation_id(name,flag_url)";
     const openingResult = await supabase
       .from("forum_posts")
       .select(postSelect)
@@ -1663,7 +1926,7 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
     if (replyResult.error) {
       const legacyFallback = await supabase
         .from("forum_posts")
-        .select("*, profiles:author_id(username,avatar_url,signature_url,bio)")
+        .select("*, profiles:author_id(id,username,role,status,avatar_url,signature_url,bio,last_active_at,created_at,nation_id)")
         .eq("thread_id", thread.id)
         .or("is_deleted.is.null,is_deleted.eq.false")
         .order("created_at", { ascending:sortOrder === "asc" })
@@ -1716,7 +1979,7 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
         if (!thread) {
           const fallback = await supabase
             .from("forum_threads")
-            .select("*, profiles:author_id(username,avatar_url)")
+            .select("*, profiles:author_id(id,username,avatar_url)")
             .eq("id", nextRoute.threadId)
             .maybeSingle();
           thread = fallback.data ? normalizeThread(fallback.data) : null;
@@ -1885,7 +2148,12 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
                 {authorNation ? <Flag nation={authorNation} size={22} /> : <div style={{ width:22, height:14, background:"rgba(255,255,255,0.04)", borderRadius:2 }} />}
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:13, color:"#edf4ff", fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.pinned&&"Pinned: "}{t.title}</div>
-                  <div style={{ fontSize:11, color:"#8fa0bd" }}>{authorNation?.name||t.profiles?.username||t.author_username||"?"} - {timeAgo(t.last_post_at || t.created_at)}</div>
+                  <div style={{ fontSize:11, color:"#8fa0bd", display:"flex", gap:4, flexWrap:"wrap" }}>
+                    {authorNation?.name && <span>{authorNation.name}</span>}
+                    <span>by</span>
+                    <ProfileButton profile={t.profiles} onViewProfile={onViewProfile}>{t.profiles?.username || t.author_username || "?"}</ProfileButton>
+                    <span>- {timeAgo(t.last_post_at || t.created_at)}</span>
+                  </div>
                 </div>
                 <div style={{ textAlign:"right", flexShrink:0 }}>
                   <div style={{ fontFamily:"var(--display)", fontSize:16, color:"#8493ad" }}>{replyCount}</div>
@@ -1907,7 +2175,16 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
     const tPosts = threadPosts;
     const canManageThread = isMod || view.thread.author_id === profile?.id;
     return (
-      <div>
+      <div
+  style={{
+    maxWidth: "800px",
+    margin: "0 auto",
+    padding: "1.5rem 1rem",
+    display: "flex",
+    flexDirection: "column",
+    gap: "1.5rem"
+  }}
+>
         <button onClick={()=>board ? pushForumRoute({type:"board",board}) : pushForumRoute({type:"boards"})} style={{ ...mkBtn("ghost"), marginBottom:"1rem", fontSize:12 }}>{board?.name || "All Boards"}</button>
         <div style={{ display:"flex", gap:"0.6rem", alignItems:"center", flexWrap:"wrap", marginBottom:"1.25rem" }}>
           <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:18, lineHeight:1.4, flex:1 }}>{view.thread.title}</h2>
@@ -1929,14 +2206,36 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
             const authorName = p.profiles?.username || "Unknown";
             const canonStatus = p.canon_status || null;
             return (
-              <div id={`post-${p.post_number || p.id}`} className="post-card forum-post-layout" key={p.id} style={{ ...card, borderLeft:i===0?"2px solid rgba(212,175,55,0.3)":undefined, scrollMarginTop:70 }}>
+              <div id={`post-${p.post_number || p.id}`} className="post-card forum-post-layout" key={p.id} style={{
+  ...card,
+  borderLeft: i === 0 ? "3px solid #d4af37" : "1px solid rgba(255,255,255,0.06)",
+  background: i === 0 ? "rgba(212,175,55,0.04)" : "rgba(255,255,255,0.02)",
+  padding: "1.25rem",
+  scrollMarginTop: 70
+}}>
                 <aside className="post-author" style={{ width:150, flexShrink:0 }}>
                   {authorAvatar
                     ? <img src={authorAvatar} alt="" style={{ width:96, height:96, borderRadius:"50%", objectFit:"cover", border:"1px solid rgba(246,193,50,0.2)" }} />
                     : pNation ? <Flag nation={pNation} size={96} /> : <div style={{ width:96, height:96, background:"rgba(255,255,255,0.04)", borderRadius:"50%" }} />}
-                  <div style={{ marginTop:"0.65rem", fontSize:13, color:"#d4af37", fontWeight:800, lineHeight:1.35 }}>{authorName}</div>
+                  <ProfileButton profile={p.profiles} onViewProfile={onViewProfile} style={{ marginTop:"0.65rem", fontSize:13, color:"#d4af37", fontWeight:800, lineHeight:1.35, display:"block" }}>{authorName}</ProfileButton>
                   {pNation && <div style={{ marginTop:"0.25rem", fontSize:11, color:"#8fa0bd", lineHeight:1.35 }}>{pNation.name}</div>}
-                  {i===0 && <div style={{ display:"inline-block", marginTop:"0.45rem", fontSize:10, color:"#d4af37", border:"1px solid rgba(212,175,55,0.25)", borderRadius:3, padding:"1px 5px" }}>OP</div>}
+                  {i === 0 && (
+  <div
+    style={{
+      display: "inline-block",
+      marginTop: "0.5rem",
+      fontSize: 10,
+      fontWeight: 900,
+      color: "#111",
+      background: "#d4af37",
+      borderRadius: 3,
+      padding: "2px 6px",
+      letterSpacing: "0.06em"
+    }}
+  >
+    ORIGINAL POST
+  </div>
+)}
                   <a href={`/forums/thread/${view.thread.id}#post-${p.post_number || p.id}`} style={{ display:"inline-block", marginTop:"0.45rem", fontSize:11, color:"#8fa0bd", textDecoration:"none" }}>#{p.post_number || i + 1} - {timeAgo(p.created_at)}</a>
                 </aside>
                 <div className="post-body" style={{ flex:1, minWidth:0 }}>
@@ -1953,9 +2252,31 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
                         <button onClick={()=>setEditingPost(null)} style={{ ...mkBtn("ghost"), fontSize:11 }}>Cancel</button>
                       </div>
                     </div>
-                  ) : <RichText>{p.body}</RichText>}
-                  {p.profiles?.signature_url && <img className="post-signature" src={p.profiles.signature_url} alt="" />}
-                  <div style={{ display:"flex", gap:"0.35rem", flexWrap:"wrap", marginTop:"0.75rem", alignItems:"center" }}>
+                  } : (
+<div style={{
+  fontSize: "14px",
+  lineHeight: "1.7",
+  color: "#d6deeb",
+  maxWidth: "720px",
+  marginTop: "0.5rem"
+}}>
+                  {p.profiles?.signature_url && <img
+  className="post-signature"
+  src={p.profiles.signature_url}
+  alt=""
+  style={{
+    marginTop: "0.75rem",
+    maxWidth: "100%",
+    opacity: 0.9
+  }}
+/>}
+                  <div style={{
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "0.6rem",
+  marginTop: "0.9rem",
+  alignItems: "center"
+}}>
                     {reactEmojis.map(e=>{
                       const count = reactions.filter(r=>r.post_id===p.id && r.emoji===e).length;
                       const active = reactions.some(r=>r.post_id===p.id && r.user_id===profile?.id && r.emoji===e);
@@ -2008,6 +2329,7 @@ const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
   const [userStatusId, setUserStatusId] = useState("");
   const [suspendDays, setSuspendDays] = useState("7");
   const [moderationReason, setModerationReason] = useState("");
+  const selectedUser = profiles.find(p => p.id === userStatusId);
 
   const submitNation = async () => {
     if (!nf.name.trim()) return;
@@ -2064,6 +2386,19 @@ const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
     else {
       setCodeNote("");
       alert("Code change note saved for deployment.");
+    }
+  };
+  const removeMember = async () => {
+    if (!userStatusId || !selectedUser) return;
+    if (!confirm(`Permanently remove ${selectedUser.username} from the database? This deletes their auth account, profile, posts, actions, and related records.`)) return;
+    const typed = prompt(`Type ${selectedUser.username} to confirm permanent removal.`);
+    if (typed !== selectedUser.username) return;
+    const { error } = await supabase.rpc("hard_delete_profile", { target_profile: userStatusId });
+    if (error) alert(error.message);
+    else {
+      setUserStatusId("");
+      setModerationReason("");
+      onRefresh();
     }
   };
 
@@ -2152,6 +2487,11 @@ const Admin = ({ nations, profiles, onRefresh, isAdmin }) => {
               <button onClick={()=>setUserModeration("suspended")} style={mkBtn("ghost")}>Suspend</button>
               <button onClick={()=>setUserModeration("banned")} style={mkBtn("red")}>Ban</button>
             </div>
+            <div style={{ borderTop:"1px solid rgba(231,76,60,0.22)", paddingTop:"0.75rem" }}>
+              <div style={{ color:"#ffb4b4", fontSize:11, fontWeight:800, letterSpacing:"0.06em", textTransform:"uppercase", marginBottom:"0.4rem" }}>Permanent Removal</div>
+              <p style={{ margin:"0 0 0.65rem", color:"#9fb4d6", fontSize:12, lineHeight:1.6 }}>Deletes the auth user and cascades their profile-linked records. This requires the latest moderation SQL migration.</p>
+              <button onClick={removeMember} disabled={!userStatusId} style={{ ...mkBtn("red"), width:"100%" }}>Remove Member Completely</button>
+            </div>
           </div>
         </div>
       )}
@@ -2229,6 +2569,7 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [page, setPage] = useState(initialRoute.page);
   const [forumRoute, setForumRoute] = useState(initialRoute.forumRoute);
+  const [publicProfileId, setPublicProfileId] = useState(initialRoute.profileId || null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [data, setData] = useState({ nations:[], profiles:[], news:[], posts:[], actions:[], wars:[], warParticipants:[], alliances:[], allianceMembers:[], boards:[], threads:[], forumPosts:[], forumReactions:[] });
   const [loading, setLoading] = useState(true);
@@ -2321,6 +2662,7 @@ export default function App() {
       const nextRoute = parseRoute();
       setPage(nextRoute.page);
       setForumRoute(nextRoute.forumRoute);
+      setPublicProfileId(nextRoute.profileId || null);
       setMenuOpen(false);
     };
     window.addEventListener("popstate", handlePopState);
@@ -2351,8 +2693,16 @@ export default function App() {
   const navigate = (id) => {
     setPage(id);
     setForumRoute({ type:"boards" });
+    setPublicProfileId(null);
     setMenuOpen(false);
     writeRoute(PAGE_PATHS[id] || "/forums");
+  };
+  const viewProfile = (profileId) => {
+    setPage("profile");
+    setForumRoute({ type:"boards" });
+    setPublicProfileId(profileId);
+    setMenuOpen(false);
+    writeRoute(`/profile/${encodeURIComponent(profileId)}`);
   };
   const updateProfile = (nextProfile) => {
     setProfile(nextProfile);
@@ -2410,14 +2760,15 @@ export default function App() {
           : <>
               {page==="home"         && <Home nations={data.nations} news={data.news} actions={data.actions} wars={data.wars} />}
               {page==="nations"      && <Nations nations={data.nations} posts={data.posts} actions={data.actions} wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} profile={profile} userNation={userNation} isMod={isLoreTeam} isAdmin={isAdmin} onRefresh={fetchAll} />}
-              {page==="rp"           && <RPBoard posts={data.posts} profile={profile} userNation={userNation} nations={data.nations} onRefresh={fetchAll} />}
+              {page==="rp"           && <RPBoard posts={data.posts} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="actions"      && <ActionsPage actions={data.actions} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="wars"         && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="news"         && <NewsPage news={data.news} profile={profile} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="leaderboards" && <Leaderboards nations={data.nations} />}
               {page==="changelog"    && <Changelog />}
-              {page==="profile" && user && profile && <ProfilePage profile={profile} profiles={data.profiles} userNation={userNation} onProfileUpdate={updateProfile} />}
-              {page==="forums"       && <Forums boards={data.boards} route={forumRoute} onRouteChange={setForumRoute} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} onRequireAuth={()=>navigate("auth")} />}
+              {page==="profile" && publicProfileId && <PublicProfilePage viewedProfile={data.profiles.find(item=>item.id===publicProfileId)} nations={data.nations} posts={data.posts} actions={data.actions} onBack={()=>navigate("forums")} />}
+              {page==="profile" && !publicProfileId && user && profile && <ProfilePage profile={profile} profiles={data.profiles} userNation={userNation} onProfileUpdate={updateProfile} onViewProfile={viewProfile} />}
+              {page==="forums"       && <Forums boards={data.boards} route={forumRoute} onRouteChange={setForumRoute} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} onRequireAuth={()=>navigate("auth")} onViewProfile={viewProfile} />}
               {page==="auth"         && <Auth setupRequired={setupRequired} onAuth={(u,p)=>{setUser(u);if(p)setProfile(p);else ensureProfile(u).then(next=>{if(next)setProfile(next);}).catch(console.error);fetchAll();setPage("forums");setForumRoute({ type:"boards" });writeRoute("/forums");}} />}
               {page==="admin" && isLoreTeam && <Admin nations={data.nations} profiles={data.profiles} onRefresh={fetchAll} isAdmin={isAdmin} />}
             </>

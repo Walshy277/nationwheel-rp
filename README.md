@@ -42,6 +42,7 @@ supabase/functions.sql
 supabase/migrations/20260513_forum_foundation.sql
 supabase/migrations/20260514_scale_forum_limits.sql
 supabase/migrations/20260515_admin_profile_forum_tools.sql
+supabase/migrations/20260515_moderation_profile_member_tools.sql
 supabase/policies.sql
 supabase/seed-forum.sql
 supabase-nation-seed.sql
@@ -65,7 +66,7 @@ To add profile avatars, signatures, and bios to an existing database, run:
 supabase-profile-setup.sql
 ```
 
-To enable registration captcha, create a Cloudflare Turnstile widget, set `VITE_TURNSTILE_SITE_KEY` in the frontend environment, and configure the matching Turnstile secret in Supabase Auth captcha settings.
+Supabase Auth CAPTCHA protection applies to sign-up, sign-in, and password reset. The auth form renders Cloudflare Turnstile for both registration and sign-in, and sends the CAPTCHA token to Supabase for each auth request.
 
 To enable multi-nation and alliance wars on an existing database, run:
 
@@ -97,7 +98,7 @@ Build output directory: dist
 Node version: 22
 ```
 
-Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Cloudflare Pages environment variables before deploying.
+Set `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_TURNSTILE_SITE_KEY` in Cloudflare Pages environment variables before deploying.
 
 The Vite build copies `public/_redirects` into `dist/_redirects` so client-side routes fall back to `index.html` on Cloudflare Pages.
 
