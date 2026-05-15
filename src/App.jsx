@@ -41,7 +41,7 @@ const ACTION_SIZES = {
 const STATUS_COL = { pending:"#7f8c8d", active:"#3498db", complete:"#2ecc71", cancelled:"#e74c3c" };
 const WAR_COL    = { active:"#e74c3c", ceasefire:"#3498db", frozen:"#3498db", stalemate:"#f39c12", peace:"#2ecc71" };
 const POST_TYPES = ["Dispatch","Official Statement","Declaration","Intelligence","Propaganda","Treaty Proposal","Ultimatum"];
-const POST_COLS  = { Dispatch:"#3498db", "Official Statement":"#9b59b6", Communique:"#9b59b6", Declaration:"#d4af37", Intelligence:"#e67e22", Propaganda:"#e74c3c", "Treaty Proposal":"#2ecc71", Ultimatum:"#c0392b" };
+const POST_COLS  = { Dispatch:"#3498db", "Official Statement":"#9b59b6", Declaration:"#d4af37", Intelligence:"#e67e22", Propaganda:"#e74c3c", "Treaty Proposal":"#2ecc71", Ultimatum:"#c0392b" };
 const NEWS_CATS  = ["announcement","war","diplomacy","economy","lore","community"];
 const NEWS_COL   = { announcement:"#d4af37", war:"#e74c3c", diplomacy:"#3498db", economy:"#2ecc71", lore:"#9b59b6", community:"#e67e22" };
 
@@ -2198,7 +2198,6 @@ const Forums = ({ boards, route, onRouteChange, profile, userNation, nations, is
           {canManageThread && <button onClick={()=>setThreadLocked(!view.thread.locked)} style={{ ...mkBtn("ghost"), fontSize:11 }}>{view.thread.locked?"Open Thread":"Close Thread"}</button>}
           {canManageThread && <button onClick={deleteThread} style={{ ...mkBtn("red"), fontSize:11 }}>Delete Thread</button>}
         </div>
-                </div>
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem", marginBottom:"1.25rem" }}>
           {forumError && <p style={{ color:"#ff9d9d", textAlign:"center", padding:"1rem" }}>{forumError}</p>}
 
