@@ -74,9 +74,40 @@ create policy "staff_manage_trade_routes"
   using (public.is_lore_team(auth.uid()))
   with check (public.is_lore_team(auth.uid()));
 
--- Auto-create resources for nations that don't have them
+-- Auto-create resources for nations that don't have them, scaled to nation stats
 insert into nation_resources (nation_id, food, minerals, energy, tech, manpower, gdp)
-select n.id, 100, 100, 100, 10, 100, 5000000
+select
+  n.id,
+  -- food: based on population tiers
+  case
+    when coalesce(n.population, 0) > 100000000 then 300
+    when coalesce(n.population, 0) > 10000000  then 200
+    when coalesce(n.population, 0) > 1000000   then 150
+    when coalesce(n.population, 0) > 100000    then 100
+    else 50
+  end as food,
+  -- minerals: based on land area tiers
+  case
+    when coalesce(n.land_km2, 0) > 5000000 then 300
+    when coalesce(n.land_km2, 0) > 1000000 then 200
+    when coalesce(n.land_km2, 0) > 100000  then 150
+    when coalesce(n.land_km2, 0) > 10000   then 100
+    else 50
+  end as minerals,
+  -- energy: based on GDP tiers
+  case
+    when coalesce(n.gdp_usd, 0) > 5000000000000  then 300
+    when coalesce(n.gdp_usd, 0) > 1000000000000  then 200
+    when coalesce(n.gdp_usd, 0) > 100000000000   then 150
+    when coalesce(n.gdp_usd, 0) > 10000000000    then 100
+    else 50
+  end as energy,
+  -- tech: based on HDI (0.00-1.00 mapped to 0-100)
+  least(100, greatest(5, coalesce((n.hdi * 100)::int, 10))) as tech,
+  -- manpower: population / 100k, clamped 10-1000
+  greatest(10, least(1000, coalesce(n.population, 1000000) / 100000))::int as manpower,
+  -- gdp: gdp_usd / 1000 (converted to thousands)
+  greatest(0, coalesce((n.gdp_usd / 1000)::bigint, 0)) as gdp
 from nations n
 left join nation_resources nr on nr.nation_id = n.id
 where nr.id is null;
