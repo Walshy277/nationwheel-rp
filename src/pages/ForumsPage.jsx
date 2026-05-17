@@ -13,6 +13,8 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
   const [boardThreads, setBoardThreads] = useState([]);
   const [threadPosts, setThreadPosts] = useState([]);
   const [reactions, setReactions] = useState([]);
+  const [reactionUsers, setReactionUsers] = useState({});
+  const [hoveredReaction, setHoveredReaction] = useState(null);
   const [forumLoading, setForumLoading] = useState(false);
   const [forumError, setForumError] = useState("");
   const [hasMoreThreads, setHasMoreThreads] = useState(false);
@@ -104,9 +106,12 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
       if (!append) setReactions([]);
       return;
     }
-    const reactionResult = await supabase.from("forum_reactions").select("*").in("post_id", postIds);
+    const reactionResult = await supabase.from("forum_reactions").select("*, profiles:user_id(username)").in("post_id", postIds);
     if (!reactionResult.error) {
       const nextReactions = reactionResult.data || [];
+      const users = {};
+      nextReactions.forEach(r => { if (r.profiles?.username) users[r.user_id] = r.profiles.username; });
+      setReactionUsers(prev => ({ ...prev, ...users }));
       setReactions(current => append
         ? [...current.filter(reaction => !postIds.includes(reaction.post_id)), ...nextReactions]
         : nextReactions);
@@ -367,7 +372,7 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
             const replyCount = Number(t.reply_count || 0);
             const authorNation = nations.find(n=>n.id===t.nation_id);
             return (
-              <div className="thread-card" key={t.id} style={{ ...card, cursor:"pointer", display:"flex", gap:"0.75rem", alignItems:"center", borderColor:t.pinned?"rgba(212,175,55,0.2)":"rgba(212,175,55,0.1)", padding:"0.9rem 1.25rem" }}
+              <div className="thread-card card-hover" key={t.id} style={{ ...card, cursor:"pointer", display:"flex", gap:"0.75rem", alignItems:"center", borderColor:t.pinned?"rgba(212,175,55,0.2)":"rgba(212,175,55,0.1)", padding:"0.9rem 1.25rem", animation:"fadeIn 0.25s ease" }}
                 onClick={()=>pushForumRoute({type:"thread",thread:t})}>
                 {authorNation ? <Flag nation={authorNation} size={22} /> : <div style={{ width:22, height:14, background:"rgba(255,255,255,0.04)", borderRadius:2 }} />}
                 <div style={{ flex:1, minWidth:0 }}>
@@ -467,11 +472,7 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
                       )}
                       <div style={{ display:"flex", flexWrap:"wrap", gap:"0.35rem", marginTop:"0.9rem", alignItems:"center", paddingTop:"0.75rem", borderTop:"1px solid rgba(78,128,190,0.12)" }}>
                         <span style={{ fontSize:10, color:"#8fa0bd", marginRight:"0.25rem" }}>React:</span>
-                        {REACT_EMOJIS.map(e=>{
-                          const count = reactions.filter(r=>r.post_id===original.id && r.emoji===e).length;
-                          const active = reactions.some(r=>r.post_id===original.id && r.user_id===profile?.id && r.emoji===e);
-                          return <button key={e} onClick={()=>toggleReaction(original.id,e)} style={{ ...mkBtn(active?"gold":"ghost"), minHeight:28, padding:"2px 6px", fontSize:13, lineHeight:1 }}>{e}{count>0?<span style={{ fontSize:10, marginLeft:2 }}>{count}</span>:""}</button>;
-                        })}
+                        {REACT_EMOJIS.map(e => <ReactionButton key={e} postId={original.id} emoji={e} reactions={reactions} reactionUsers={reactionUsers} profile={profile} toggleReaction={toggleReaction} hoveredReaction={hoveredReaction} setHoveredReaction={setHoveredReaction} mkBtn={mkBtn} />)}
                         <span style={{ width:1, height:20, background:"rgba(78,128,190,0.2)", margin:"0 0.25rem" }} />
                         {(isMod || original.author_id===profile?.id) && <button onClick={()=>{setEditingPost(original.id);setEditBody(original.body);}} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Edit</button>}
                         {(isMod || original.author_id===profile?.id) && <button onClick={()=>deletePost(original.id)} style={{ ...mkBtn("red"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Delete</button>}
@@ -498,14 +499,15 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
                         return (
                           <div
                             id={`post-${p.post_number || p.id}`}
-                            className="post-card forum-post-layout"
+                            className="post-card forum-post-layout card-hover"
                             key={p.id}
                             style={{
                               ...card,
                               borderLeft:"1px solid rgba(255,255,255,0.06)",
                               background:"rgba(255,255,255,0.02)",
                               padding:"1.25rem",
-                              scrollMarginTop:70
+                              scrollMarginTop:70,
+                              animation:"fadeIn 0.25s ease"
                             }}
                           >
                             <aside className="post-author" style={{ width:150, flexShrink:0 }}>
@@ -542,11 +544,7 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
                               )}
                               <div style={{ display:"flex", flexWrap:"wrap", gap:"0.35rem", marginTop:"0.9rem", alignItems:"center", paddingTop:"0.75rem", borderTop:"1px solid rgba(78,128,190,0.12)" }}>
                                 <span style={{ fontSize:10, color:"#8fa0bd", marginRight:"0.25rem" }}>React:</span>
-                                {REACT_EMOJIS.map(e=>{
-                                  const count = reactions.filter(r=>r.post_id===p.id && r.emoji===e).length;
-                                  const active = reactions.some(r=>r.post_id===p.id && r.user_id===profile?.id && r.emoji===e);
-                                  return <button key={e} onClick={()=>toggleReaction(p.id,e)} style={{ ...mkBtn(active?"gold":"ghost"), minHeight:28, padding:"2px 6px", fontSize:13, lineHeight:1 }}>{e}{count>0?<span style={{ fontSize:10, marginLeft:2 }}>{count}</span>:""}</button>;
-                                })}
+                                {REACT_EMOJIS.map(e => <ReactionButton key={e} postId={p.id} emoji={e} reactions={reactions} reactionUsers={reactionUsers} profile={profile} toggleReaction={toggleReaction} hoveredReaction={hoveredReaction} setHoveredReaction={setHoveredReaction} mkBtn={mkBtn} />)}
                                 <span style={{ width:1, height:20, background:"rgba(78,128,190,0.2)", margin:"0 0.25rem" }} />
                                 {(isMod || p.author_id===profile?.id) && <button onClick={()=>{setEditingPost(p.id);setEditBody(p.body);}} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Edit</button>}
                                 {(isMod || p.author_id===profile?.id) && <button onClick={()=>deletePost(p.id)} style={{ ...mkBtn("red"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Delete</button>}
@@ -602,6 +600,28 @@ const ProfileButton = ({ profile, onViewProfile, children, style = {} }) => {
     >
       {children || profile.username || "Unknown"}
     </button>
+  );
+};
+
+const ReactionButton = ({ postId, emoji, reactions, reactionUsers, profile, toggleReaction, hoveredReaction, setHoveredReaction, mkBtn }) => {
+  const count = reactions.filter(r => r.post_id === postId && r.emoji === emoji).length;
+  const active = reactions.some(r => r.post_id === postId && r.user_id === profile?.id && r.emoji === emoji);
+  const isHovered = hoveredReaction?.postId === postId && hoveredReaction?.emoji === emoji;
+  const users = reactions.filter(r => r.post_id === postId && r.emoji === emoji).map(r => reactionUsers[r.user_id] || "?").filter(Boolean);
+  return (
+    <div style={{ position:"relative", display:"inline-flex" }}>
+      <button onClick={() => toggleReaction(postId, emoji)}
+        onMouseEnter={() => count > 1 && setHoveredReaction({ postId, emoji })}
+        onMouseLeave={() => setHoveredReaction(null)}
+        style={{ ...mkBtn(active ? "gold" : "ghost"), minHeight:28, padding:"2px 6px", fontSize:13, lineHeight:1 }}>
+        {emoji}{count > 0 ? <span style={{ fontSize:10, marginLeft:2 }}>{count}</span> : ""}
+      </button>
+      {isHovered && (
+        <div style={{ position:"absolute", bottom:"calc(100% + 6px)", left:"50%", transform:"translateX(-50%)", background:"#0a0e17", border:"1px solid rgba(212,175,55,0.28)", borderRadius:6, padding:"6px 10px", fontSize:11, color:"#edf4ff", whiteSpace:"nowrap", zIndex:100, pointerEvents:"none", boxShadow:"0 4px 20px rgba(0,0,0,0.5)" }}>
+          {users.join(", ")}
+        </div>
+      )}
+    </div>
   );
 };
 

@@ -41,6 +41,7 @@ export default function App() {
   const [setupRequired, setSetupRequired] = useState(false);
   const [showUnconfiguredGuide, setShowUnconfiguredGuide] = useState(false);
   const [gameState, setGameState] = useState(null);
+  const [onlineCount, setOnlineCount] = useState(0);
 
   const fetchAll = useCallback(async () => {
     if (!SUPABASE_CONFIGURED) {
@@ -86,6 +87,13 @@ export default function App() {
     setLoading(false);
   }, []);
 
+  const pollOnlineCount = useCallback(async () => {
+    if (!supabase) return;
+    const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const { count, error } = await supabase.from("profiles").select("id", { count:"exact", head:true }).gte("last_active_at", fifteenMinAgo);
+    if (!error && count !== null) setOnlineCount(count);
+  }, []);
+
   useEffect(() => {
     if (!SUPABASE_CONFIGURED) {
       setLoading(false);
@@ -95,6 +103,8 @@ export default function App() {
       setSetupRequired(Boolean(error && (error.code === "42P01" || error.message?.toLowerCase().includes("could not find the table"))));
     });
     fetchGameState().then(gs => { if (gs) setGameState(gs); });
+    pollOnlineCount();
+    const onlineInterval = setInterval(pollOnlineCount, 30000);
     supabase.auth.getSession().then(({data:s}) => {
       if (s.session?.user) {
         setUser(s.session.user);
@@ -121,7 +131,8 @@ export default function App() {
         setProfile(null);
       }
     });
-  }, [fetchAll]);
+    return () => clearInterval(onlineInterval);
+  }, [fetchAll, pollOnlineCount]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -296,6 +307,7 @@ export default function App() {
       <footer className="app-footer" style={{ borderTop:"1px solid rgba(20,96,184,0.22)", padding:"1rem", textAlign:"center", fontSize:10, color:"#6f85a8", letterSpacing:"0.15em", textTransform:"uppercase" }}>
         Nationwheel - Geopolitical Roleplay World - Season 1
         {gameState && <span style={{ marginLeft:"1rem", color:"#d4af37" }}>{fmtGameDate(gameState.game_day, gameState.game_year)}</span>}
+        <span style={{ marginLeft:"1rem", color:"#2ecc71", fontWeight:700 }}>● {onlineCount} online</span>
       </footer>
 
       <style>{`
@@ -311,10 +323,15 @@ export default function App() {
         input::placeholder,textarea::placeholder{color:#7184a5;}
         input:focus,textarea:focus,select:focus{outline:none;border-color:rgba(246,193,50,0.72)!important;box-shadow:0 0 0 3px rgba(20,96,184,0.16);}
         select option{background:#05070b;color:#f5f8ff;}
-        button:hover{opacity:0.8;}
+        button{min-height:40px;transition:all 0.15s ease;cursor:pointer;}
+        button:hover{opacity:0.85;filter:brightness(1.1);}
         button:active{transform:scale(0.97);}
         button,input,textarea,select{font:inherit;}
-        button{min-height:40px;}
+        .card-hover:hover{transform:translateY(-1px);border-color:rgba(212,175,55,0.32)!important;box-shadow:0 4px 24px rgba(0,0,0,0.3),0 0 12px rgba(212,175,55,0.06) !important;transition:all 0.2s ease;}
+        .card-hover{transition:all 0.2s ease;}
+        .fade-in{animation:fadeIn 0.25s ease;}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pulseGlow{0%,100%{box-shadow:0 0 4px rgba(212,175,55,0.1)}50%{box-shadow:0 0 12px rgba(212,175,55,0.25)}}
         body{overflow-x:hidden;}
         .rich-post{margin:0;color:#d7e2f2;font-size:13px;line-height:1.85;white-space:pre-wrap;overflow-wrap:anywhere;}
         .rich-post blockquote{margin:0.75rem 0;padding:0.6rem 0.75rem;border-left:3px solid rgba(246,193,50,0.35);background:rgba(255,255,255,0.04);color:#edf4ff;}
