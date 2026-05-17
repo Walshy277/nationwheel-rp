@@ -117,6 +117,19 @@ export const CHANGELOG_ENTRIES = [
       "assign_nation_as_staff RPC adds nation_leader role to the roles array.",
     ],
   },
+  {
+    date: "2026-05-17",
+    title: "Game mechanics page, alliance profiles, diplomacy, mod queue, economy, world assembly, settings",
+    items: [
+      "Game Mechanics page explaining all systems: nations, roles, dispatches, actions, wars, alliances, diplomacy, assembly, economy, forums, calendar, DMs, notifications.",
+      "Alliance Profile pages: dedicated view for each alliance with members, leader badges, wars.",
+      "Diplomacy & Treaty System: formal agreements (NAP, trade, defense, military, economic) with proposal, ratification, and cancellation.",
+      "Moderation Queue & Reports: users can report content, staff resolve/dismiss in admin panel.",
+      "Economy & Resource Tracking: nation resources (food, minerals, energy, tech, manpower), trade routes, GDP display.",
+      "World Assembly: proposals, voting (for/against/abstain), progress bars, 7-day voting periods.",
+      "User Settings & Preferences: notification toggles for mentions, replies, wars, actions, diplomacy, assembly.",
+    ],
+  },
 ];
 
 export const REACT_EMOJIS = ["\u{1F44D}","\u2764\uFE0F","\u{1F602}","\u{1F525}","\u{1F440}","\u{1FAE1}"];
