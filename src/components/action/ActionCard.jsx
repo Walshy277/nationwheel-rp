@@ -8,6 +8,8 @@ export const ActionCard = ({ action, nations, expandable, isMod, onRefresh, prof
   const [open, setOpen] = useState(false);
   const [updateText, setUpdateText] = useState("");
   const [loreNotes, setLoreNotes] = useState(action.lore_notes || "");
+  const [counterProposal, setCounterProposal] = useState(action.counter_proposal || "");
+  const [showCounter, setShowCounter] = useState(false);
   const nation = nations?.find(n=>n.id===action.nation_id) || action.nations;
 
   const addUpdate = async () => {
@@ -24,6 +26,15 @@ export const ActionCard = ({ action, nations, expandable, isMod, onRefresh, prof
     const { error } = await supabase.from("canon_actions").update({ lore_notes:loreNotes.trim() || null }).eq("id", action.id);
     if (error) alert(error.message);
     else onRefresh?.();
+  };
+  const saveCounterProposal = async () => {
+    const { error } = await supabase.from("canon_actions").update({
+      counter_proposal: counterProposal.trim() || null,
+      status: "counter_proposed",
+      lore_notes: loreNotes.trim() || null,
+    }).eq("id", action.id);
+    if (error) alert(error.message);
+    else { setShowCounter(false); onRefresh?.(); }
   };
 
   return (
@@ -46,12 +57,24 @@ export const ActionCard = ({ action, nations, expandable, isMod, onRefresh, prof
       {(open || !expandable) && (
         <div style={{ marginTop:"1rem", paddingTop:"1rem", borderTop:"1px solid rgba(255,215,0,0.06)" }}>
           <p style={{ margin:"0 0 0.75rem", color:"#d7e2f2", fontSize:13, lineHeight:1.8 }}>{action.description}</p>
+
+          {action.counter_proposal && (
+            <div style={{ background:"rgba(212,175,55,0.04)", border:"1px solid rgba(212,175,55,0.15)", borderRadius:6, padding:"0.7rem", marginBottom:"0.75rem" }}>
+              <div style={{ fontSize:10, color:"#d4af37", letterSpacing:"0.1em", marginBottom:3 }}>COUNTER-PROPOSAL</div>
+              <div style={{ fontSize:13, color:"#edf4ff", whiteSpace:"pre-wrap" }}>{action.counter_proposal}</div>
+              {action.status==="counter_proposed" && (
+                <button onClick={()=>updateStatus("pending")} style={{ ...mkBtn("blue"), marginTop:"0.5rem", fontSize:10, padding:"4px 10px", minHeight:28 }}>Resubmit Original</button>
+              )}
+            </div>
+          )}
+
           {action.lore_notes && (
             <div style={{ background:"rgba(52,152,219,0.04)", border:"1px solid rgba(52,152,219,0.12)", borderRadius:6, padding:"0.7rem", marginBottom:"0.75rem" }}>
               <div style={{ fontSize:10, color:"#3498db", letterSpacing:"0.1em", marginBottom:3 }}>LORE TEAM NOTES</div>
               <div style={{ fontSize:13, color:"#90bcd8" }}>{action.lore_notes}</div>
             </div>
           )}
+
           {action.action_updates?.length > 0 && (
             <div style={{ marginBottom:"0.75rem" }}>
               <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.06em", marginBottom:"0.5rem", textTransform:"uppercase" }}>Progress Log</div>
@@ -63,15 +86,27 @@ export const ActionCard = ({ action, nations, expandable, isMod, onRefresh, prof
               ))}
             </div>
           )}
+
           {isMod && profile && (
             <div style={{ borderTop:"1px solid rgba(255,215,0,0.07)", paddingTop:"0.75rem", display:"flex", flexDirection:"column", gap:"0.6rem" }}>
               <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.06em", textTransform:"uppercase" }}>Lore Team Controls</div>
               <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap" }}>
                 {action.status==="pending" && <button onClick={()=>updateStatus("active",{started_at:new Date().toISOString()})} style={{ ...mkBtn("blue"), fontSize:11 }}>Approve</button>}
+                {action.status==="pending" && <button onClick={()=>setShowCounter(!showCounter)} style={{ ...mkBtn("gold"), fontSize:11 }}>Counter-Propose</button>}
                 {action.status==="pending" && <button onClick={()=>updateStatus("cancelled")} style={{ ...mkBtn("red"), fontSize:11 }}>Reject</button>}
                 {action.status==="active" && <button onClick={()=>updateStatus("complete",{completed_at:new Date().toISOString()})} style={{ ...mkBtn("green"), fontSize:11 }}>Complete</button>}
                 <button onClick={()=>updateStatus("cancelled")} style={{ ...mkBtn("red"), fontSize:11 }}>Cancel</button>
               </div>
+              {showCounter && (
+                <div style={{ border:"1px solid rgba(212,175,55,0.2)", borderRadius:6, padding:"0.75rem", display:"flex", flexDirection:"column", gap:"0.5rem" }}>
+                  <div style={{ fontSize:11, color:"#d4af37", fontWeight:700 }}>Counter-Proposal</div>
+                  <textarea placeholder="Describe suggested changes to the action..." value={counterProposal} onChange={e=>setCounterProposal(e.target.value)} style={{ ...ta, minHeight:80 }} />
+                  <div style={{ display:"flex", gap:"0.4rem" }}>
+                    <button onClick={saveCounterProposal} style={{ ...mkBtn("gold"), fontSize:11 }}>Submit Counter-Proposal</button>
+                    <button onClick={()=>setShowCounter(false)} style={{ ...mkBtn("ghost"), fontSize:11 }}>Cancel</button>
+                  </div>
+                </div>
+              )}
               <textarea placeholder="Private lore notes, approval conditions, or rejection reason" value={loreNotes} onChange={e=>setLoreNotes(e.target.value)} style={{ ...ta, minHeight:70 }} />
               <button onClick={saveLoreNotes} style={{ ...mkBtn("ghost"), alignSelf:"flex-start" }}>Save Lore Notes</button>
               <textarea placeholder="Post visible progress update" value={updateText} onChange={e=>setUpdateText(e.target.value)} style={{ ...ta, minHeight:55 }} />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { card, mkBtn, inp, ta, timeAgo, LEADER_ROLES } from "../lib/uiUtils";
+import { card, mkBtn, inp, ta, timeAgo, isLoreTeam, isNationLeader, isAllianceLeader } from "../lib/uiUtils";
 import { AllianceFlag } from "../components/alliance/AllianceFlag";
 import { AllianceFlagUploader } from "../components/alliance/AllianceFlagUploader";
 import { NationPill } from "../components/nation/NationPill";
@@ -13,7 +13,7 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
   const [showAllyForm, setShowAllyForm] = useState(false);
   const [wf, setWf] = useState({ target_type:"nation", target_id:"", name:"", casus_belli:"", objective:"", casualties:"", result:"" });
   const [af, setAf] = useState({ name:"", description:"", type:"alliance" });
-  const isLeader = profile && LEADER_ROLES.includes(profile.role);
+  const isLeader = profile && isNationLeader(profile);
   const myAllyIds = allianceMembers.filter(m=>m.nation_id===userNation?.id).map(m=>m.alliance_id);
   const myAlliances = alliances.filter(a=>myAllyIds.includes(a.id));
   const isAllyLeader = allianceMembers.some(m=>m.nation_id===userNation?.id && m.role==="leader");
@@ -418,7 +418,7 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
               <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
                 <select value={dmTo} onChange={e=>setDmTo(e.target.value)} style={inp}>
                   <option value="">Select recipient (leader)</option>
-                  {profiles?.filter(p=>p.id!==profile?.id && p.role==="leader").map(p=>{
+                  {profiles?.filter(p=>p.id!==profile?.id && isNationLeader(p)).map(p=>{
                     const nat = nations.find(n=>n.id===p.nation_id);
                     return <option key={p.id} value={p.id}>{p.username}{nat?` (${nat.name})`:""}</option>;
                   })}

@@ -1,8 +1,16 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
-import { card, mkBtn, inp, ta, slugify, timeAgo, fmtDate, ROLE_LABELS } from "../lib/uiUtils";
+import { card, mkBtn, inp, ta, slugify, timeAgo, fmtDate, ROLE_LABELS, ROLE_COLORS, getRoles } from "../lib/uiUtils";
 import { SITE_CODE_FILES, CHANGELOG_ENTRIES } from "../lib/constants";
 import { Flag } from "../components/nation/Flag";
+
+const ROLE_OPTIONS = [
+  "admin",
+  "lore_team",
+  "nation_leader",
+  "alliance_leader",
+  "user",
+];
 
 export const AdminPanel = ({ nations, profiles, onRefresh, isAdmin }) => {
   const [tab, setTab] = useState("add");
@@ -10,7 +18,7 @@ export const AdminPanel = ({ nations, profiles, onRefresh, isAdmin }) => {
   const [nf, setNf] = useState(blank);
   const [editId, setEditId] = useState(null);
   const [assignNId, setAssignNId] = useState(""); const [assignPId, setAssignPId] = useState("");
-  const [roleId, setRoleId] = useState(""); const [role, setRole] = useState("player");
+  const [roleId, setRoleId] = useState(""); const [selectedRoles, setSelectedRoles] = useState([]);
   const [selectedCodeFile, setSelectedCodeFile] = useState(Object.keys(SITE_CODE_FILES).sort()[0] || "");
   const [codeNote, setCodeNote] = useState("");
   const [userStatusId, setUserStatusId] = useState("");
@@ -88,6 +96,11 @@ export const AdminPanel = ({ nations, profiles, onRefresh, isAdmin }) => {
       onRefresh();
     }
   };
+  const toggleRole = (r) => {
+    setSelectedRoles(prev =>
+      prev.includes(r) ? prev.filter(x => x !== r) : [...prev, r]
+    );
+  };
 
   return (
     <div>
@@ -132,19 +145,31 @@ export const AdminPanel = ({ nations, profiles, onRefresh, isAdmin }) => {
 
       {isAdmin && tab==="roles" && (
         <div style={{ ...card, display:"flex", flexDirection:"column", gap:"0.75rem", maxWidth:480 }}>
-          <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Assign Player Role</h3>
-          <select value={roleId} onChange={e=>setRoleId(e.target.value)} style={inp}>
+          <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Manage Player Roles</h3>
+          <select value={roleId} onChange={e=>{
+            setRoleId(e.target.value);
+            const p = profiles.find(x => x.id === e.target.value);
+            setSelectedRoles(p ? getRoles(p) : []);
+          }} style={inp}>
             <option value="">Select player</option>
-            {profiles.map(p=><option key={p.id} value={p.id}>{p.username} - {p.role}</option>)}
+            {profiles.map(p=><option key={p.id} value={p.id}>{p.username}</option>)}
           </select>
-            <select value={role} onChange={e=>setRole(e.target.value)} style={inp}>
-              <option value="player">Player</option>
-              <option value="leader">Nation Leader</option>
-              <option value="lore">Lore Team</option>
-              <option value="mod">Mod (Legacy Lore Team)</option>
-              <option value="admin">Admin</option>
-            </select>
-          <button onClick={async()=>{if(!roleId)return;await supabase.from("profiles").update({role}).eq("id",roleId);setRoleId("");onRefresh();}} style={mkBtn()}>Set Role</button>
+          {roleId && (
+            <div style={{ display:"flex", flexDirection:"column", gap:"0.35rem" }}>
+              <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.06em", textTransform:"uppercase" }}>Current roles for {profiles.find(p=>p.id===roleId)?.username}</div>
+              {ROLE_OPTIONS.map(r => (
+                <label key={r} style={{ display:"flex", gap:"0.5rem", alignItems:"center", cursor:"pointer", color:"#edf4ff", fontSize:13 }}>
+                  <input type="checkbox" checked={selectedRoles.includes(r)} onChange={()=>toggleRole(r)} style={{ accentColor:"#d4af37" }} />
+                  <span style={{ color:ROLE_COLORS[r]||"#8fa0bd", fontWeight:700, fontSize:12 }}>{ROLE_LABELS[r] || r}</span>
+                </label>
+              ))}
+              <button onClick={async()=>{
+                if(!roleId)return;
+                await supabase.from("profiles").update({roles:selectedRoles}).eq("id",roleId);
+                setRoleId("");setSelectedRoles([]);onRefresh();
+              }} style={{ ...mkBtn(), marginTop:"0.5rem" }}>Save Roles</button>
+            </div>
+          )}
         </div>
       )}
 
@@ -153,16 +178,22 @@ export const AdminPanel = ({ nations, profiles, onRefresh, isAdmin }) => {
           <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
             <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>All Players ({profiles.length})</h3>
             {profiles.length === 0 && <div style={card}><p style={{ margin:0, color:"#8493ad", textAlign:"center", padding:"1rem", fontStyle:"italic" }}>No users registered yet.</p></div>}
-            {profiles.map(p=>(
-              <div key={p.id} style={{ ...card, padding:"0.85rem", display:"flex", gap:"0.75rem", alignItems:"center" }}>
-                {p.avatar_url ? <img src={p.avatar_url} alt="" style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover" }} /> : <div style={{ width:36, height:36, borderRadius:"50%", background:"rgba(255,255,255,0.05)" }} />}
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ color:"#edf4ff", fontSize:13, fontWeight:800 }}>{p.username}</div>
-                  <div style={{ color:"#8fa0bd", fontSize:11 }}>{p.role || "player"} · {p.status || "active"}{p.last_active_at ? ` · active ${timeAgo(p.last_active_at)}` : ""}</div>
+            {profiles.map(p=>{
+              const roles = getRoles(p);
+              return (
+                <div key={p.id} style={{ ...card, padding:"0.85rem", display:"flex", gap:"0.75rem", alignItems:"center" }}>
+                  {p.avatar_url ? <img src={p.avatar_url} alt="" style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover" }} /> : <div style={{ width:36, height:36, borderRadius:"50%", background:"rgba(255,255,255,0.05)" }} />}
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ color:"#edf4ff", fontSize:13, fontWeight:800 }}>{p.username}</div>
+                    <div style={{ color:"#8fa0bd", fontSize:11, display:"flex", gap:"0.25rem", flexWrap:"wrap" }}>
+                      {roles.map(r => <span key={r} style={{ color:ROLE_COLORS[r]||"#8fa0bd", fontWeight:700, fontSize:9 }}>{ROLE_LABELS[r]||r}</span>)}
+                      <span>· {p.status || "active"}{p.last_active_at ? ` · active ${timeAgo(p.last_active_at)}` : ""}</span>
+                    </div>
+                  </div>
+                  <button onClick={()=>{setUserStatusId(p.id);window.scrollTo(0,document.body.scrollHeight);}} style={{ ...mkBtn("ghost"), fontSize:11, padding:"5px 10px" }}>Mod</button>
                 </div>
-                <button onClick={()=>{setUserStatusId(p.id);window.scrollTo(0,document.body.scrollHeight);}} style={{ ...mkBtn("ghost"), fontSize:11, padding:"5px 10px" }}>Mod</button>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div style={{ ...card, display:"flex", flexDirection:"column", gap:"0.75rem", position:"sticky", top:"1rem" }}>
             <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>User Moderation</h3>
@@ -182,7 +213,7 @@ export const AdminPanel = ({ nations, profiles, onRefresh, isAdmin }) => {
             </div>
             {selectedUser && (
               <div style={{ fontSize:12, color:"#8fa0bd", padding:"0.5rem", background:"rgba(255,255,255,0.03)", borderRadius:6 }}>
-                Selected: <strong style={{ color:"#edf4ff" }}>{selectedUser.username}</strong> — {selectedUser.role} · {selectedUser.status || "active"}
+                Selected: <strong style={{ color:"#edf4ff" }}>{selectedUser.username}</strong> — {getRoles(selectedUser).map(r => ROLE_LABELS[r]||r).join(", ") || "user"} · {selectedUser.status || "active"}
               </div>
             )}
             <div style={{ borderTop:"1px solid rgba(231,76,60,0.22)", paddingTop:"0.75rem" }}>

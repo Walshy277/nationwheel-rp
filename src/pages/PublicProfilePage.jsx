@@ -1,4 +1,4 @@
-import { card, mkBtn, timeAgo, STATUS_COL, ROLE_LABELS } from "../lib/uiUtils";
+import { card, mkBtn, timeAgo, STATUS_COL, ROLE_LABELS, ROLE_COLORS, getRoles } from "../lib/uiUtils";
 import { NationPill } from "../components/nation/NationPill";
 
 export const PublicProfilePage = ({ viewedProfile, nations, posts, actions, onBack }) => {
@@ -16,9 +16,12 @@ export const PublicProfilePage = ({ viewedProfile, nations, posts, actions, onBa
     );
   }
 
+  const roles = getRoles(viewedProfile);
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
       <button onClick={onBack} style={{ ...mkBtn("ghost"), alignSelf:"flex-start" }}>Back</button>
+
       <section style={{ ...card, border:"1px solid rgba(212,175,55,0.24)" }}>
         <div style={{ display:"flex", gap:"1rem", alignItems:"flex-start", flexWrap:"wrap" }}>
           {viewedProfile.avatar_url
@@ -27,7 +30,13 @@ export const PublicProfilePage = ({ viewedProfile, nations, posts, actions, onBa
           <div style={{ flex:1, minWidth:220 }}>
             <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
               <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:26 }}>{viewedProfile.username}</h2>
-              <span style={{ color:"#9fb4d6", border:"1px solid rgba(78,128,190,0.24)", borderRadius:999, padding:"2px 8px", fontSize:10, textTransform:"uppercase", letterSpacing:"0.08em" }}>{ROLE_LABELS[viewedProfile.role] || viewedProfile.role || "Player"}</span>
+              <div style={{ display:"flex", gap:"0.3rem", flexWrap:"wrap" }}>
+                {roles.length > 0 ? roles.map(r => (
+                  <span key={r} style={{ fontSize:9, fontWeight:700, color:ROLE_COLORS[r]||"#8fa0bd", border:`1px solid ${ROLE_COLORS[r]||"#8fa0bd"}33`, borderRadius:4, padding:"2px 7px", letterSpacing:"0.06em", textTransform:"uppercase" }}>
+                    {ROLE_LABELS[r] || r}
+                  </span>
+                )) : <span style={{ fontSize:9, fontWeight:700, color:"#8fa0bd", border:"1px solid rgba(143,160,189,0.3)", borderRadius:4, padding:"2px 7px", letterSpacing:"0.06em", textTransform:"uppercase" }}>User</span>}
+              </div>
               {viewedProfile.status && viewedProfile.status !== "active" && <span style={{ color:"#ffb4b4", border:"1px solid rgba(231,76,60,0.32)", borderRadius:999, padding:"2px 8px", fontSize:10, textTransform:"uppercase" }}>{viewedProfile.status}</span>}
             </div>
             <div style={{ color:"#8fa0bd", fontSize:12, marginTop:5 }}>{viewedProfile.last_active_at ? `Last active ${timeAgo(viewedProfile.last_active_at)}` : "Activity not recorded yet"}</div>

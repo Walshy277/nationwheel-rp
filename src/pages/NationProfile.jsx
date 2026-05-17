@@ -8,6 +8,7 @@ import { FlagUploader } from "../components/nation/FlagUploader";
 import { PostCard } from "../components/rp/PostCard";
 import { ActionCard } from "../components/action/ActionCard";
 import { WarCard } from "../components/war/WarCard";
+import { isNationLeader, canEditNationProfile, canEditNationStats } from "../lib/uiUtils";
 
 export const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMembers, nations, onBack, profile, userNation, isMod, isAdmin, onRefresh }) => {
   const [tab, setTab] = useState("overview");
@@ -38,9 +39,8 @@ export const NationProfile = ({ nation, posts, actions, wars, alliances, allianc
   );
   const nAlliances = alliances.filter(a => nAllyIds.includes(a.id));
   const isOwner = profile?.nation_id === nation.id;
-  const isLeader = isOwner && (profile?.role === "leader");
-  const canEditStats = isMod || isAdmin;
-  const canEditProfile = isLeader || isMod || isAdmin;
+  const isNationOwner = isOwner && isNationLeader(profile);
+  const ownerProfile = nation.owner_id ? (Array.isArray(nation.owner) ? nation.owner : nation.profiles || nation.owner) : null;
 
   useEffect(() => {
     setEditingProfile(false);
@@ -109,7 +109,7 @@ export const NationProfile = ({ nation, posts, actions, wars, alliances, allianc
         <div style={{ position:"relative", display:"flex", gap:"1.25rem", alignItems:"flex-start", flexWrap:"wrap" }}>
           <div style={{ position:"relative" }}>
             <Flag nation={nation} size={72} />
-            {(isOwner || canEditProfile) && (
+            {canEditNationProfile(profile, nation.id) && (
               <FlagUploader nationId={nation.id} currentUrl={nation.flag_url}
                 onUploaded={(url) => { nation.flag_url = url; onRefresh(); }} />
             )}
@@ -123,8 +123,8 @@ export const NationProfile = ({ nation, posts, actions, wars, alliances, allianc
               {nation.bloc && <span style={{ fontSize:11, color:"#3498db", border:"1px solid rgba(52,152,219,0.25)", borderRadius:4, padding:"1px 8px" }}>{nation.bloc}</span>}
             </div>
             <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", marginTop:"0.75rem" }}>
-              {canEditProfile && <button onClick={()=>setEditingProfile(!editingProfile)} style={{ ...mkBtn("ghost"), fontSize:11 }}>{editingProfile ? "Close Profile Editor" : "Edit Nation Profile"}</button>}
-              {canEditStats && <button onClick={()=>setEditingStats(!editingStats)} style={{ ...mkBtn("ghost"), fontSize:11 }}>{editingStats ? "Close Stats Editor" : "Edit Nation Stats"}</button>}
+              {canEditNationProfile(profile, nation.id) && <button onClick={()=>setEditingProfile(!editingProfile)} style={{ ...mkBtn("ghost"), fontSize:11 }}>{editingProfile ? "Close Profile Editor" : "Edit Nation Profile"}</button>}
+              {canEditNationStats(profile) && <button onClick={()=>setEditingStats(!editingStats)} style={{ ...mkBtn("ghost"), fontSize:11 }}>{editingStats ? "Close Stats Editor" : "Edit Nation Stats"}</button>}
             </div>
           </div>
         </div>

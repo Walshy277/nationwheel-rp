@@ -95,6 +95,23 @@ export const CHANGELOG_ENTRIES = [
       "New supabase-alliance-leader-setup.sql for all new tables, RLS policies, and RPC updates.",
     ],
   },
+  {
+    date: "2026-05-17",
+    title: "Role system overhaul, action counter-proposals, polished profiles",
+    items: [
+      "Roles changed from single text to array (users can hold multiple roles).",
+      "Available roles: Admin, Lore Team, Nation Leader, Alliance Leader, User.",
+      "Admin panel can manage roles via checkboxes (add/remove individually).",
+      "Alliance leaders can assign alliance_leader role to other members.",
+      "Lore Team can now counter-propose actions (suggest changes instead of reject).",
+      "Counter-proposed actions show proposal text; submitters can resubmit original.",
+      "Nation profile editing properly gated by role (leader edits profile, lore/admin edits stats).",
+      "Public player profiles show all roles as color-coded badges.",
+      "Header shows all user roles with colored badges.",
+      "Updated SQL schema: roles text[] column, is_admin/is_lore_team use array contains.",
+      "assign_nation_as_staff RPC adds nation_leader role to the roles array.",
+    ],
+  },
 ];
 
 export const REACT_EMOJIS = ["\u{1F44D}","\u2764\uFE0F","\u{1F602}","\u{1F525}","\u{1F440}","\u{1FAE1}"];

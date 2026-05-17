@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { card, mkBtn, inp, ta, timeAgo, fmtDate, isMissingOptionalProfileSchema } from "../lib/uiUtils";
+import { card, mkBtn, inp, ta, timeAgo, fmtDate, isMissingOptionalProfileSchema, ROLE_LABELS, ROLE_COLORS, getRoles } from "../lib/uiUtils";
 import { NationPill } from "../components/nation/NationPill";
 import { CommunityUsers } from "../components/profile/CommunityUsers";
 import { ProfileMediaUploader } from "../components/profile/ProfileMediaUploader";
@@ -104,9 +104,15 @@ export const ProfilePage = ({ profile, profiles, userNation, onProfileUpdate, on
         <div style={{ display:"flex", gap:"1rem", alignItems:"flex-start", flexWrap:"wrap" }}>
           {profile.avatar_url ? <img src={profile.avatar_url} alt="" style={{ width:108, height:108, borderRadius:"50%", objectFit:"cover", border:"1px solid rgba(246,193,50,0.28)", boxShadow:"0 14px 35px rgba(0,0,0,0.35)" }} /> : <div style={{ width:108, height:108, borderRadius:"50%", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(246,193,50,0.18)" }} />}
           <div style={{ flex:1, minWidth:180 }}>
-            <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
+              <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
               <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:22, fontWeight:900 }}>{profile.username}</div>
-              <span style={{ color:"#9fb4d6", border:"1px solid rgba(78,128,190,0.24)", borderRadius:999, padding:"2px 8px", fontSize:10, textTransform:"uppercase", letterSpacing:"0.08em" }}>{profile.role || "player"}</span>
+              <div style={{ display:"flex", gap:"0.3rem", flexWrap:"wrap" }}>
+                {getRoles(profile).map(r => (
+                  <span key={r} style={{ fontSize:9, fontWeight:700, color:ROLE_COLORS[r]||"#8fa0bd", border:`1px solid ${ROLE_COLORS[r]||"#8fa0bd"}33`, borderRadius:4, padding:"2px 7px", letterSpacing:"0.06em", textTransform:"uppercase" }}>
+                    {ROLE_LABELS[r] || r}
+                  </span>
+                ))}
+              </div>
             </div>
             <div style={{ color:"#8fa0bd", fontSize:12, marginTop:4 }}>
               {profile.status && profile.status !== "active" ? `${profile.status} - ` : ""}{profile.last_active_at ? `Last active ${timeAgo(profile.last_active_at)}` : "Activity not recorded yet"}

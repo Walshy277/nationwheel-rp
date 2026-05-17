@@ -19,7 +19,7 @@ create policy "Auth profile media update" on storage.objects for update using (b
 create table if not exists profiles (
   id uuid primary key references auth.users on delete cascade,
   username text unique not null,
-  role text default 'player',
+  roles text[] default '{user}',
   nation_id uuid,
   avatar_url text,
   signature_url text,
@@ -38,6 +38,17 @@ alter table profiles add column if not exists status text default 'active';
 alter table profiles add column if not exists suspended_until timestamptz;
 alter table profiles add column if not exists ban_reason text;
 alter table profiles add column if not exists last_active_at timestamptz;
+alter table profiles add column if not exists roles text[] default '{user}';
+-- Migrate old single role to roles array
+update profiles set roles = case
+  when role is null or role = '' then '{user}'
+  when role = 'guest' then '{user}'
+  when role in ('admin','owner') then '{admin}'
+  when role in ('lore','lore_team','mod','moderator') then '{lore_team}'
+  when role = 'leader' then '{nation_leader}'
+  else ('{' || role || '}')::text[]
+end
+where roles is null or roles = '{}';
 
 notify pgrst, 'reload schema';
 
@@ -297,7 +308,7 @@ language sql
 security definer
 set search_path = public
 as $$
-  select exists(select 1 from public.profiles where id = uid and role in ('admin','owner'));
+  select exists(select 1 from public.profiles where id = uid and roles && array['admin']);
 $$;
 
 create or replace function public.is_lore_team(uid uuid)
@@ -306,7 +317,7 @@ language sql
 security definer
 set search_path = public
 as $$
-  select exists(select 1 from public.profiles where id = uid and role in ('admin','owner','lore','lore_team','mod','moderator'));
+  select exists(select 1 from public.profiles where id = uid and roles && array['admin','lore_team']);
 $$;
 
 create or replace function public.assign_nation_as_staff(target_profile uuid, target_nation uuid)
@@ -325,7 +336,11 @@ begin
   where id = target_nation;
 
   update public.profiles
-  set nation_id = target_nation
+  set nation_id = target_nation,
+      roles = case
+        when not (roles @> array['nation_leader']) then roles || array['nation_leader']
+        else roles
+      end
   where id = target_profile;
 end;
 $$;
@@ -359,16 +374,16 @@ create policy "staff_manage_forum_reactions" on forum_reactions for all using (p
 create policy "staff_manage_site_code_notes" on site_code_notes for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
 create policy "staff_manage_site_changelog" on site_changelog for all using (public.is_lore_team(auth.uid())) with check (public.is_lore_team(auth.uid()));
 
-insert into profiles (id, username, role)
-select u.id, split_part(u.email, '@', 1), 'admin'
+insert into profiles (id, username, roles)
+select u.id, split_part(u.email, '@', 1), array['admin']
 from auth.users u
 where not exists (select 1 from profiles p where p.id = u.id)
 order by u.created_at
 limit 1
-on conflict (id) do update set role = 'admin';
+on conflict (id) do update set roles = array['admin'];
 
 update profiles
-set role = 'admin'
+set roles = array['admin']
 where id = (
   select id from profiles order by created_at nulls last, username limit 1
 );

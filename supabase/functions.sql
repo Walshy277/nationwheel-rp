@@ -5,7 +5,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select exists(select 1 from public.profiles where id = uid and role in ('admin','owner'));
+  select exists(select 1 from public.profiles where id = uid and roles && array['admin']);
 $$;
 
 create or replace function public.is_lore_team(uid uuid)
@@ -15,7 +15,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select exists(select 1 from public.profiles where id = uid and role in ('admin','owner','lore','lore_team','mod','moderator'));
+  select exists(select 1 from public.profiles where id = uid and roles && array['admin','lore_team']);
 $$;
 
 create or replace function public.assign_nation_as_staff(target_profile uuid, target_nation uuid)
@@ -30,7 +30,12 @@ begin
   end if;
 
   update public.nations set owner_id = target_profile where id = target_nation;
-  update public.profiles set nation_id = target_nation where id = target_profile;
+  update public.profiles set nation_id = target_nation,
+    roles = case
+      when not (roles @> array['nation_leader']) then roles || array['nation_leader']
+      else roles
+    end
+  where id = target_profile;
 end;
 $$;
 
@@ -60,4 +65,3 @@ begin
   return log_id;
 end;
 $$;
-

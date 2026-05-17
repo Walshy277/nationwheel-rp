@@ -13,28 +13,8 @@ where id in (
   ) ranked where rn = 1
 );
 
--- 1. Leader role: assign_nation_as_staff now also sets role='leader'
-create or replace function public.assign_nation_as_staff(target_profile uuid, target_nation uuid)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if not public.is_lore_team(auth.uid()) then
-    raise exception 'Only admin or lore team can assign nations';
-  end if;
-
-  update public.nations
-  set owner_id = target_profile
-  where id = target_nation;
-
-  update public.profiles
-  set nation_id = target_nation,
-      role = 'leader'
-  where id = target_profile;
-end;
-$$;
+-- 1. assign_nation_as_staff now sets nation_leader role into the roles array
+-- (This is now handled in functions.sql/schema.sql)
 
 -- 2. Alliance join/leave requests
 create table if not exists alliance_requests (
@@ -113,7 +93,7 @@ create policy "members_insert_alliance_boards"
       join profiles p on p.nation_id = am.nation_id
       where am.alliance_id = alliance_boards.alliance_id
         and p.id = auth.uid()
-        and p.role = 'leader'
+        and p.roles && array['alliance_leader']
     )
     or public.is_lore_team(auth.uid())
   );
@@ -175,11 +155,14 @@ create policy "dm_participant_access"
   using (auth.uid() in (from_id, to_id))
   with check (auth.uid() = from_id);
 
--- Add leader role to any profiles that already have a nation but not yet leader
+-- Add nation_leader role to any profiles that have a nation but not yet the role
 update profiles
-set role = 'leader'
+set roles = case
+  when not (roles @> array['nation_leader']) then roles || array['nation_leader']
+  else roles
+end
 where nation_id is not null
-  and role not in ('admin','lore','mod','lore_team');
+  and not (roles && array['admin','lore_team']);
 
 -- Allow leaders to insert into alliance_members (for join approval flow)
 drop policy if exists "leaders_join_alliance" on alliance_members;
@@ -190,7 +173,7 @@ create policy "leaders_join_alliance"
       select 1 from profiles p
       where p.id = auth.uid()
         and p.nation_id = alliance_members.nation_id
-        and p.role in ('leader','admin','lore','mod','lore_team')
+        and p.roles && array['nation_leader','admin','lore_team']
     )
   );
 

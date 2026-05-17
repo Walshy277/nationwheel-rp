@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase, SUPABASE_CONFIGURED } from "./lib/supabase";
-import { canAccessStaff, canManageRoles } from "./lib/permissions";
-import { ensureProfile, parseRoute, writeRoute, timeAgo, card, mkBtn, inp, ta, fmtGameDate } from "./lib/uiUtils";
+import { isAdmin, isLoreTeam, isStaff, canManageRoles } from "./lib/permissions";
+import { ensureProfile, parseRoute, writeRoute, timeAgo, card, mkBtn, inp, ta, fmtGameDate, ROLE_LABELS, ROLE_COLORS, getRoles } from "./lib/uiUtils";
 import { PAGE_PATHS, LOGO_SRC } from "./lib/constants";
-import { ROLE_LABELS } from "./lib/permissions";
 import { Flag } from "./components/nation/Flag";
 import { SetupModal } from "./components/layout/SetupModal";
 import { StaffTools } from "./components/layout/StaffTools";
@@ -57,7 +56,7 @@ export default function App() {
     const [nations, profiles, news, posts, actions, wars, warParticipants, alliances, allianceMembers, boards] = await Promise.all([
       run("Nations", supabase.from("nations").select("*, owner:owner_id(username)").order("name"),
         () => supabase.from("nations").select("*").order("name")),
-      supabase.from("profiles").select("id,username,role,nation_id,avatar_url,signature_url,bio,status,suspended_until,ban_reason,last_active_at,created_at").order("username").limit(1000),
+      supabase.from("profiles").select("id,username,roles,nation_id,avatar_url,signature_url,bio,status,suspended_until,ban_reason,last_active_at,created_at").order("username").limit(1000),
       supabase.from("news").select("*").order("pinned",{ascending:false}).order("created_at",{ascending:false}).limit(25),
       supabase.from("rp_posts").select("*, nations(name,flag_url), target_nation_id").order("created_at",{ascending:false}).limit(100),
       supabase.from("canon_actions").select("*, nations(name,flag_url), action_updates(*, profiles(username))").order("created_at",{ascending:false}).limit(50),
@@ -149,8 +148,8 @@ export default function App() {
   }
 
   const userNation = profile?.nation_id ? data.nations.find(n=>n.id===profile.nation_id) : null;
-  const isAdmin = canManageRoles(profile);
-  const isLoreTeam = canAccessStaff(profile);
+  const isAdminRole = isAdmin(profile);
+  const isLoreTeam = isLoreTeam(profile);
 
   const nav = [
       {id:"forums",label:"Boards"},
@@ -216,8 +215,10 @@ export default function App() {
             {userNation && <><Flag nation={userNation} size={20} /><span style={{ fontSize:11, color:"#9fb4d6", maxWidth:70, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{userNation.name}</span></>}
             <NotificationsBell profile={profile} onNavigate={handleNotificationLink} />
             <button onClick={()=>navigate("profile")} style={{ background:"transparent", border:"none", padding:0, minHeight:0, color:"#9fb4d6", fontSize:11, cursor:"pointer" }}>{profile?.username || "profile"}</button>
-            {isLoreTeam && <span style={{ fontSize:9, color:"#3498db", border:"1px solid #3498db33", borderRadius:3, padding:"1px 5px", letterSpacing:"0.06em" }}>{(ROLE_LABELS[profile?.role] || profile?.role || "Staff").toUpperCase()}</span>}
-            {isLoreTeam && <button onClick={()=>navigate("admin")} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>{isAdmin ? "Admin" : "Lore"}</button>}
+            {getRoles(profile).map(r => (
+              <span key={r} style={{ fontSize:8, fontWeight:700, color:ROLE_COLORS[r]||"#8fa0bd", border:`1px solid ${ROLE_COLORS[r]||"#8fa0bd"}33`, borderRadius:3, padding:"1px 5px", letterSpacing:"0.06em" }}>{ROLE_LABELS[r]?.toUpperCase() || r?.toUpperCase()}</span>
+            ))}
+            {isLoreTeam && <button onClick={()=>navigate("admin")} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>{isAdminRole ? "Admin" : "Lore"}</button>}
             <button onClick={()=>supabase.auth.signOut()} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>Sign Out</button>
           </> : (
             <button onClick={()=>navigate("auth")} style={{ ...mkBtn("gold"), padding:"4px 10px", fontSize:11 }}>Sign In</button>
@@ -227,7 +228,7 @@ export default function App() {
 
       {isLoreTeam && (
         <StaffTools
-          isAdmin={isAdmin}
+          isAdmin={isAdminRole}
           page={page}
           navigate={navigate}
           counts={{
@@ -245,7 +246,7 @@ export default function App() {
           ? <div style={{ textAlign:"center", padding:"5rem", color:"#8493ad", fontFamily:"var(--display)", letterSpacing:"0.2em", fontSize:13 }}>LOADING WORLD</div>
           : <>
               {page==="home"         && <HomePage nations={data.nations} news={data.news} actions={data.actions} wars={data.wars} />}
-              {page==="nations"      && <NationsPage nations={data.nations} posts={data.posts} actions={data.actions} wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} profile={profile} userNation={userNation} isMod={isLoreTeam} isAdmin={isAdmin} onRefresh={fetchAll} />}
+              {page==="nations"      && <NationsPage nations={data.nations} posts={data.posts} actions={data.actions} wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} profile={profile} userNation={userNation} isMod={isLoreTeam} isAdmin={isAdminRole} onRefresh={fetchAll} />}
               {page==="rp"           && <RPBoardPage posts={data.posts} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="actions"      && <ActionsPage actions={data.actions} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="wars"         && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profiles={data.profiles} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} />}
@@ -256,7 +257,7 @@ export default function App() {
               {page==="profile" && !publicProfileId && user && profile && <ProfilePage profile={profile} profiles={data.profiles} userNation={userNation} onProfileUpdate={updateProfile} onViewProfile={viewProfile} />}
               {page==="forums"       && <ForumsPage boards={data.boards} route={forumRoute} onRouteChange={setForumRoute} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} onRequireAuth={()=>navigate("auth")} onViewProfile={viewProfile} />}
               {page==="auth"         && <AuthPage setupRequired={setupRequired} onAuth={(u,p)=>{setUser(u);if(p)setProfile(p);else ensureProfile(u).then(next=>{if(next)setProfile(next);}).catch(console.error);fetchAll();setPage("forums");setForumRoute({ type:"boards" });writeRoute("/forums");}} />}
-              {page==="admin" && isLoreTeam && <AdminPanel nations={data.nations} profiles={data.profiles} onRefresh={fetchAll} isAdmin={isAdmin} />}
+              {page==="admin" && isLoreTeam && <AdminPanel nations={data.nations} profiles={data.profiles} onRefresh={fetchAll} isAdmin={isAdminRole} />}
             </>
         }
       </main>
