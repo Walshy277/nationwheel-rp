@@ -23,6 +23,7 @@ import { ForumsPage } from "./pages/ForumsPage";
 import { AdminPanel } from "./pages/AdminPanel";
 import { GameMechanicsPage } from "./pages/GameMechanicsPage";
 import { AllianceProfile } from "./pages/AllianceProfile";
+import { DiplomacyPage } from "./pages/DiplomacyPage";
 
 export default function App() {
   const initialRoute = parseRoute();
@@ -165,7 +166,8 @@ export default function App() {
       {id:"profile",label:"Profile"},
       {id:"rp",label:"Dispatches"},
       {id:"actions",label:"Actions"},
-      {id:"wars",label:"Wars and Alliances"},
+      {id:"diplomacy",label:"Diplomacy"},
+      {id:"wars",label:"Wars & Alliances"},
       {id:"home",label:"Overview"},
     ] : []),
   ];
@@ -254,6 +256,7 @@ export default function App() {
               {page==="nations"      && <NationsPage nations={data.nations} posts={data.posts} actions={data.actions} wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} profile={profile} userNation={userNation} isMod={isLoreTeam} isAdmin={isAdminRole} onRefresh={fetchAll} />}
               {page==="rp"           && <RPBoardPage posts={data.posts} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="actions"      && <ActionsPage actions={data.actions} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} />}
+              {page==="diplomacy"  && <DiplomacyPage nations={data.nations} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="wars" && !allianceViewId && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profiles={data.profiles} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} onViewAlliance={setAllianceViewId} />}
               {page==="wars" && allianceViewId && <AllianceProfile
                 alliance={data.alliances.find(a=>a.id===allianceViewId)}
