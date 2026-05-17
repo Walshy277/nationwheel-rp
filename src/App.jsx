@@ -279,7 +279,7 @@ export default function App() {
               {page==="profile" && !publicProfileId && user && profile && <ProfilePage profile={profile} profiles={data.profiles} userNation={userNation} onProfileUpdate={updateProfile} onViewProfile={viewProfile} />}
               {page==="forums"       && <ForumsPage boards={data.boards} route={forumRoute} onRouteChange={setForumRoute} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} onRequireAuth={()=>navigate("auth")} onViewProfile={viewProfile} />}
               {page==="auth"         && <AuthPage setupRequired={setupRequired} onAuth={(u,p)=>{setUser(u);if(p)setProfile(p);else ensureProfile(u).then(next=>{if(next)setProfile(next);}).catch(console.error);fetchAll();setPage("forums");setForumRoute({ type:"boards" });writeRoute("/forums");}} />}
-              {page==="admin" && isLoreTeam && <AdminPanel nations={data.nations} profiles={data.profiles} onRefresh={fetchAll} isAdmin={isAdminRole} />}
+              {page==="admin" && isLoreTeam && <AdminPanel nations={data.nations} profiles={data.profiles} profile={profile} onRefresh={fetchAll} isAdmin={isAdminRole} />}
             </>
         }
       </main>

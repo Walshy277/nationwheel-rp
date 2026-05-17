@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { card, mkBtn, inp, ta, slugify, timeAgo, fmtDate, ROLE_LABELS, ROLE_COLORS, getRoles } from "../lib/uiUtils";
 import { SITE_CODE_FILES, CHANGELOG_ENTRIES } from "../lib/constants";
 import { Flag } from "../components/nation/Flag";
+
+const REPORT_TYPES = ["forum_post","forum_thread","profile","dispatch","action","nation"];
+const REPORT_COLORS = { open:"#e74c3c", investigating:"#f39c12", resolved:"#2ecc71", dismissed:"#8fa0bd" };
 
 const ROLE_OPTIONS = [
   "admin",
@@ -12,7 +15,7 @@ const ROLE_OPTIONS = [
   "user",
 ];
 
-export const AdminPanel = ({ nations, profiles, onRefresh, isAdmin }) => {
+export const AdminPanel = ({ nations, profiles, profile, onRefresh, isAdmin }) => {
   const [tab, setTab] = useState("add");
   const blank = { name:"",government:"",ideology:"",population:"",gdp_usd:"",land_km2:"",army_rank:"",hdi:"",economy:"",bio:"",diplomatic_status:"",bloc:"" };
   const [nf, setNf] = useState(blank);
@@ -24,6 +27,8 @@ export const AdminPanel = ({ nations, profiles, onRefresh, isAdmin }) => {
   const [userStatusId, setUserStatusId] = useState("");
   const [suspendDays, setSuspendDays] = useState("7");
   const [moderationReason, setModerationReason] = useState("");
+  const [reports, setReports] = useState([]);
+  const [reportsLoading, setReportsLoading] = useState(false);
   const selectedUser = profiles.find(p => p.id === userStatusId);
 
   const submitNation = async () => {
@@ -49,7 +54,7 @@ export const AdminPanel = ({ nations, profiles, onRefresh, isAdmin }) => {
   };
 
   const fields = [["name","Nation Name *"],["government","Government"],["ideology","Ideology"],["population","Population"],["gdp_usd","GDP (USD number)"],["land_km2","Land km2"],["army_rank","Army Rank 0-11"],["hdi","HDI 0.00-1.00"],["economy","Economy Sectors"],["diplomatic_status","Diplomatic Status"],["bloc","Bloc / Alliance"]];
-  const tabs = [["add",editId?"Edit Nation":"Add Nation"],["assign","Assign Nations"],...(isAdmin ? [["users","Users"],["roles","Manage Roles"],["code","Site Code"],["changes","Changelog"]] : []),["list","Nation List"]];
+  const tabs = [["add",editId?"Edit Nation":"Add Nation"],["assign","Assign Nations"],["reports",`Reports (${reports.filter(r=>r.status==="open"||r.status==="investigating").length||""})`],...(isAdmin ? [["users","Users"],["roles","Manage Roles"],["code","Site Code"],["changes","Changelog"]] : []),["list","Nation List"]];
   const codeEntries = Object.entries(SITE_CODE_FILES).sort(([a],[b])=>a.localeCompare(b));
   const selectedCode = SITE_CODE_FILES[selectedCodeFile] || "";
   const setUserModeration = async (status) => {
@@ -83,6 +88,28 @@ export const AdminPanel = ({ nations, profiles, onRefresh, isAdmin }) => {
       alert("Code change note saved for deployment.");
     }
   };
+  const loadReports = async () => {
+    setReportsLoading(true);
+    const { data } = await supabase.from("reports").select("*").order("created_at", { ascending: false }).limit(100);
+    if (data) setReports(data);
+    setReportsLoading(false);
+  };
+
+  const resolveReport = async (reportId, status, resolution) => {
+    const { error } = await supabase.from("reports").update({
+      status,
+      resolution: resolution || null,
+      resolved_by: profile?.id || null,
+      resolved_at: new Date().toISOString(),
+    }).eq("id", reportId);
+    if (error) alert(error.message);
+    else loadReports();
+  };
+
+  useEffect(() => {
+    if (tab === "reports") loadReports();
+  }, [tab]);
+
   const removeMember = async () => {
     if (!userStatusId || !selectedUser) return;
     if (!confirm(`Permanently remove ${selectedUser.username} from the database? This deletes their auth account, profile, posts, actions, and related records.`)) return;
@@ -140,6 +167,48 @@ export const AdminPanel = ({ nations, profiles, onRefresh, isAdmin }) => {
             {profiles.map(p=><option key={p.id} value={p.id}>{p.username} {p.nation_id?"(has nation)":""}</option>)}
           </select>
           <button onClick={assignNation} style={mkBtn()}>Assign Nation</button>
+        </div>
+      )}
+
+      {tab==="reports" && (
+        <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
+          <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Moderation Queue</h3>
+          {reportsLoading ? (
+            <div style={{ textAlign:"center", padding:"2rem", color:"#8493ad" }}>Loading reports...</div>
+          ) : reports.length === 0 ? (
+            <div style={{ ...card, textAlign:"center", padding:"2rem" }}>
+              <div style={{ color:"#8493ad", fontStyle:"italic" }}>No reports yet.</div>
+            </div>
+          ) : reports.map(r => {
+            const reporter = profiles.find(p => p.id === r.reporter_id);
+            return (
+              <div key={r.id} style={card}>
+                <div style={{ display:"flex", gap:"0.75rem", alignItems:"flex-start", flexWrap:"wrap" }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:"flex", gap:"0.4rem", alignItems:"center", flexWrap:"wrap" }}>
+                      <span style={{ fontSize:10, fontWeight:800, color:REPORT_COLORS[r.status]||"#8fa0bd", border:`1px solid ${REPORT_COLORS[r.status]||"#8fa0bd"}33`, borderRadius:4, padding:"2px 7px" }}>{r.status?.toUpperCase()}</span>
+                      <span style={{ fontSize:10, color:"#8fa0bd", border:"1px solid rgba(78,128,190,0.24)", borderRadius:4, padding:"2px 7px" }}>{r.target_type?.replace("_", " ").toUpperCase()}</span>
+                      <span style={{ fontSize:11, color:"#8fa0bd" }}>Reported by {reporter?.username || "?"} · {timeAgo(r.created_at)}</span>
+                    </div>
+                    <p style={{ color:"#edf4ff", fontSize:13, margin:"0.4rem 0 0" }}>{r.reason}</p>
+                    {r.resolution && <p style={{ color:"#9fb4d6", fontSize:12, fontStyle:"italic", margin:"0.25rem 0 0" }}>Resolution: {r.resolution}</p>}
+                  </div>
+                  {r.status === "open" || r.status === "investigating" ? (
+                    <div style={{ display:"flex", gap:"0.35rem", flexDirection:"column" }}>
+                      <button onClick={async()=>{
+                        const res = prompt("Resolution note (optional):");
+                        await resolveReport(r.id, "resolved", res || null);
+                      }} style={{ ...mkBtn("green"), fontSize:10, padding:"4px 9px", minHeight:28 }}>Resolve</button>
+                      <button onClick={async()=>{
+                        const res = prompt("Dismissal reason (optional):");
+                        await resolveReport(r.id, "dismissed", res || null);
+                      }} style={{ ...mkBtn("ghost"), fontSize:10, padding:"4px 9px", minHeight:28 }}>Dismiss</button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
