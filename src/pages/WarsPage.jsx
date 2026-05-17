@@ -7,7 +7,7 @@ import { NationPill } from "../components/nation/NationPill";
 import { WarCard } from "../components/war/WarCard";
 import { notifyWarDeclare, createMentionNotifications } from "../lib/notifications";
 
-export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, profiles, profile, userNation, isMod, onRefresh }) => {
+export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, profiles, profile, userNation, isMod, onRefresh, onViewAlliance }) => {
   const [tab, setTab] = useState("wars");
   const [showWarForm, setShowWarForm] = useState(false);
   const [showAllyForm, setShowAllyForm] = useState(false);
@@ -292,6 +292,7 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
                         {userNation && !isMember && isLeader && (
                           <button onClick={requestJoin} style={{ ...mkBtn("ghost"), fontSize:11, padding:"5px 10px" }}>+ Request to Join</button>
                         )}
+                        {onViewAlliance && <button onClick={()=>onViewAlliance(a.id)} style={{ ...mkBtn("ghost"), fontSize:11, padding:"5px 10px" }}>View</button>}
                         {userNation && isMember && (
                           <button onClick={leaveAlliance} style={{ ...mkBtn("red"), fontSize:11, padding:"5px 10px" }}>Leave</button>
                         )}

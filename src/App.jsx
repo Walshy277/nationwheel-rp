@@ -22,6 +22,7 @@ import { ChangelogPage } from "./pages/ChangelogPage";
 import { ForumsPage } from "./pages/ForumsPage";
 import { AdminPanel } from "./pages/AdminPanel";
 import { GameMechanicsPage } from "./pages/GameMechanicsPage";
+import { AllianceProfile } from "./pages/AllianceProfile";
 
 export default function App() {
   const initialRoute = parseRoute();
@@ -30,6 +31,7 @@ export default function App() {
   const [page, setPage] = useState(initialRoute.page);
   const [forumRoute, setForumRoute] = useState(initialRoute.forumRoute);
   const [publicProfileId, setPublicProfileId] = useState(initialRoute.profileId || null);
+  const [allianceViewId, setAllianceViewId] = useState(null);
   const [data, setData] = useState({ nations:[], profiles:[], news:[], posts:[], actions:[], wars:[], warParticipants:[], alliances:[], allianceMembers:[], boards:[], threads:[], forumPosts:[], forumReactions:[] });
   const [loading, setLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
@@ -172,6 +174,7 @@ export default function App() {
     setPage(id);
     setForumRoute({ type:"boards" });
     setPublicProfileId(null);
+    setAllianceViewId(null);
     writeRoute(PAGE_PATHS[id] || "/forums");
   };
   const viewProfile = (profileId) => {
@@ -251,7 +254,20 @@ export default function App() {
               {page==="nations"      && <NationsPage nations={data.nations} posts={data.posts} actions={data.actions} wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} profile={profile} userNation={userNation} isMod={isLoreTeam} isAdmin={isAdminRole} onRefresh={fetchAll} />}
               {page==="rp"           && <RPBoardPage posts={data.posts} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="actions"      && <ActionsPage actions={data.actions} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} />}
-              {page==="wars"         && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profiles={data.profiles} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} />}
+              {page==="wars" && !allianceViewId && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profiles={data.profiles} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} onViewAlliance={setAllianceViewId} />}
+              {page==="wars" && allianceViewId && <AllianceProfile
+                alliance={data.alliances.find(a=>a.id===allianceViewId)}
+                allianceMembers={data.allianceMembers}
+                nations={data.nations}
+                wars={data.wars}
+                warParticipants={data.warParticipants}
+                profiles={data.profiles}
+                profile={profile}
+                userNation={userNation}
+                isMod={isLoreTeam}
+                onBack={()=>setAllianceViewId(null)}
+                onRefresh={fetchAll}
+              />}
               {page==="news"         && <NewsPage news={data.news} profile={profile} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="mechanics"    && <GameMechanicsPage navigate={navigate} />}
               {page==="leaderboards" && <LeaderboardsPage nations={data.nations} />}
