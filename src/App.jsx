@@ -25,6 +25,7 @@ import { GameMechanicsPage } from "./pages/GameMechanicsPage";
 import { AllianceProfile } from "./pages/AllianceProfile";
 import { DiplomacyPage } from "./pages/DiplomacyPage";
 import { EconomyPage } from "./pages/EconomyPage";
+import { AssemblyPage } from "./pages/AssemblyPage";
 
 export default function App() {
   const initialRoute = parseRoute();
@@ -169,6 +170,7 @@ export default function App() {
       {id:"actions",label:"Actions"},
       {id:"diplomacy",label:"Diplomacy"},
       {id:"economy",label:"Economy"},
+      {id:"assembly",label:"Assembly"},
       {id:"wars",label:"Wars & Alliances"},
       {id:"home",label:"Overview"},
     ] : []),
@@ -260,6 +262,7 @@ export default function App() {
               {page==="actions"      && <ActionsPage actions={data.actions} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="diplomacy"  && <DiplomacyPage nations={data.nations} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="economy"     && <EconomyPage nations={data.nations} profile={profile} userNation={userNation} onRefresh={fetchAll} />}
+              {page==="assembly"    && <AssemblyPage nations={data.nations} profile={profile} userNation={userNation} onRefresh={fetchAll} />}
               {page==="wars" && !allianceViewId && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profiles={data.profiles} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} onViewAlliance={setAllianceViewId} />}
               {page==="wars" && allianceViewId && <AllianceProfile
                 alliance={data.alliances.find(a=>a.id===allianceViewId)}
