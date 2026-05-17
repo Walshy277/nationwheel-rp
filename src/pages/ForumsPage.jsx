@@ -6,6 +6,7 @@ import { BOARD_ICONS, FORUM_BOARDS } from "../lib/forumUtils";
 import { FORUM_PAGE_SIZE, REACT_EMOJIS } from "../lib/constants";
 import BBCodeToolbar from "../components/forum/BBCodeToolbar";
 import ForumIndex from "./ForumIndex";
+import { createMentionNotifications, notifyThreadReply } from "../lib/notifications";
 
 export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, nations, isMod, onRefresh, onRequireAuth, onViewProfile }) => {
   const [view, setView] = useState({ type:"boards" });
@@ -240,6 +241,7 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
       return;
     }
     const createdThread = normalizeThread({ ...data, reply_count:0, last_post_at:data.created_at });
+    createMentionNotifications({ body:threadForm.body, sourceTitle:threadForm.title, sourceLink:`${window.location.origin}/forums/thread/${data.id}`, sourceType:"forum", allProfiles:profile ? [] : [] });
     setThreadForm({title:"",body:""}); setShowNewThread(false); onRefresh();
     pushForumRoute({ type:"thread", thread:createdThread });
   };
@@ -255,6 +257,9 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
       alert(`Reply failed: ${error.message}`);
       return;
     }
+    const replyLink = window.location.href;
+    createMentionNotifications({ body:replyBody, sourceTitle:view.thread.title, sourceLink:replyLink, sourceType:"forum", allProfiles:profile ? [] : [] });
+    notifyThreadReply({ thread:view.thread, replyAuthorId:profile?.id, replyBody, replyLink, threadAuthorId:view.thread.author_id || view.thread.profiles?.id });
     setReplyBody("");
     onRefresh();
     await loadThreadPosts(view.thread, 0, false, replySort);

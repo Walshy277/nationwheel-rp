@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase, SUPABASE_CONFIGURED } from "./lib/supabase";
 import { canAccessStaff, canManageRoles } from "./lib/permissions";
-import { ensureProfile, parseRoute, writeRoute, timeAgo, card, mkBtn, inp, ta } from "./lib/uiUtils";
+import { ensureProfile, parseRoute, writeRoute, timeAgo, card, mkBtn, inp, ta, fmtGameDate } from "./lib/uiUtils";
 import { PAGE_PATHS, LOGO_SRC } from "./lib/constants";
 import { ROLE_LABELS } from "./lib/permissions";
 import { Flag } from "./components/nation/Flag";
 import { SetupModal } from "./components/layout/SetupModal";
 import { StaffTools } from "./components/layout/StaffTools";
+import { NotificationsBell } from "./components/notifications/NotificationsBell";
+import { fetchGameState } from "./lib/notifications";
 import { AuthPage } from "./pages/AuthPage";
 import { HomePage } from "./pages/HomePage";
 import { ProfilePage } from "./pages/ProfilePage";
@@ -32,6 +34,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
   const [showUnconfiguredGuide, setShowUnconfiguredGuide] = useState(false);
+  const [gameState, setGameState] = useState(null);
 
   const fetchAll = useCallback(async () => {
     if (!SUPABASE_CONFIGURED) {
@@ -85,6 +88,7 @@ export default function App() {
     supabase.from("forum_boards").select("id").limit(1).then(({ error }) => {
       setSetupRequired(Boolean(error && (error.code === "42P01" || error.message?.toLowerCase().includes("could not find the table"))));
     });
+    fetchGameState().then(gs => { if (gs) setGameState(gs); });
     supabase.auth.getSession().then(({data:s}) => {
       if (s.session?.user) {
         setUser(s.session.user);
@@ -175,6 +179,16 @@ export default function App() {
     setPublicProfileId(profileId);
     writeRoute(`/profile/${encodeURIComponent(profileId)}`);
   };
+  const handleNotificationLink = (link) => {
+    if (!link) return;
+    if (link.startsWith("/")) {
+      const pagePath = Object.entries(PAGE_PATHS).find(([, p]) => link.startsWith(p))?.[0];
+      if (pagePath) navigate(pagePath);
+    }
+  };
+  const handleGameDayAdvance = (result) => {
+    if (result) setGameState(prev => ({ ...prev, game_day: result.day, game_year: result.year }));
+  };
   const updateProfile = (nextProfile) => {
     setProfile(nextProfile);
     setData(prev => ({
@@ -200,6 +214,7 @@ export default function App() {
         <div className="user-tools" style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexShrink:0 }}>
           {user ? <>
             {userNation && <><Flag nation={userNation} size={20} /><span style={{ fontSize:11, color:"#9fb4d6", maxWidth:70, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{userNation.name}</span></>}
+            <NotificationsBell profile={profile} onNavigate={handleNotificationLink} />
             <button onClick={()=>navigate("profile")} style={{ background:"transparent", border:"none", padding:0, minHeight:0, color:"#9fb4d6", fontSize:11, cursor:"pointer" }}>{profile?.username || "profile"}</button>
             {isLoreTeam && <span style={{ fontSize:9, color:"#3498db", border:"1px solid #3498db33", borderRadius:3, padding:"1px 5px", letterSpacing:"0.06em" }}>{(ROLE_LABELS[profile?.role] || profile?.role || "Staff").toUpperCase()}</span>}
             {isLoreTeam && <button onClick={()=>navigate("admin")} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>{isAdmin ? "Admin" : "Lore"}</button>}
@@ -220,6 +235,8 @@ export default function App() {
             wars:data.wars.filter(w=>w.status!=="peace").length,
             actions:data.actions.filter(a=>["pending","active"].includes(a.status)).length,
           }}
+          gameState={gameState}
+          onGameDayAdvance={handleGameDayAdvance}
         />
       )}
 
@@ -231,7 +248,7 @@ export default function App() {
               {page==="nations"      && <NationsPage nations={data.nations} posts={data.posts} actions={data.actions} wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} profile={profile} userNation={userNation} isMod={isLoreTeam} isAdmin={isAdmin} onRefresh={fetchAll} />}
               {page==="rp"           && <RPBoardPage posts={data.posts} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="actions"      && <ActionsPage actions={data.actions} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} />}
-              {page==="wars"         && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} />}
+              {page==="wars"         && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profiles={data.profiles} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="news"         && <NewsPage news={data.news} profile={profile} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="leaderboards" && <LeaderboardsPage nations={data.nations} />}
               {page==="changelog"    && <ChangelogPage />}
@@ -246,6 +263,7 @@ export default function App() {
 
       <footer className="app-footer" style={{ borderTop:"1px solid rgba(20,96,184,0.22)", padding:"1rem", textAlign:"center", fontSize:10, color:"#6f85a8", letterSpacing:"0.15em", textTransform:"uppercase" }}>
         Nationwheel - Geopolitical Roleplay World - Season 1
+        {gameState && <span style={{ marginLeft:"1rem", color:"#d4af37" }}>{fmtGameDate(gameState.game_day, gameState.game_year)}</span>}
       </footer>
 
       <style>{`

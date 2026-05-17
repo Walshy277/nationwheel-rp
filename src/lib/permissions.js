@@ -1,7 +1,9 @@
 export const STAFF_ROLES = ["moderator", "mod", "lore", "lore_team", "admin", "owner"];
+export const LEADER_ROLES = ["leader", ...STAFF_ROLES];
 export const ROLE_LABELS = {
   guest: "Guest",
   player: "Player",
+  leader: "Nation Leader",
   verified: "Verified Player",
   moderator: "Moderator",
   mod: "Moderator",

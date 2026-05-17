@@ -11,8 +11,14 @@ import { WarCard } from "../components/war/WarCard";
 
 export const NationProfile = ({ nation, posts, actions, wars, alliances, allianceMembers, nations, onBack, profile, userNation, isMod, isAdmin, onRefresh }) => {
   const [tab, setTab] = useState("overview");
-  const [editingNation, setEditingNation] = useState(false);
-  const [nationForm, setNationForm] = useState({
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editingStats, setEditingStats] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    diplomatic_status:nation.diplomatic_status || "",
+    bloc:nation.bloc || "",
+    bio:nation.bio || "",
+  });
+  const [statsForm, setStatsForm] = useState({
     government:nation.government || "",
     ideology:nation.ideology || "",
     population:nation.population || "",
@@ -21,9 +27,6 @@ export const NationProfile = ({ nation, posts, actions, wars, alliances, allianc
     army_rank:nation.army_rank || "",
     hdi:nation.hdi || "",
     economy:nation.economy || "",
-    diplomatic_status:nation.diplomatic_status || "",
-    bloc:nation.bloc || "",
-    bio:nation.bio || "",
   });
   const nPosts = posts.filter(p => p.nation_id === nation.id);
   const nActions = actions.filter(a => a.nation_id === nation.id);
@@ -35,11 +38,19 @@ export const NationProfile = ({ nation, posts, actions, wars, alliances, allianc
   );
   const nAlliances = alliances.filter(a => nAllyIds.includes(a.id));
   const isOwner = profile?.nation_id === nation.id;
-  const canEditNation = isMod || isAdmin;
+  const isLeader = isOwner && (profile?.role === "leader");
+  const canEditStats = isMod || isAdmin;
+  const canEditProfile = isLeader || isMod || isAdmin;
 
   useEffect(() => {
-    setEditingNation(false);
-    setNationForm({
+    setEditingProfile(false);
+    setEditingStats(false);
+    setProfileForm({
+      diplomatic_status:nation.diplomatic_status || "",
+      bloc:nation.bloc || "",
+      bio:nation.bio || "",
+    });
+    setStatsForm({
       government:nation.government || "",
       ideology:nation.ideology || "",
       population:nation.population || "",
@@ -48,29 +59,34 @@ export const NationProfile = ({ nation, posts, actions, wars, alliances, allianc
       army_rank:nation.army_rank || "",
       hdi:nation.hdi || "",
       economy:nation.economy || "",
-      diplomatic_status:nation.diplomatic_status || "",
-      bloc:nation.bloc || "",
-      bio:nation.bio || "",
     });
   }, [nation.id, nation.government, nation.ideology, nation.population, nation.gdp_usd, nation.land_km2, nation.army_rank, nation.hdi, nation.economy, nation.diplomatic_status, nation.bloc, nation.bio]);
 
-  const saveNationStats = async () => {
+  const saveProfile = async () => {
     const payload = {
-      government:nationForm.government || null,
-      ideology:nationForm.ideology || null,
-      population:nationForm.population ? parseInt(nationForm.population) : null,
-      gdp_usd:nationForm.gdp_usd ? parseInt(nationForm.gdp_usd) : null,
-      land_km2:nationForm.land_km2 ? parseInt(nationForm.land_km2) : null,
-      army_rank:nationForm.army_rank ? parseInt(nationForm.army_rank) : null,
-      hdi:nationForm.hdi ? parseFloat(nationForm.hdi) : null,
-      economy:nationForm.economy || null,
-      diplomatic_status:nationForm.diplomatic_status || null,
-      bloc:nationForm.bloc || null,
-      bio:nationForm.bio || null,
+      diplomatic_status:profileForm.diplomatic_status || null,
+      bloc:profileForm.bloc || null,
+      bio:profileForm.bio || null,
     };
     const { error } = await supabase.from("nations").update(payload).eq("id", nation.id);
     if (error) alert(error.message);
-    else { setEditingNation(false); onRefresh(); }
+    else { setEditingProfile(false); onRefresh(); }
+  };
+
+  const saveStats = async () => {
+    const payload = {
+      government:statsForm.government || null,
+      ideology:statsForm.ideology || null,
+      population:statsForm.population ? parseInt(statsForm.population) : null,
+      gdp_usd:statsForm.gdp_usd ? parseInt(statsForm.gdp_usd) : null,
+      land_km2:statsForm.land_km2 ? parseInt(statsForm.land_km2) : null,
+      army_rank:statsForm.army_rank ? parseInt(statsForm.army_rank) : null,
+      hdi:statsForm.hdi ? parseFloat(statsForm.hdi) : null,
+      economy:statsForm.economy || null,
+    };
+    const { error } = await supabase.from("nations").update(payload).eq("id", nation.id);
+    if (error) alert(error.message);
+    else { setEditingStats(false); onRefresh(); }
   };
 
   const stats = [
@@ -93,7 +109,7 @@ export const NationProfile = ({ nation, posts, actions, wars, alliances, allianc
         <div style={{ position:"relative", display:"flex", gap:"1.25rem", alignItems:"flex-start", flexWrap:"wrap" }}>
           <div style={{ position:"relative" }}>
             <Flag nation={nation} size={72} />
-            {(isOwner || canEditNation) && (
+            {(isOwner || canEditProfile) && (
               <FlagUploader nationId={nation.id} currentUrl={nation.flag_url}
                 onUploaded={(url) => { nation.flag_url = url; onRefresh(); }} />
             )}
@@ -106,7 +122,10 @@ export const NationProfile = ({ nation, posts, actions, wars, alliances, allianc
               {nation.diplomatic_status && <span style={{ fontSize:11, color:"#d4af37", border:"1px solid rgba(212,175,55,0.25)", borderRadius:4, padding:"1px 8px" }}>{nation.diplomatic_status}</span>}
               {nation.bloc && <span style={{ fontSize:11, color:"#3498db", border:"1px solid rgba(52,152,219,0.25)", borderRadius:4, padding:"1px 8px" }}>{nation.bloc}</span>}
             </div>
-            {canEditNation && <button onClick={()=>setEditingNation(!editingNation)} style={{ ...mkBtn("ghost"), marginTop:"0.75rem", fontSize:11 }}>{editingNation ? "Close Nation Editor" : "Edit Nation Stats"}</button>}
+            <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", marginTop:"0.75rem" }}>
+              {canEditProfile && <button onClick={()=>setEditingProfile(!editingProfile)} style={{ ...mkBtn("ghost"), fontSize:11 }}>{editingProfile ? "Close Profile Editor" : "Edit Nation Profile"}</button>}
+              {canEditStats && <button onClick={()=>setEditingStats(!editingStats)} style={{ ...mkBtn("ghost"), fontSize:11 }}>{editingStats ? "Close Stats Editor" : "Edit Nation Stats"}</button>}
+            </div>
           </div>
         </div>
       </div>
@@ -119,9 +138,23 @@ export const NationProfile = ({ nation, posts, actions, wars, alliances, allianc
 
       {tab==="overview" && (
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(185px,1fr))", gap:"0.65rem" }}>
-          {editingNation && (
+          {editingProfile && (
+            <div style={{ ...card, gridColumn:"1/-1", border:"1px solid rgba(212,175,55,0.28)" }}>
+              <h3 style={{ margin:"0 0 0.8rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Edit Nation Profile</h3>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:"0.55rem" }}>
+                <input placeholder="Diplomatic Status" value={profileForm.diplomatic_status} onChange={e=>setProfileForm({...profileForm,diplomatic_status:e.target.value})} style={inp} />
+                <input placeholder="Bloc / Alliance" value={profileForm.bloc} onChange={e=>setProfileForm({...profileForm,bloc:e.target.value})} style={inp} />
+                <textarea placeholder="Nation bio or lore" value={profileForm.bio} onChange={e=>setProfileForm({...profileForm,bio:e.target.value})} style={{ ...ta, gridColumn:"1/-1", minHeight:90 }} />
+              </div>
+              <div style={{ display:"flex", gap:"0.45rem", marginTop:"0.75rem" }}>
+                <button onClick={saveProfile} style={mkBtn()}>Save Profile</button>
+                <button onClick={()=>setEditingProfile(false)} style={mkBtn("ghost")}>Cancel</button>
+              </div>
+            </div>
+          )}
+          {editingStats && (
             <div style={{ ...card, gridColumn:"1/-1", border:"1px solid rgba(52,152,219,0.28)" }}>
-              <h3 style={{ margin:"0 0 0.8rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Nation Stat Editor</h3>
+              <h3 style={{ margin:"0 0 0.8rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Nation Stats Editor (Lore/Admin only)</h3>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:"0.55rem" }}>
                 {[
                   ["government","Government"],
@@ -132,16 +165,13 @@ export const NationProfile = ({ nation, posts, actions, wars, alliances, allianc
                   ["army_rank","Army Rank"],
                   ["hdi","HDI"],
                   ["economy","Economy"],
-                  ["diplomatic_status","Diplomatic Status"],
-                  ["bloc","Bloc"],
                 ].map(([key,label]) => (
-                  <input key={key} placeholder={label} value={nationForm[key]} onChange={e=>setNationForm({...nationForm,[key]:e.target.value})} style={inp} />
+                  <input key={key} placeholder={label} value={statsForm[key]} onChange={e=>setStatsForm({...statsForm,[key]:e.target.value})} style={inp} />
                 ))}
-                <textarea placeholder="Nation bio or lore" value={nationForm.bio} onChange={e=>setNationForm({...nationForm,bio:e.target.value})} style={{ ...ta, gridColumn:"1/-1", minHeight:90 }} />
               </div>
               <div style={{ display:"flex", gap:"0.45rem", marginTop:"0.75rem" }}>
-                <button onClick={saveNationStats} style={mkBtn()}>Save Nation Stats</button>
-                <button onClick={()=>setEditingNation(false)} style={mkBtn("ghost")}>Cancel</button>
+                <button onClick={saveStats} style={mkBtn()}>Save Stats</button>
+                <button onClick={()=>setEditingStats(false)} style={mkBtn("ghost")}>Cancel</button>
               </div>
             </div>
           )}

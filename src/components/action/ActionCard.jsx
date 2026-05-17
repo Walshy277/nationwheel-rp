@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { Flag } from "../nation/Flag";
 import { card, mkBtn, ta, timeAgo, ACTION_SIZES, STATUS_COL } from "../../lib/uiUtils";
+import { notifyActionStatus } from "../../lib/notifications";
 
 export const ActionCard = ({ action, nations, expandable, isMod, onRefresh, profile }) => {
   const [open, setOpen] = useState(false);
@@ -16,6 +17,7 @@ export const ActionCard = ({ action, nations, expandable, isMod, onRefresh, prof
   };
   const updateStatus = async (status, extra={}) => {
     await supabase.from("canon_actions").update({ status, lore_notes:loreNotes.trim() || null, ...extra }).eq("id", action.id);
+    notifyActionStatus({ action, newStatus:status, nationId:action.nation_id });
     if (onRefresh) onRefresh();
   };
   const saveLoreNotes = async () => {

@@ -137,12 +137,13 @@ export const AdminPanel = ({ nations, profiles, onRefresh, isAdmin }) => {
             <option value="">Select player</option>
             {profiles.map(p=><option key={p.id} value={p.id}>{p.username} - {p.role}</option>)}
           </select>
-          <select value={role} onChange={e=>setRole(e.target.value)} style={inp}>
-            <option value="player">Player</option>
-            <option value="lore">Lore Team</option>
-            <option value="mod">Mod (Legacy Lore Team)</option>
-            <option value="admin">Admin</option>
-          </select>
+            <select value={role} onChange={e=>setRole(e.target.value)} style={inp}>
+              <option value="player">Player</option>
+              <option value="leader">Nation Leader</option>
+              <option value="lore">Lore Team</option>
+              <option value="mod">Mod (Legacy Lore Team)</option>
+              <option value="admin">Admin</option>
+            </select>
           <button onClick={async()=>{if(!roleId)return;await supabase.from("profiles").update({role}).eq("id",roleId);setRoleId("");onRefresh();}} style={mkBtn()}>Set Role</button>
         </div>
       )}

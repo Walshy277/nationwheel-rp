@@ -53,6 +53,55 @@ export const CHANGELOG_ENTRIES = [
       "Forum editors gained more writing space.",
     ],
   },
+  {
+    date: "2026-05-17",
+    title: "Site-wide polish — profiles, wars, alliances, and admin",
+    items: [
+      "Forum signatures now support text (in addition to images) with a remove option.",
+      "Profile page redesigned with signature text editor, bio preview, and upload improvements.",
+      "Public profile pages display text and image signatures.",
+      "Wars tab now groups active and historical conflicts separately.",
+      "Alliance cards show member counts, empty states, and pill-shaped type badges.",
+      "Admin panel users tab got empty states, sticky moderation panel, and clearer labels.",
+      "Dispatch board, actions page, and nation profile all got styled empty states and count headers.",
+      "Nation cards use CSS hover instead of inline JS handlers.",
+      "Registration now validates username is filled before submitting.",
+      "Thread view loads with scroll-to-top and animated loading spinners.",
+    ],
+  },
+  {
+    date: "2026-05-17",
+    title: "Notifications, in-game calendar, and mention system",
+    items: [
+      "In-game calendar added: Day 44, 4488 displayed in footer and staff tools.",
+      "Lore team can advance the game day with a +1 Day button in staff tools.",
+      "Notification system with bell icon in header — unread badge + dropdown feed.",
+      "Notifications created on: @username mentions in forum posts and dispatches.",
+      "Notifications created on: thread replies, war declarations, and action status changes.",
+      "Notifications table and advance_game_day RPC added to Supabase setup SQL.",
+      "New supabase-notifications-setup.sql file for the required schema.",
+    ],
+  },
+  {
+    date: "2026-05-17",
+    title: "Nation leaders, alliance requests, private boards, and inbox",
+    items: [
+      "New 'leader' role automatically assigned when a user gets a nation.",
+      "Leaders can edit their nation profile (bio, flag, diplomatic status, bloc) while lore/admin edit stats.",
+      "Alliance join requests: leaders request to join, alliance leadership approves/rejects.",
+      "Leaders can leave alliances they've joined.",
+      "Each alliance has private discussion boards visible only to members.",
+      "Nation leaders have a private inbox for direct messages to other leaders.",
+      "New supabase-alliance-leader-setup.sql for all new tables, RLS policies, and RPC updates.",
+    ],
+  },
 ];
 
 export const REACT_EMOJIS = ["\u{1F44D}","\u2764\uFE0F","\u{1F602}","\u{1F525}","\u{1F440}","\u{1FAE1}"];
+
+// In-game calendar
+export const GAME_DAYS_PER_YEAR = 365;
+export const fmtGameDate = (day, year) => {
+  if (!day || !year) return "Day 1, 4488";
+  return `Day ${day}, ${year}`;
+};

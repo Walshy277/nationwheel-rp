@@ -99,5 +99,5 @@ export const mkBtn = (v="gold") => ({
 export const card = { background:"linear-gradient(180deg,rgba(10,16,27,0.97),rgba(3,7,13,0.96))", border:"1px solid rgba(78,128,190,0.24)", borderRadius:8, padding:"1.25rem", boxShadow:"0 18px 45px rgba(0,0,0,0.35)" };
 
 // Re-export constants for convenience
-export { ACTION_SIZES, STATUS_COL, WAR_COL, POST_TYPES, POST_COLS, NEWS_CATS, NEWS_COL, PAGE_PATHS, FORUM_PAGE_SIZE, LOGO_SRC, TURNSTILE_SITE_KEY, SITE_CODE_FILES, CHANGELOG_ENTRIES, REACT_EMOJIS } from "./constants";
-export { ROLE_LABELS, canAccessStaff, canManageRoles, canManageWars } from "./permissions";
+export { ACTION_SIZES, STATUS_COL, WAR_COL, POST_TYPES, POST_COLS, NEWS_CATS, NEWS_COL, PAGE_PATHS, FORUM_PAGE_SIZE, LOGO_SRC, TURNSTILE_SITE_KEY, SITE_CODE_FILES, CHANGELOG_ENTRIES, REACT_EMOJIS, GAME_DAYS_PER_YEAR, fmtGameDate } from "./constants";
+export { ROLE_LABELS, canAccessStaff, canManageRoles, canManageWars, LEADER_ROLES } from "./permissions";

@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { card, mkBtn, inp, ta, POST_TYPES } from "../lib/uiUtils";
 import { Flag } from "../components/nation/Flag";
 import { PostCard } from "../components/rp/PostCard";
+import { createMentionNotifications } from "../lib/notifications";
 
 export const RPBoardPage = ({ posts, profile, userNation, nations, isMod, onRefresh }) => {
   const [showForm, setShowForm] = useState(false);
@@ -15,6 +16,7 @@ export const RPBoardPage = ({ posts, profile, userNation, nations, isMod, onRefr
   const submit = async () => {
     if (!title.trim()||!body.trim()||!userNation) return;
     await supabase.from("rp_posts").insert({ nation_id:userNation.id, author_id:profile.id, post_type:pType, title, body, target_nation_id:targetId||null });
+    createMentionNotifications({ body, sourceTitle:title, sourceLink:"/dispatches", sourceType:"dispatch" });
     setTitle(""); setBody(""); setShowForm(false); onRefresh();
   };
 
