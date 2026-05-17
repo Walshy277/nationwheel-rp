@@ -1,3 +1,5 @@
+import { mkBtn } from "../../lib/uiUtils";
+
 const tools = [
   ["B", "[b]", "[/b]"],
   ["I", "[i]", "[/i]"],
