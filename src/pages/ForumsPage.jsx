@@ -8,6 +8,22 @@ import BBCodeToolbar from "../components/forum/BBCodeToolbar";
 import ForumIndex from "./ForumIndex";
 import { createMentionNotifications, notifyThreadReply } from "../lib/notifications";
 
+const ProfileButton = ({ profile, onViewProfile, children, style = {} }) => {
+  if (!profile?.id || !onViewProfile) return <span style={style}>{children || profile?.username || "Unknown"}</span>;
+  return (
+    <button onClick={(e)=> { e.stopPropagation(); onViewProfile(profile.id); }}
+      style={{ background:"transparent", border:"none", padding:0, minHeight:0, color:"inherit", cursor:"pointer", font:"inherit", textAlign:"left", ...style }}>
+      {children || profile.username || "Unknown"}
+    </button>
+  );
+};
+
+const Flag = ({ nation, size = 36 }) => {
+  if (nation?.flag_url) return <img src={nation.flag_url} alt={nation.name} style={{ width:size, height:Math.round(size*0.65), objectFit:"cover", borderRadius:3, border:"1px solid rgba(255,255,255,0.1)", flexShrink:0 }} />;
+  const ab = nation?.name ? nation.name.slice(0,2).toUpperCase() : "??";
+  return <div style={{ width:size, height:Math.round(size*0.65), flexShrink:0, background:"rgba(255,255,255,0.06)", borderRadius:3, border:"1px solid rgba(255,255,255,0.12)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*0.22, fontWeight:900, color:"#8fa0bd", userSelect:"none", letterSpacing:1 }}>{ab}</div>;
+};
+
 export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, nations, isMod, onRefresh, onRequireAuth, onViewProfile }) => {
   const [view, setView] = useState({ type:"boards" });
   const [boardThreads, setBoardThreads] = useState([]);
@@ -592,28 +608,4 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
   }
 };
 
-// Used inline in ForumsPage but needs import
-const ProfileButton = ({ profile, onViewProfile, children, style = {} }) => {
-  if (!profile?.id || !onViewProfile) return <span style={style}>{children || profile?.username || "Unknown"}</span>;
-  return (
-    <button
-      onClick={(event) => { event.stopPropagation(); onViewProfile(profile.id); }}
-      style={{ background:"transparent", border:"none", padding:0, minHeight:0, color:"inherit", cursor:"pointer", font:"inherit", textAlign:"left", ...style }}
-    >
-      {children || profile.username || "Unknown"}
-    </button>
-  );
-};
 
-const Flag = ({ nation, size = 36 }) => {
-  if (nation?.flag_url) {
-    return (
-      <img src={nation.flag_url} alt={nation.name}
-        style={{ width:size, height:Math.round(size*0.65), objectFit:"cover", borderRadius:3, border:"1px solid rgba(255,255,255,0.1)", flexShrink:0 }} />
-    );
-  }
-  const ab = nation?.name ? nation.name.slice(0,2).toUpperCase() : "??";
-  return (
-    <div style={{ width:size, height:Math.round(size*0.65), flexShrink:0, background:"rgba(255,255,255,0.06)", borderRadius:3, border:"1px solid rgba(255,255,255,0.12)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:size*0.22, fontWeight:900, color:"#8fa0bd", userSelect:"none", letterSpacing:1 }}>{ab}</div>
-  );
-};

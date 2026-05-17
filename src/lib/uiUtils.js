@@ -99,5 +99,6 @@ export const mkBtn = (v="gold") => ({
 export const card = { background:"linear-gradient(180deg,rgba(10,16,27,0.97),rgba(3,7,13,0.96))", border:"1px solid rgba(78,128,190,0.24)", borderRadius:8, padding:"1.25rem", boxShadow:"0 18px 45px rgba(0,0,0,0.35)" };
 
 // Re-export constants for convenience
-export { ACTION_SIZES, STATUS_COL, WAR_COL, POST_TYPES, POST_COLS, NEWS_CATS, NEWS_COL, PAGE_PATHS, FORUM_PAGE_SIZE, LOGO_SRC, TURNSTILE_SITE_KEY, SITE_CODE_FILES, CHANGELOG_ENTRIES, REACT_EMOJIS, GAME_DAYS_PER_YEAR, fmtGameDate } from "./constants";
+export { ACTION_SIZES, STATUS_COL, WAR_COL, POST_TYPES, POST_COLS, NEWS_CATS, NEWS_COL, PAGE_PATHS, FORUM_PAGE_SIZE, LOGO_SRC, TURNSTILE_SITE_KEY, CHANGELOG_ENTRIES, REACT_EMOJIS, GAME_DAYS_PER_YEAR, fmtGameDate } from "./constants";
+export { SITE_CODE_FILES } from "./siteCodeFiles";
 export { ROLE_LABELS, canAccessStaff, canManageRoles, canManageWars, isAdmin, isLoreTeam, isNationLeader, isAllianceLeader, isStaff, canEditNationStats, canEditNationProfile, isOwnerOfNation, hasRole, getRoles, ROLE_ADMIN, ROLE_LORE_TEAM, ROLE_NATION_LEADER, ROLE_ALLIANCE_LEADER, ROLE_USER, ROLE_GUEST, ROLE_COLORS } from "./permissions";

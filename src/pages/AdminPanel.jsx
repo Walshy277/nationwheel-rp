@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { card, mkBtn, inp, ta, slugify, timeAgo, fmtDate, ROLE_LABELS, ROLE_COLORS, getRoles } from "../lib/uiUtils";
-import { SITE_CODE_FILES, CHANGELOG_ENTRIES } from "../lib/constants";
+import { CHANGELOG_ENTRIES } from "../lib/constants";
+import { SITE_CODE_FILES } from "../lib/siteCodeFiles";
 import { Flag } from "../components/nation/Flag";
 
 const REPORT_TYPES = ["forum_post","forum_thread","profile","dispatch","action","nation"];

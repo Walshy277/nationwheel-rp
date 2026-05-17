@@ -36,7 +36,7 @@ export const FORUM_PAGE_SIZE = 25;
 
 export const LOGO_SRC = "/nationwheel_logo.jpg";
 export const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "0x4AAAAAADPbfZKKuhz6dC9R";
-export const SITE_CODE_FILES = import.meta.glob("../**/*.{js,jsx}", { query: "?raw", import: "default", eager: true });
+
 
 export const CHANGELOG_ENTRIES = [
   {
