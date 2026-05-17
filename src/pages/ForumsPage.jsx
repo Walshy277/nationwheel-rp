@@ -216,7 +216,9 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
   }, [route, boards, loadBoardThreads, loadThreadPosts, replySort]);
 
   useEffect(() => {
-    if (view.type !== "thread" || !threadPosts.length || !window.location.hash) return;
+    if (view.type !== "thread") return;
+    window.scrollTo({ top:0, behavior:"smooth" });
+    if (!threadPosts.length || !window.location.hash) return;
     const target = document.querySelector(window.location.hash);
     if (target) target.scrollIntoView({ block:"start" });
   }, [view.type, threadPosts]);
@@ -360,9 +362,7 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
             const replyCount = Number(t.reply_count || 0);
             const authorNation = nations.find(n=>n.id===t.nation_id);
             return (
-              <div className="thread-card" key={t.id} style={{ ...card, cursor:"pointer", display:"flex", gap:"0.75rem", alignItems:"center", transition:"border-color 0.18s", padding:"0.9rem 1.25rem" }}
-                onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(212,175,55,0.38)"}
-                onMouseLeave={e=>e.currentTarget.style.borderColor=t.pinned?"rgba(212,175,55,0.2)":"rgba(212,175,55,0.1)"}
+              <div className="thread-card" key={t.id} style={{ ...card, cursor:"pointer", display:"flex", gap:"0.75rem", alignItems:"center", borderColor:t.pinned?"rgba(212,175,55,0.2)":"rgba(212,175,55,0.1)", padding:"0.9rem 1.25rem" }}
                 onClick={()=>pushForumRoute({type:"thread",thread:t})}>
                 {authorNation ? <Flag nation={authorNation} size={22} /> : <div style={{ width:22, height:14, background:"rgba(255,255,255,0.04)", borderRadius:2 }} />}
                 <div style={{ flex:1, minWidth:0 }}>
@@ -382,8 +382,8 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
             );
           })}
           {!forumLoading && bThreads.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No threads yet.</p>}
-          {forumLoading && <p style={{ color:"#8493ad", textAlign:"center", padding:"1rem" }}>Loading...</p>}
-          {hasMoreThreads && <button onClick={()=>loadBoardThreads(view.board, bThreads[bThreads.length - 1], true, bThreads.length)} style={{ ...mkBtn("ghost"), alignSelf:"center" }}>Load More Threads</button>}
+          {forumLoading && <div style={{ textAlign:"center", padding:"1.5rem" }}><span className="forum-spinner" style={{ display:"inline-block", width:24, height:24, border:"2px solid rgba(212,175,55,0.15)", borderTopColor:"#d4af37", borderRadius:"50%", animation:"forumSpin 0.7s linear infinite" }} /></div>}
+          {hasMoreThreads && <button onClick={()=>loadBoardThreads(view.board, bThreads[bThreads.length - 1], true, bThreads.length)} style={{ ...mkBtn("ghost"), alignSelf:"center", minHeight:40, padding:"10px 24px", fontSize:12, letterSpacing:"0.04em" }}>Load More Threads</button>}
         </div>
       </div>
     );
@@ -404,20 +404,27 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
     gap: "1.5rem"
   }}
 >
-        <button onClick={()=>board ? pushForumRoute({type:"board",board}) : pushForumRoute({type:"boards"})} style={{ ...mkBtn("ghost"), marginBottom:"1rem", fontSize:12 }}>{board?.name || "All Boards"}</button>
-        <div style={{ display:"flex", gap:"0.6rem", alignItems:"center", flexWrap:"wrap", marginBottom:"1.25rem" }}>
-          <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:18, lineHeight:1.4, flex:1 }}>{view.thread.title}</h2>
-          <label style={{ display:"inline-flex", alignItems:"center", gap:"0.4rem", color:"#8fa0bd", fontSize:11, fontWeight:800, letterSpacing:"0.04em", textTransform:"uppercase" }}>
-            Replies
+        <button onClick={()=>board ? pushForumRoute({type:"board",board}) : pushForumRoute({type:"boards"})} style={{ ...mkBtn("ghost"), marginBottom:"0.75rem", fontSize:12 }}>← {board?.name || "All Boards"}</button>
+        <div style={{ display:"flex", gap:"0.6rem", alignItems:"flex-start", flexWrap:"wrap" }}>
+          <div style={{ flex:"1 1 auto", minWidth:180 }}>
+            <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:18, lineHeight:1.4 }}>{view.thread.title}</h2>
+            <div style={{ fontSize:11, color:"#8fa0bd", marginTop:"0.3rem", display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+              <span>Reply #{Number(view.thread.reply_count || 0)}</span>
+              {view.thread.last_post_at && <span>· Last active {timeAgo(view.thread.last_post_at)}</span>}
+              {view.thread.pinned && <span style={{ color:"#d4af37" }}>· Pinned</span>}
+            </div>
+          </div>
+          <div style={{ display:"flex", gap:"0.4rem", alignItems:"center", flexWrap:"wrap", flexShrink:0 }}>
+            <span style={{ color:"#8fa0bd", fontSize:11, fontWeight:800, letterSpacing:"0.04em", textTransform:"uppercase", whiteSpace:"nowrap" }}>Sort:</span>
             <select value={replySort} onChange={e=>setReplySort(e.target.value)} style={{ ...inp, width:"auto", minHeight:36, padding:"7px 28px 7px 10px", fontSize:12, letterSpacing:0, textTransform:"none" }}>
               <option value="desc">Newest first</option>
               <option value="asc">Oldest first</option>
             </select>
-          </label>
-          {canManageThread && <button onClick={()=>setThreadLocked(!view.thread.locked)} style={{ ...mkBtn("ghost"), fontSize:11 }}>{view.thread.locked?"Open Thread":"Close Thread"}</button>}
-          {canManageThread && <button onClick={deleteThread} style={{ ...mkBtn("red"), fontSize:11 }}>Delete Thread</button>}
+            {canManageThread && <button onClick={()=>setThreadLocked(!view.thread.locked)} style={{ ...mkBtn("ghost"), fontSize:11 }}>{view.thread.locked?"🔓 Open":"🔒 Close"}</button>}
+            {canManageThread && <button onClick={deleteThread} style={{ ...mkBtn("red"), fontSize:11 }}>Delete</button>}
+          </div>
         </div>
-        <div style={{ display:"flex", flexDirection:"column", gap:"1.5rem", marginBottom:"1.25rem" }}>
+        <div style={{ display:"flex", flexDirection:"column", gap:"1.5rem" }}>
           {forumError && <p style={{ color:"#ff9d9d", textAlign:"center", padding:"1rem" }}>{forumError}</p>}
 
           {tPosts.length > 0 && (() => {
@@ -448,14 +455,17 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
                       {origCanon && <div style={{ display:"inline-flex", marginBottom:"0.75rem", color:origCanon==="canon"?"#111":"#f5f8ff", background:origCanon==="canon"?"#f6c132":"rgba(231,76,60,0.2)", border:`1px solid ${origCanon==="canon"?"rgba(246,193,50,0.35)":"rgba(231,76,60,0.35)"}`, borderRadius:4, padding:"3px 8px", fontSize:10, fontWeight:900, letterSpacing:"0.08em", textTransform:"uppercase" }}>{origCanon==="canon"?"Canon":"Non-Canon"}</div>}
                       <RichText>{original.body}</RichText>
                       {original.profiles?.signature_url && <img className="post-signature" src={original.profiles.signature_url} alt="" style={{ marginTop:"0.75rem", maxWidth:"100%", opacity:0.9 }} />}
-                      <div style={{ display:"flex", flexWrap:"wrap", gap:"0.6rem", marginTop:"0.9rem", alignItems:"center" }}>
+                      <div style={{ display:"flex", flexWrap:"wrap", gap:"0.35rem", marginTop:"0.9rem", alignItems:"center", paddingTop:"0.75rem", borderTop:"1px solid rgba(78,128,190,0.12)" }}>
+                        <span style={{ fontSize:10, color:"#8fa0bd", marginRight:"0.25rem" }}>React:</span>
                         {REACT_EMOJIS.map(e=>{
                           const count = reactions.filter(r=>r.post_id===original.id && r.emoji===e).length;
                           const active = reactions.some(r=>r.post_id===original.id && r.user_id===profile?.id && r.emoji===e);
-                          return <button key={e} onClick={()=>toggleReaction(original.id,e)} style={{ ...mkBtn(active?"gold":"ghost"), minHeight:28, padding:"3px 7px", fontSize:12 }}>{e}{count>0?` ${count}`:""}</button>;
+                          return <button key={e} onClick={()=>toggleReaction(original.id,e)} style={{ ...mkBtn(active?"gold":"ghost"), minHeight:28, padding:"2px 6px", fontSize:13, lineHeight:1 }}>{e}{count>0?<span style={{ fontSize:10, marginLeft:2 }}>{count}</span>:""}</button>;
                         })}
+                        <span style={{ width:1, height:20, background:"rgba(78,128,190,0.2)", margin:"0 0.25rem" }} />
                         {(isMod || original.author_id===profile?.id) && <button onClick={()=>{setEditingPost(original.id);setEditBody(original.body);}} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Edit</button>}
                         {(isMod || original.author_id===profile?.id) && <button onClick={()=>deletePost(original.id)} style={{ ...mkBtn("red"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Delete</button>}
+                        {isMod && <span style={{ width:1, height:20, background:"rgba(78,128,190,0.2)", margin:"0 0.25rem" }} />}
                         {isMod && <button onClick={()=>setPostCanonStatus(original.id, "canon")} style={{ ...mkBtn(origCanon==="canon"?"gold":"ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Canon</button>}
                         {isMod && <button onClick={()=>setPostCanonStatus(original.id, "non_canon")} style={{ ...mkBtn(origCanon==="non_canon"?"red":"ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Non-Canon</button>}
                         {isMod && origCanon && <button onClick={()=>setPostCanonStatus(original.id, null)} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Clear Tag</button>}
@@ -465,9 +475,9 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
                   </div>
                 </div>
 
-                {replies.length > 0 && (
-                  <div>
-                    <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"0.75rem" }}>Replies ({replies.length})</div>
+                <div>
+                  <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"0.75rem" }}>Replies ({replies.length})</div>
+                  {replies.length > 0 ? (
                     <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
                       {replies.map((p,i)=>{
                         const pNation = nations.find(n=>n.id===p.nation_id);
@@ -515,14 +525,17 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
                                   {p.profiles?.signature_url && <img className="post-signature" src={p.profiles.signature_url} alt="" style={{ marginTop:"0.75rem", maxWidth:"100%", opacity:0.9 }} />}
                                 </div>
                               )}
-                              <div style={{ display:"flex", flexWrap:"wrap", gap:"0.6rem", marginTop:"0.9rem", alignItems:"center" }}>
+                              <div style={{ display:"flex", flexWrap:"wrap", gap:"0.35rem", marginTop:"0.9rem", alignItems:"center", paddingTop:"0.75rem", borderTop:"1px solid rgba(78,128,190,0.12)" }}>
+                                <span style={{ fontSize:10, color:"#8fa0bd", marginRight:"0.25rem" }}>React:</span>
                                 {REACT_EMOJIS.map(e=>{
                                   const count = reactions.filter(r=>r.post_id===p.id && r.emoji===e).length;
                                   const active = reactions.some(r=>r.post_id===p.id && r.user_id===profile?.id && r.emoji===e);
-                                  return <button key={e} onClick={()=>toggleReaction(p.id,e)} style={{ ...mkBtn(active?"gold":"ghost"), minHeight:28, padding:"3px 7px", fontSize:12 }}>{e}{count>0?` ${count}`:""}</button>;
+                                  return <button key={e} onClick={()=>toggleReaction(p.id,e)} style={{ ...mkBtn(active?"gold":"ghost"), minHeight:28, padding:"2px 6px", fontSize:13, lineHeight:1 }}>{e}{count>0?<span style={{ fontSize:10, marginLeft:2 }}>{count}</span>:""}</button>;
                                 })}
+                                <span style={{ width:1, height:20, background:"rgba(78,128,190,0.2)", margin:"0 0.25rem" }} />
                                 {(isMod || p.author_id===profile?.id) && <button onClick={()=>{setEditingPost(p.id);setEditBody(p.body);}} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Edit</button>}
                                 {(isMod || p.author_id===profile?.id) && <button onClick={()=>deletePost(p.id)} style={{ ...mkBtn("red"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Delete</button>}
+                                {isMod && <span style={{ width:1, height:20, background:"rgba(78,128,190,0.2)", margin:"0 0.25rem" }} />}
                                 {isMod && <button onClick={()=>setPostCanonStatus(p.id, "canon")} style={{ ...mkBtn(canonStatus==="canon"?"gold":"ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Canon</button>}
                                 {isMod && <button onClick={()=>setPostCanonStatus(p.id, "non_canon")} style={{ ...mkBtn(canonStatus==="non_canon"?"red":"ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Non-Canon</button>}
                                 {isMod && canonStatus && <button onClick={()=>setPostCanonStatus(p.id, null)} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Clear Tag</button>}
@@ -533,16 +546,18 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
                         );
                       })}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <p style={{ color:"#8493ad", textAlign:"center", padding:"1.5rem", fontStyle:"italic", fontSize:13 }}>No replies yet. Be the first to respond!</p>
+                  )}
+                </div>
               </>
             );
           })()}
-          {forumLoading && <p style={{ color:"#8493ad", textAlign:"center", padding:"1rem" }}>Loading...</p>}
-          {hasMorePosts && <button onClick={()=>loadThreadPosts(view.thread, Math.max(tPosts.length - 1, 0), true, replySort)} style={{ ...mkBtn("ghost"), alignSelf:"center" }}>Load More Replies</button>}
+          {forumLoading && <div style={{ textAlign:"center", padding:"1.5rem" }}><span className="forum-spinner" style={{ display:"inline-block", width:24, height:24, border:"2px solid rgba(212,175,55,0.15)", borderTopColor:"#d4af37", borderRadius:"50%", animation:"forumSpin 0.7s linear infinite" }} /></div>}
+          {hasMorePosts && <button onClick={()=>loadThreadPosts(view.thread, Math.max(tPosts.length - 1, 0), true, replySort)} style={{ ...mkBtn("ghost"), alignSelf:"center", minHeight:40, padding:"10px 24px", fontSize:12, letterSpacing:"0.04em" }}>Load More Replies</button>}
         </div>
         {profile && !view.thread.locked && !isProfileBlocked(profile) && (
-          <div className="forum-composer-card" style={card}>
+          <div className="forum-composer-card" style={{ ...card, border:"1px solid rgba(212,175,55,0.18)" }}>
             <h3 style={{ margin:"0 0 0.75rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Post Reply</h3>
             <div className="editor-tabs">
               <button onClick={()=>setReplyEditorTab("write")} style={{ ...mkBtn(replyEditorTab==="write"?"gold":"ghost"), fontSize:11 }}>Write</button>
@@ -552,7 +567,7 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
             {replyEditorTab==="write"
               ? <textarea className="forum-composer-textarea" placeholder="Write your reply. BBCode is supported. HTML is escaped except a tiny safe formatting subset." value={replyBody} onChange={e=>setReplyBody(e.target.value)} style={composerTextarea} />
               : <div className="post-preview"><RichText>{replyBody || "Nothing to preview yet."}</RichText></div>}
-            <button onClick={submitReply} style={{ ...mkBtn(), marginTop:"0.6rem" }}>Post Reply</button>
+            <button onClick={submitReply} style={{ ...mkBtn(), marginTop:"0.75rem" }}>Post Reply</button>
           </div>
         )}
         {profile && !view.thread.locked && isProfileBlocked(profile) && <div style={{ ...card, textAlign:"center", color:"#ffb4b4", fontSize:13 }}>Your account is not currently allowed to reply.</div>}
