@@ -150,34 +150,44 @@ export const AdminPanel = ({ nations, profiles, onRefresh, isAdmin }) => {
       {isAdmin && tab==="users" && (
         <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) 360px", gap:"1rem" }} className="admin-user-grid">
           <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
+            <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>All Players ({profiles.length})</h3>
+            {profiles.length === 0 && <div style={card}><p style={{ margin:0, color:"#8493ad", textAlign:"center", padding:"1rem", fontStyle:"italic" }}>No users registered yet.</p></div>}
             {profiles.map(p=>(
               <div key={p.id} style={{ ...card, padding:"0.85rem", display:"flex", gap:"0.75rem", alignItems:"center" }}>
                 {p.avatar_url ? <img src={p.avatar_url} alt="" style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover" }} /> : <div style={{ width:36, height:36, borderRadius:"50%", background:"rgba(255,255,255,0.05)" }} />}
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ color:"#edf4ff", fontSize:13, fontWeight:800 }}>{p.username}</div>
-                  <div style={{ color:"#8fa0bd", fontSize:11 }}>{p.role || "player"} - {p.status || "active"}{p.last_active_at ? ` - active ${timeAgo(p.last_active_at)}` : ""}</div>
+                  <div style={{ color:"#8fa0bd", fontSize:11 }}>{p.role || "player"} · {p.status || "active"}{p.last_active_at ? ` · active ${timeAgo(p.last_active_at)}` : ""}</div>
                 </div>
-                <button onClick={()=>setUserStatusId(p.id)} style={{ ...mkBtn("ghost"), fontSize:11 }}>Manage</button>
+                <button onClick={()=>{setUserStatusId(p.id);window.scrollTo(0,document.body.scrollHeight);}} style={{ ...mkBtn("ghost"), fontSize:11, padding:"5px 10px" }}>Mod</button>
               </div>
             ))}
           </div>
-          <div style={{ ...card, display:"flex", flexDirection:"column", gap:"0.75rem" }}>
+          <div style={{ ...card, display:"flex", flexDirection:"column", gap:"0.75rem", position:"sticky", top:"1rem" }}>
             <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>User Moderation</h3>
             <select value={userStatusId} onChange={e=>setUserStatusId(e.target.value)} style={inp}>
               <option value="">Select user</option>
-              {profiles.map(p=><option key={p.id} value={p.id}>{p.username} - {p.status || "active"}</option>)}
+              {profiles.map(p=><option key={p.id} value={p.id}>{p.username} — {p.status || "active"}</option>)}
             </select>
-            <input value={suspendDays} onChange={e=>setSuspendDays(e.target.value)} placeholder="Suspension days" style={inp} />
-            <textarea value={moderationReason} onChange={e=>setModerationReason(e.target.value)} placeholder="Moderation reason" style={{ ...ta, minHeight:90 }} />
+            <label style={{ color:"#8fa0bd", fontSize:11, display:"flex", flexDirection:"column", gap:"0.25rem" }}>
+              Suspension duration (days)
+              <input value={suspendDays} onChange={e=>setSuspendDays(e.target.value)} placeholder="7" style={inp} />
+            </label>
+            <textarea value={moderationReason} onChange={e=>setModerationReason(e.target.value)} placeholder="Reason for moderation action (stored as ban_reason)" style={{ ...ta, minHeight:90 }} />
             <div style={{ display:"flex", gap:"0.45rem", flexWrap:"wrap" }}>
               <button onClick={()=>setUserModeration("active")} style={mkBtn("green")}>Reinstate</button>
               <button onClick={()=>setUserModeration("suspended")} style={mkBtn("ghost")}>Suspend</button>
               <button onClick={()=>setUserModeration("banned")} style={mkBtn("red")}>Ban</button>
             </div>
+            {selectedUser && (
+              <div style={{ fontSize:12, color:"#8fa0bd", padding:"0.5rem", background:"rgba(255,255,255,0.03)", borderRadius:6 }}>
+                Selected: <strong style={{ color:"#edf4ff" }}>{selectedUser.username}</strong> — {selectedUser.role} · {selectedUser.status || "active"}
+              </div>
+            )}
             <div style={{ borderTop:"1px solid rgba(231,76,60,0.22)", paddingTop:"0.75rem" }}>
-              <div style={{ color:"#ffb4b4", fontSize:11, fontWeight:800, letterSpacing:"0.06em", textTransform:"uppercase", marginBottom:"0.4rem" }}>Permanent Removal</div>
-              <p style={{ margin:"0 0 0.65rem", color:"#9fb4d6", fontSize:12, lineHeight:1.6 }}>Deletes the auth user and cascades their profile-linked records. This requires the latest moderation SQL migration.</p>
-              <button onClick={removeMember} disabled={!userStatusId} style={{ ...mkBtn("red"), width:"100%" }}>Remove Member Completely</button>
+              <div style={{ color:"#ff6b6b", fontSize:11, fontWeight:800, letterSpacing:"0.06em", textTransform:"uppercase", marginBottom:"0.4rem" }}>Permanent Removal</div>
+              <p style={{ margin:"0 0 0.65rem", color:"#9fb4d6", fontSize:12, lineHeight:1.6 }}>Deletes the auth user and cascades their profile-linked records. Requires the latest moderation SQL migration.</p>
+              <button onClick={removeMember} disabled={!userStatusId} style={{ ...mkBtn("red"), width:"100%", opacity:userStatusId?1:0.4 }}>Remove Member Completely</button>
             </div>
           </div>
         </div>

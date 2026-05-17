@@ -33,7 +33,12 @@ export const PublicProfilePage = ({ viewedProfile, nations, posts, actions, onBa
             <div style={{ color:"#8fa0bd", fontSize:12, marginTop:5 }}>{viewedProfile.last_active_at ? `Last active ${timeAgo(viewedProfile.last_active_at)}` : "Activity not recorded yet"}</div>
             {nation && <div style={{ marginTop:"0.75rem" }}><NationPill nation={nation} /></div>}
             {viewedProfile.bio && <p style={{ margin:"0.85rem 0 0", color:"#d7e2f2", fontSize:13, lineHeight:1.75, whiteSpace:"pre-wrap" }}>{viewedProfile.bio}</p>}
-            {viewedProfile.signature_url && <img src={viewedProfile.signature_url} alt="" style={{ marginTop:"0.85rem", maxWidth:"100%", maxHeight:110, objectFit:"contain", borderTop:"1px solid rgba(20,96,184,0.16)", paddingTop:"0.75rem" }} />}
+            {(viewedProfile.signature_url || viewedProfile.signature_text) && (
+              <div style={{ marginTop:"0.85rem", paddingTop:"0.75rem", borderTop:"1px solid rgba(20,96,184,0.16)" }}>
+                {viewedProfile.signature_text && <div style={{ fontSize:12, color:"#8fa0bd", fontStyle:"italic", marginBottom:viewedProfile.signature_url?"0.5rem":0, lineHeight:1.6 }}>{viewedProfile.signature_text}</div>}
+                {viewedProfile.signature_url && <img src={viewedProfile.signature_url} alt="" style={{ maxWidth:"100%", maxHeight:110, objectFit:"contain" }} />}
+              </div>
+            )}
           </div>
         </div>
       </section>

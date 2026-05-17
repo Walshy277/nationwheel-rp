@@ -111,14 +111,14 @@ export const NationProfile = ({ nation, posts, actions, wars, alliances, allianc
         </div>
       </div>
 
-      <div style={{ display:"flex", gap:"0.35rem", marginBottom:"1rem", flexWrap:"wrap" }}>
-        {[["overview","Overview"],["feed","RP Feed"],["actions","Actions"],["wars","Wars"],["alliances","Alliances"]].map(([t,l])=>(
+      <div style={{ display:"flex", gap:"0.35rem", marginBottom:"1rem", flexWrap:"wrap", borderBottom:"1px solid rgba(78,128,190,0.12)", paddingBottom:"0.5rem" }}>
+        {[["overview","Overview"],["feed",`RP Feed${nPosts.length?` (${nPosts.length})`:""}`],["actions",`Actions${nActions.length?` (${nActions.length})`:""}`],["wars",`Wars${nWars.length?` (${nWars.length})`:""}`],["alliances",`Alliances${nAlliances.length?` (${nAlliances.length})`:""}`]].map(([t,l])=>(
           <button key={t} onClick={()=>setTab(t)} style={{ ...mkBtn(tab===t?"gold":"ghost"), fontSize:12 }}>{l}</button>
         ))}
       </div>
 
       {tab==="overview" && (
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:"0.65rem" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(185px,1fr))", gap:"0.65rem" }}>
           {editingNation && (
             <div style={{ ...card, gridColumn:"1/-1", border:"1px solid rgba(52,152,219,0.28)" }}>
               <h3 style={{ margin:"0 0 0.8rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Nation Stat Editor</h3>
@@ -162,35 +162,55 @@ export const NationProfile = ({ nation, posts, actions, wars, alliances, allianc
 
       {tab==="feed" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-          {nPosts.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No dispatches from this nation yet.</p>}
-          {nPosts.map(p=><PostCard key={p.id} post={p} nations={nations} isMod={isMod} onRefresh={onRefresh} />)}
+          {nPosts.length===0 ? (
+            <div style={{ ...card, textAlign:"center", padding:"2rem" }}>
+              <div style={{ fontFamily:"var(--display)", color:"#edf4ff", fontSize:15, marginBottom:"0.35rem" }}>No dispatches yet.</div>
+              <p style={{ margin:0, color:"#8fa0bd", fontSize:13 }}>This nation hasn't sent any dispatches.</p>
+            </div>
+          ) : nPosts.map(p=><PostCard key={p.id} post={p} nations={nations} isMod={isMod} onRefresh={onRefresh} />)}
         </div>
       )}
 
       {tab==="actions" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-          {nActions.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No canon actions submitted yet.</p>}
-          {nActions.map(a=><ActionCard key={a.id} action={a} nations={nations} expandable isMod={isMod} profile={profile} onRefresh={onRefresh} />)}
+          {nActions.length===0 ? (
+            <div style={{ ...card, textAlign:"center", padding:"2rem" }}>
+              <div style={{ fontFamily:"var(--display)", color:"#edf4ff", fontSize:15, marginBottom:"0.35rem" }}>No actions submitted.</div>
+              <p style={{ margin:0, color:"#8fa0bd", fontSize:13 }}>This nation hasn't submitted any canon actions.</p>
+            </div>
+          ) : nActions.map(a=><ActionCard key={a.id} action={a} nations={nations} expandable isMod={isMod} profile={profile} onRefresh={onRefresh} />)}
         </div>
       )}
 
       {tab==="wars" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-          {nWars.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No wars on record.</p>}
-          {nWars.map(w=><WarCard key={w.id} war={w} nations={nations} alliances={alliances} participants={w.war_participants || []} />)}
+          {nWars.length===0 ? (
+            <div style={{ ...card, textAlign:"center", padding:"2rem" }}>
+              <div style={{ fontFamily:"var(--display)", color:"#edf4ff", fontSize:15, marginBottom:"0.35rem" }}>No wars on record.</div>
+              <p style={{ margin:0, color:"#8fa0bd", fontSize:13 }}>This nation has no recorded conflicts.</p>
+            </div>
+          ) : nWars.map(w=><WarCard key={w.id} war={w} nations={nations} alliances={alliances} participants={w.war_participants || []} />)}
         </div>
       )}
 
       {tab==="alliances" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-          {nAlliances.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>Not part of any alliance.</p>}
-          {nAlliances.map(a=>{
+          {nAlliances.length===0 ? (
+            <div style={{ ...card, textAlign:"center", padding:"2rem" }}>
+              <div style={{ fontFamily:"var(--display)", color:"#edf4ff", fontSize:15, marginBottom:"0.35rem" }}>No alliances.</div>
+              <p style={{ margin:0, color:"#8fa0bd", fontSize:13 }}>This nation is not part of any alliance or pact.</p>
+            </div>
+          ) : nAlliances.map(a=>{
             const members = allianceMembers.filter(m=>m.alliance_id===a.id).map(m=>nations.find(n=>n.id===m.nation_id)).filter(Boolean);
             return (
               <div key={a.id} style={card}>
-                <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:15, marginBottom:"0.5rem" }}>{a.name}</div>
-                <span style={{ fontSize:11, color:"#3498db", border:"1px solid rgba(52,152,219,0.25)", borderRadius:3, padding:"1px 7px", marginBottom:"0.75rem", display:"inline-block" }}>{a.type?.toUpperCase()}</span>
+                <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"0.5rem", flexWrap:"wrap" }}>
+                  <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:15, flex:1 }}>{a.name}</div>
+                  <span style={{ fontSize:11, fontWeight:700, color:"#3498db", border:"1px solid rgba(52,152,219,0.25)", borderRadius:999, padding:"2px 10px" }}>{a.type?.toUpperCase()}</span>
+                </div>
+                {a.description && <p style={{ margin:"0 0 0.65rem", color:"#b8c4d8", fontSize:12, lineHeight:1.7 }}>{a.description}</p>}
                 <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+                  {members.length === 0 && <span style={{ fontSize:12, color:"#8493ad", fontStyle:"italic" }}>No members yet.</span>}
                   {members.map(n=><NationPill key={n.id} nation={n} />)}
                 </div>
               </div>

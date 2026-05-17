@@ -336,7 +336,7 @@ export default function App() {
           .forum-board-icon{width:34px;height:34px;font-size:18px;}
           .forum-board-stats{grid-column:2;grid-template-columns:repeat(2,auto);justify-content:start;text-align:left;}
           .thread-card{padding:0.85rem!important;gap:0.6rem!important;align-items:flex-start!important;}
-          .thread-card:hover{border-color:rgba(212,175,55,0.38)!important;}
+          .thread-card:hover,.nation-card:hover{border-color:rgba(212,175,55,0.38)!important;}
           .post-card{padding:1rem!important;}
           .forum-composer-card{padding:1rem!important;}
           .forum-composer-textarea{min-height:220px!important;}

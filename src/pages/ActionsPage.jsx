@@ -54,8 +54,17 @@ export const ActionsPage = ({ actions, profile, userNation, nations, isMod, onRe
       </div>
 
       <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-        {filtered.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No actions here.</p>}
-        {filtered.map(a=><ActionCard key={a.id} action={a} nations={nations} expandable isMod={isMod} profile={profile} onRefresh={onRefresh} />)}
+        {filtered.length===0 ? (
+          <div style={{ ...card, textAlign:"center", padding:"2rem" }}>
+            <div style={{ fontFamily:"var(--display)", color:"#edf4ff", fontSize:15, marginBottom:"0.35rem" }}>{tab==="active" ? "No active actions" : "No completed actions"}</div>
+            <p style={{ margin:0, color:"#8fa0bd", fontSize:13 }}>{tab==="active" ? "Submit a new action using the button above." : "Completed and cancelled actions will appear here."}</p>
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.08em", textTransform:"uppercase" }}>{filtered.length} action{filtered.length!==1?"s":""}</div>
+            {filtered.map(a=><ActionCard key={a.id} action={a} nations={nations} expandable isMod={isMod} profile={profile} onRefresh={onRefresh} />)}
+          </>
+        )}
       </div>
     </div>
   );

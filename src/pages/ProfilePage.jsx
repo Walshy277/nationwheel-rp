@@ -6,13 +6,13 @@ import { CommunityUsers } from "../components/profile/CommunityUsers";
 import { ProfileMediaUploader } from "../components/profile/ProfileMediaUploader";
 
 export const ProfilePage = ({ profile, profiles, userNation, onProfileUpdate, onViewProfile }) => {
-  const [form, setForm] = useState({ username:profile?.username||"", bio:profile?.bio||"" });
+  const [form, setForm] = useState({ username:profile?.username||"", bio:profile?.bio||"", signature_text:profile?.signature_text||"" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    setForm({ username:profile?.username||"", bio:profile?.bio||"" });
-  }, [profile?.username, profile?.bio]);
+    setForm({ username:profile?.username||"", bio:profile?.bio||"", signature_text:profile?.signature_text||"" });
+  }, [profile?.username, profile?.bio, profile?.signature_text]);
 
   const save = async () => {
     if (!profile) return;
@@ -24,9 +24,10 @@ export const ProfilePage = ({ profile, profiles, userNation, onProfileUpdate, on
     setSaving(true);
     setMsg("");
     let nextMsg = "Profile saved.";
+    let payload = { username, bio:form.bio.trim() || null, signature_text:form.signature_text.trim() || null };
     let { data, error } = await supabase
       .from("profiles")
-      .update({ username, bio:form.bio.trim() || null })
+      .update(payload)
       .eq("id", profile.id)
       .select("*")
       .single();
@@ -49,6 +50,13 @@ export const ProfilePage = ({ profile, profiles, userNation, onProfileUpdate, on
     setSaving(false);
   };
 
+  const removeSignatureImage = async () => {
+    if (!confirm("Remove your forum signature image?")) return;
+    const { error } = await supabase.from("profiles").update({ signature_url: null }).eq("id", profile.id).select("*").single();
+    if (error) alert(error.message);
+    else onProfileUpdate(error ? null : { ...profile, signature_url: null });
+  };
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
       <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", flexWrap:"wrap" }}>
@@ -65,7 +73,11 @@ export const ProfilePage = ({ profile, profiles, userNation, onProfileUpdate, on
           </label>
           <label style={{ display:"flex", flexDirection:"column", gap:"0.35rem", color:"#8fa0bd", fontSize:12 }}>
             Bio
-            <textarea value={form.bio} onChange={e=>setForm({...form,bio:e.target.value})} placeholder="Short public profile bio" style={{ ...ta, minHeight:130 }} />
+            <textarea value={form.bio} onChange={e=>setForm({...form,bio:e.target.value})} placeholder="Short public profile bio" style={{ ...ta, minHeight:100 }} />
+          </label>
+          <label style={{ display:"flex", flexDirection:"column", gap:"0.35rem", color:"#8fa0bd", fontSize:12 }}>
+            Forum Signature Text
+            <textarea value={form.signature_text} onChange={e=>setForm({...form,signature_text:e.target.value})} placeholder="Text shown below your forum posts (plain text, supports BBCode)" style={{ ...ta, minHeight:60 }} />
           </label>
           <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap" }}>
             <button onClick={save} disabled={saving} style={mkBtn()}>{saving ? "Saving" : "Save Profile"}</button>
@@ -79,8 +91,11 @@ export const ProfilePage = ({ profile, profiles, userNation, onProfileUpdate, on
             <ProfileMediaUploader profileId={profile.id} field="avatar_url" currentUrl={profile.avatar_url} label="Avatar" onUploaded={onProfileUpdate} />
           </div>
           <div>
-            <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"0.6rem" }}>Forum Signature</div>
+            <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"0.6rem" }}>Signature Image</div>
             <ProfileMediaUploader profileId={profile.id} field="signature_url" currentUrl={profile.signature_url} label="Signature" onUploaded={onProfileUpdate} ratio="5 / 1" />
+            {profile.signature_url && (
+              <button onClick={removeSignatureImage} style={{ ...mkBtn("red"), marginTop:"0.5rem", fontSize:10, padding:"4px 10px", minHeight:28 }}>Remove Signature Image</button>
+            )}
           </div>
         </aside>
       </div>
@@ -97,7 +112,12 @@ export const ProfilePage = ({ profile, profiles, userNation, onProfileUpdate, on
               {profile.status && profile.status !== "active" ? `${profile.status} - ` : ""}{profile.last_active_at ? `Last active ${timeAgo(profile.last_active_at)}` : "Activity not recorded yet"}
             </div>
             {profile.bio && <p style={{ margin:"0.75rem 0 0", color:"#d7e2f2", lineHeight:1.75, fontSize:13, whiteSpace:"pre-wrap" }}>{profile.bio}</p>}
-            {profile.signature_url && <img src={profile.signature_url} alt="" style={{ marginTop:"0.85rem", maxWidth:"100%", maxHeight:110, objectFit:"contain", borderTop:"1px solid rgba(20,96,184,0.16)", paddingTop:"0.75rem" }} />}
+            {(profile.signature_url || profile.signature_text) && (
+              <div style={{ marginTop:"0.85rem", paddingTop:"0.75rem", borderTop:"1px solid rgba(20,96,184,0.16)" }}>
+                {profile.signature_text && <div style={{ fontSize:12, color:"#8fa0bd", fontStyle:"italic", marginBottom:profile.signature_url?"0.5rem":0 }}>{profile.signature_text}</div>}
+                {profile.signature_url && <img src={profile.signature_url} alt="" style={{ maxWidth:"100%", maxHeight:110, objectFit:"contain" }} />}
+              </div>
+            )}
           </div>
         </div>
       </div>

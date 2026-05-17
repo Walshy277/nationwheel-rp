@@ -54,11 +54,9 @@ export const NationsPage = ({ nations, posts, actions, wars, alliances, alliance
           <p style={{ margin:0, color:"#8fa0bd", fontSize:13 }}>Clear the search or government filter to see all nations.</p>
         </div>
       )}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(275px,1fr))", gap:"0.75rem" }}>
+        <div className="nation-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(275px,1fr))", gap:"0.75rem" }}>
         {list.map(n=>(
-          <div key={n.id} style={{ ...card, cursor:"pointer", transition:"border-color 0.18s" }}
-            onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(212,175,55,0.38)"}
-            onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(212,175,55,0.1)"}
+          <div key={n.id} className="nation-card" style={{ ...card, cursor:"pointer", borderColor:"rgba(212,175,55,0.1)" }}
             onClick={()=>setSelected(n)}>
             <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"0.75rem" }}>
               <Flag nation={n} size={38} />

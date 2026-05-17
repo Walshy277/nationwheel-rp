@@ -43,6 +43,7 @@ export const AuthPage = ({ onAuth, setupRequired }) => {
         const nextProfile = await ensureProfile(data.user);
         onAuth(data.user, nextProfile);
       } else {
+        if (!username.trim()) { setErr("You must choose a username to register."); setLoading(false); return; }
         const {data,error} = await supabase.auth.signUp({
           email,
           password:pw,
@@ -116,7 +117,7 @@ export const AuthPage = ({ onAuth, setupRequired }) => {
               ))}
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
-              {mode==="signup" && <input placeholder="Choose a username" value={username} onChange={e=>setUsername(e.target.value)} style={inp} />}
+              {mode==="signup" && <input placeholder="Choose a username *" value={username} onChange={e=>setUsername(e.target.value)} style={{ ...inp, border:"1px solid rgba(212,175,55,0.4)" }} />}
               <input placeholder="Email address" type="email" value={email} onChange={e=>setEmail(e.target.value)} style={inp} />
               <input placeholder="Password" type="password" value={pw} onChange={e=>setPw(e.target.value)} style={inp} onKeyDown={e=>e.key==="Enter"&&submit()} />
               {TURNSTILE_SITE_KEY && (

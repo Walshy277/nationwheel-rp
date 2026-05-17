@@ -89,8 +89,23 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
             </div>
           )}
           <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-            {wars.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>The world is at peace for now.</p>}
-            {wars.map(w=><WarCard key={w.id} war={w} nations={nations} alliances={alliances} participants={warParticipants} isMod={isMod} onRefresh={onRefresh} />)}
+            {wars.length===0 ? (
+              <div style={{ ...card, textAlign:"center", padding:"2rem" }}>
+                <div style={{ fontFamily:"var(--display)", color:"#edf4ff", fontSize:16, marginBottom:"0.35rem" }}>The world is at peace.</div>
+                <p style={{ margin:0, color:"#8fa0bd", fontSize:13 }}>No active wars recorded. Declare one using the button above.</p>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"-0.25rem" }}>{wars.length} war{wars.length!==1?"s":""} recorded</div>
+                {wars.filter(w=>w.status==="active"||w.status==="ceasefire"||w.status==="stalemate").map(w=><WarCard key={w.id} war={w} nations={nations} alliances={alliances} participants={warParticipants} isMod={isMod} onRefresh={onRefresh} />)}
+                {wars.filter(w=>w.status==="peace"||w.status==="frozen").length > 0 && (
+                  <>
+                    <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.08em", textTransform:"uppercase", marginTop:"0.75rem" }}>Historical Wars</div>
+                    {wars.filter(w=>w.status==="peace"||w.status==="frozen").map(w=><WarCard key={w.id} war={w} nations={nations} alliances={alliances} participants={warParticipants} isMod={isMod} onRefresh={onRefresh} />)}
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
@@ -114,42 +129,53 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
             </div>
           )}
           <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-            {alliances.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"2rem", fontStyle:"italic" }}>No alliances formed yet.</p>}
-            {alliances.map(a=>{
-              const members = allianceMembers.filter(m=>m.alliance_id===a.id).map(m=>nations.find(n=>n.id===m.nation_id)).filter(Boolean);
-              const editAlliance = async () => {
-                const name = prompt("Alliance name", a.name);
-                if (!name) return;
-                const description = prompt("Alliance description", a.description || "") ?? a.description;
-                const type = prompt("Alliance type", a.type || "alliance") || a.type;
-                const { error } = await supabase.from("alliances").update({ name, description, type }).eq("id", a.id);
-                if (error) alert(error.message); else onRefresh();
-              };
-              const deleteAlliance = async () => {
-                if (!confirm("Delete this alliance?")) return;
-                const { error } = await supabase.from("alliances").delete().eq("id", a.id);
-                if (error) alert(error.message); else onRefresh();
-              };
-              return (
-                <div key={a.id} style={card}>
-                  <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"0.75rem", flexWrap:"wrap" }}>
-                    <AllianceFlag alliance={a} size={38} />
-                    <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:15, flex:1 }}>{a.name}</div>
-                    <span style={{ fontSize:11, color:"#3498db", border:"1px solid rgba(52,152,219,0.25)", borderRadius:3, padding:"2px 8px" }}>{a.type?.toUpperCase()}</span>
-                    {isMod && <AllianceFlagUploader allianceId={a.id} currentUrl={a.flag_url} onUploaded={onRefresh} />}
-                    {isMod && <button onClick={editAlliance} style={{ ...mkBtn("ghost"), fontSize:11 }}>Edit</button>}
-                    {isMod && <button onClick={deleteAlliance} style={{ ...mkBtn("red"), fontSize:11 }}>Delete</button>}
-                  </div>
-                  {a.description && <p style={{ margin:"0 0 0.75rem", color:"#b8c4d8", fontSize:12 }}>{a.description}</p>}
-                  <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center" }}>
-                    {members.map(n=><NationPill key={n.id} nation={n} />)}
-                    {userNation && !members.find(m=>m.id===userNation.id) && (
-                      <button onClick={async()=>{await supabase.from("alliance_members").insert({alliance_id:a.id,nation_id:userNation.id});onRefresh();}} style={{ ...mkBtn("ghost"), fontSize:11 }}>+ Join</button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {alliances.length===0 ? (
+              <div style={{ ...card, textAlign:"center", padding:"2rem" }}>
+                <div style={{ fontFamily:"var(--display)", color:"#edf4ff", fontSize:16, marginBottom:"0.35rem" }}>No alliances yet.</div>
+                <p style={{ margin:0, color:"#8fa0bd", fontSize:13 }}>No pacts or alliances have been formed. Create one using the button above.</p>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.08em", textTransform:"uppercase" }}>{alliances.length} alliance{alliances.length!==1?"s":""} formed</div>
+                {alliances.map(a=>{
+                  const members = allianceMembers.filter(m=>m.alliance_id===a.id).map(m=>nations.find(n=>n.id===m.nation_id)).filter(Boolean);
+                  const editAlliance = async () => {
+                    const name = prompt("Alliance name", a.name);
+                    if (!name) return;
+                    const description = prompt("Alliance description", a.description || "") ?? a.description;
+                    const type = prompt("Alliance type", a.type || "alliance") || a.type;
+                    const { error } = await supabase.from("alliances").update({ name, description, type }).eq("id", a.id);
+                    if (error) alert(error.message); else onRefresh();
+                  };
+                  const deleteAlliance = async () => {
+                    if (!confirm("Delete this alliance?")) return;
+                    const { error } = await supabase.from("alliances").delete().eq("id", a.id);
+                    if (error) alert(error.message); else onRefresh();
+                  };
+                  return (
+                    <div key={a.id} style={card}>
+                      <div style={{ display:"flex", gap:"0.75rem", alignItems:"center", marginBottom:"0.75rem", flexWrap:"wrap" }}>
+                        <AllianceFlag alliance={a} size={38} />
+                        <div style={{ fontFamily:"var(--display)", color:"#d4af37", fontSize:15, flex:1 }}>{a.name}</div>
+                        <span style={{ fontSize:11, fontWeight:700, color:"#3498db", border:"1px solid rgba(52,152,219,0.25)", borderRadius:999, padding:"2px 10px" }}>{a.type?.toUpperCase()}</span>
+                        {isMod && <AllianceFlagUploader allianceId={a.id} currentUrl={a.flag_url} onUploaded={onRefresh} />}
+                        {isMod && <button onClick={editAlliance} style={{ ...mkBtn("ghost"), fontSize:11 }}>Edit</button>}
+                        {isMod && <button onClick={deleteAlliance} style={{ ...mkBtn("red"), fontSize:11 }}>Delete</button>}
+                      </div>
+                      {a.description && <p style={{ margin:"0 0 0.75rem", color:"#b8c4d8", fontSize:12, lineHeight:1.7 }}>{a.description}</p>}
+                      <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", alignItems:"center" }}>
+                        {members.length === 0 && <span style={{ fontSize:12, color:"#8493ad", fontStyle:"italic" }}>No members yet.</span>}
+                        {members.map(n=><NationPill key={n.id} nation={n} />)}
+                        {userNation && !members.find(m=>m.id===userNation.id) && (
+                          <button onClick={async()=>{await supabase.from("alliance_members").insert({alliance_id:a.id,nation_id:userNation.id});onRefresh();}} style={{ ...mkBtn("ghost"), fontSize:11, padding:"5px 10px" }}>+ Join</button>
+                        )}
+                      </div>
+                      <div style={{ fontSize:11, color:"#8fa0bd", marginTop:"0.5rem" }}>{members.length} member{members.length!==1?"s":""}</div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
           </div>
         </div>
       )}

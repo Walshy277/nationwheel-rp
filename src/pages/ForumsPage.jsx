@@ -454,7 +454,12 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
                     <div className="post-body" style={{ flex:1, minWidth:0 }}>
                       {origCanon && <div style={{ display:"inline-flex", marginBottom:"0.75rem", color:origCanon==="canon"?"#111":"#f5f8ff", background:origCanon==="canon"?"#f6c132":"rgba(231,76,60,0.2)", border:`1px solid ${origCanon==="canon"?"rgba(246,193,50,0.35)":"rgba(231,76,60,0.35)"}`, borderRadius:4, padding:"3px 8px", fontSize:10, fontWeight:900, letterSpacing:"0.08em", textTransform:"uppercase" }}>{origCanon==="canon"?"Canon":"Non-Canon"}</div>}
                       <RichText>{original.body}</RichText>
-                      {original.profiles?.signature_url && <img className="post-signature" src={original.profiles.signature_url} alt="" style={{ marginTop:"0.75rem", maxWidth:"100%", opacity:0.9 }} />}
+                      {(original.profiles?.signature_url || original.profiles?.signature_text) && (
+                        <div style={{ marginTop:"0.75rem", paddingTop:"0.65rem", borderTop:"1px solid rgba(20,96,184,0.14)" }}>
+                          {original.profiles?.signature_text && <div style={{ fontSize:11, color:"#8fa0bd", fontStyle:"italic", marginBottom:original.profiles?.signature_url?"0.4rem":0, lineHeight:1.6 }}>{original.profiles.signature_text}</div>}
+                          {original.profiles?.signature_url && <img className="post-signature" src={original.profiles.signature_url} alt="" style={{ maxWidth:"100%", opacity:0.9 }} />}
+                        </div>
+                      )}
                       <div style={{ display:"flex", flexWrap:"wrap", gap:"0.35rem", marginTop:"0.9rem", alignItems:"center", paddingTop:"0.75rem", borderTop:"1px solid rgba(78,128,190,0.12)" }}>
                         <span style={{ fontSize:10, color:"#8fa0bd", marginRight:"0.25rem" }}>React:</span>
                         {REACT_EMOJIS.map(e=>{
@@ -522,7 +527,12 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
                               ) : (
                                 <div style={{ fontSize:"14px", lineHeight:"1.7", color:"#d6deeb", maxWidth:"720px", marginTop:"0.5rem" }}>
                                   <RichText>{p.body}</RichText>
-                                  {p.profiles?.signature_url && <img className="post-signature" src={p.profiles.signature_url} alt="" style={{ marginTop:"0.75rem", maxWidth:"100%", opacity:0.9 }} />}
+                                  {(p.profiles?.signature_url || p.profiles?.signature_text) && (
+                                    <div style={{ marginTop:"0.75rem", paddingTop:"0.65rem", borderTop:"1px solid rgba(20,96,184,0.14)" }}>
+                                      {p.profiles?.signature_text && <div style={{ fontSize:11, color:"#8fa0bd", fontStyle:"italic", marginBottom:p.profiles?.signature_url?"0.4rem":0, lineHeight:1.6 }}>{p.profiles.signature_text}</div>}
+                                      {p.profiles?.signature_url && <img className="post-signature" src={p.profiles.signature_url} alt="" style={{ maxWidth:"100%", opacity:0.9 }} />}
+                                    </div>
+                                  )}
                                 </div>
                               )}
                               <div style={{ display:"flex", flexWrap:"wrap", gap:"0.35rem", marginTop:"0.9rem", alignItems:"center", paddingTop:"0.75rem", borderTop:"1px solid rgba(78,128,190,0.12)" }}>

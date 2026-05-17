@@ -53,8 +53,17 @@ export const RPBoardPage = ({ posts, profile, userNation, nations, isMod, onRefr
         </div>
       )}
       <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
-        {filtered.length===0 && <p style={{ color:"#8493ad", textAlign:"center", padding:"3rem", fontStyle:"italic" }}>No dispatches yet. The world waits.</p>}
-        {filtered.map(p=><PostCard key={p.id} post={p} nations={nations} isMod={isMod} onRefresh={onRefresh} />)}
+        {filtered.length===0 ? (
+          <div style={{ ...card, textAlign:"center", padding:"2.5rem" }}>
+            <div style={{ fontFamily:"var(--display)", color:"#edf4ff", fontSize:16, marginBottom:"0.35rem" }}>No dispatches yet.</div>
+            <p style={{ margin:0, color:"#8fa0bd", fontSize:13 }}>{filter==="all" ? "The world waits for the first dispatch." : `No dispatches in the "${filter}" category.`}</p>
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.08em", textTransform:"uppercase" }}>{filtered.length} dispatch{filtered.length!==1?"es":""}</div>
+            {filtered.map(p=><PostCard key={p.id} post={p} nations={nations} isMod={isMod} onRefresh={onRefresh} />)}
+          </>
+        )}
       </div>
     </div>
   );
