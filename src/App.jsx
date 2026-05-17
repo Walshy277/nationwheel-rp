@@ -21,6 +21,7 @@ import { LeaderboardsPage } from "./pages/LeaderboardsPage";
 import { ChangelogPage } from "./pages/ChangelogPage";
 import { ForumsPage } from "./pages/ForumsPage";
 import { AdminPanel } from "./pages/AdminPanel";
+import { GameMechanicsPage } from "./pages/GameMechanicsPage";
 
 export default function App() {
   const initialRoute = parseRoute();
@@ -154,6 +155,7 @@ export default function App() {
   const nav = [
       {id:"forums",label:"Boards"},
       {id:"nations",label:"Nations"},
+      {id:"mechanics",label:"Mechanics"},
       {id:"leaderboards",label:"Leaderboards"},
       {id:"changelog",label:"Changelog"},
       {id:"news",label:"News"},
@@ -251,6 +253,7 @@ export default function App() {
               {page==="actions"      && <ActionsPage actions={data.actions} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="wars"         && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profiles={data.profiles} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} />}
               {page==="news"         && <NewsPage news={data.news} profile={profile} isMod={isLoreTeam} onRefresh={fetchAll} />}
+              {page==="mechanics"    && <GameMechanicsPage navigate={navigate} />}
               {page==="leaderboards" && <LeaderboardsPage nations={data.nations} />}
               {page==="changelog"    && <ChangelogPage />}
               {page==="profile" && publicProfileId && <PublicProfilePage viewedProfile={data.profiles.find(item=>item.id===publicProfileId)} nations={data.nations} posts={data.posts} actions={data.actions} onBack={()=>navigate("forums")} />}

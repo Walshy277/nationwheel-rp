@@ -26,6 +26,11 @@ export const PAGE_PATHS = {
   home: "/overview",
   auth: "/auth",
   admin: "/admin",
+  mechanics: "/mechanics",
+  diplomacy: "/diplomacy",
+  economy: "/economy",
+  assembly: "/assembly",
+  settings: "/settings",
 };
 export const FORUM_PAGE_SIZE = 25;
 
