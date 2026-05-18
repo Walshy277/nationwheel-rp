@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { card, mkBtn, inp, ta, slugify, timeAgo, fmtDate, ROLE_LABELS, ROLE_COLORS, getRoles } from "../lib/uiUtils";
 import { CHANGELOG_ENTRIES } from "../lib/constants";
-import { SITE_CODE_FILES } from "../lib/siteCodeFiles";
+
 import { Flag } from "../components/nation/Flag";
 
 const REPORT_TYPES = ["forum_post","forum_thread","profile","dispatch","action","nation"];
@@ -23,7 +23,8 @@ export const AdminPanel = ({ nations, profiles, profile, onRefresh, isAdmin }) =
   const [editId, setEditId] = useState(null);
   const [assignNId, setAssignNId] = useState(""); const [assignPId, setAssignPId] = useState("");
   const [roleId, setRoleId] = useState(""); const [selectedRoles, setSelectedRoles] = useState([]);
-  const [selectedCodeFile, setSelectedCodeFile] = useState(Object.keys(SITE_CODE_FILES).sort()[0] || "");
+  const [selectedCodeFile, setSelectedCodeFile] = useState("");
+  const [codeFiles, setCodeFiles] = useState(null);
   const [codeNote, setCodeNote] = useState("");
   const [userStatusId, setUserStatusId] = useState("");
   const [suspendDays, setSuspendDays] = useState("7");
@@ -56,8 +57,8 @@ export const AdminPanel = ({ nations, profiles, profile, onRefresh, isAdmin }) =
 
   const fields = [["name","Nation Name *"],["government","Government"],["ideology","Ideology"],["population","Population"],["gdp_usd","GDP (USD number)"],["land_km2","Land km2"],["army_rank","Army Rank 0-11"],["hdi","HDI 0.00-1.00"],["economy","Economy Sectors"],["diplomatic_status","Diplomatic Status"],["bloc","Bloc / Alliance"]];
   const tabs = [["add",editId?"Edit Nation":"Add Nation"],["assign","Assign Nations"],["reports",`Reports (${reports.filter(r=>r.status==="open"||r.status==="investigating").length||""})`],...(isAdmin ? [["users","Users"],["roles","Manage Roles"],["code","Site Code"],["changes","Changelog"]] : []),["list","Nation List"]];
-  const codeEntries = Object.entries(SITE_CODE_FILES).sort(([a],[b])=>a.localeCompare(b));
-  const selectedCode = SITE_CODE_FILES[selectedCodeFile] || "";
+  const codeEntries = codeFiles ? Object.entries(codeFiles).sort(([a],[b])=>a.localeCompare(b)) : [];
+  const selectedCode = codeFiles ? (codeFiles[selectedCodeFile] || "") : "";
   const setUserModeration = async (status) => {
     if (!userStatusId) return;
     const suspendedUntil = status === "suspended"
@@ -110,6 +111,24 @@ export const AdminPanel = ({ nations, profiles, profile, onRefresh, isAdmin }) =
   useEffect(() => {
     if (tab === "reports") loadReports();
   }, [tab]);
+
+  useEffect(() => {
+    if (tab !== "code" || codeFiles) return;
+    let cancelled = false;
+    (async () => {
+      const mod = await import("../lib/siteCodeFiles");
+      const files = {};
+      for (const [path, loader] of Object.entries(mod.SITE_CODE_FILES)) {
+        if (cancelled) return;
+        files[path] = await loader();
+      }
+      if (cancelled) return;
+      setCodeFiles(files);
+      const keys = Object.keys(files).sort();
+      if (keys.length > 0) setSelectedCodeFile(prev => prev || keys[0]);
+    })();
+    return () => { cancelled = true; };
+  }, [tab, codeFiles]);
 
   const removeMember = async () => {
     if (!userStatusId || !selectedUser) return;
@@ -296,6 +315,9 @@ export const AdminPanel = ({ nations, profiles, profile, onRefresh, isAdmin }) =
       )}
 
       {isAdmin && tab==="code" && (
+        !codeFiles ? (
+          <div style={{ textAlign:"center", padding:"3rem", color:"#8493ad" }}>Loading code files...</div>
+        ) : (
         <div style={{ display:"grid", gridTemplateColumns:"280px minmax(0,1fr)", gap:"1rem" }} className="admin-code-grid">
           <div style={{ ...card, display:"flex", flexDirection:"column", gap:"0.75rem" }}>
             <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Site Code</h3>
@@ -310,6 +332,7 @@ export const AdminPanel = ({ nations, profiles, profile, onRefresh, isAdmin }) =
           </div>
           <pre style={{ ...card, margin:0, minHeight:520, maxHeight:"70vh", overflow:"auto", whiteSpace:"pre-wrap", color:"#d7e2f2", fontSize:11, lineHeight:1.65 }}>{selectedCode}</pre>
         </div>
+        )
       )}
 
       {isAdmin && tab==="changes" && (
