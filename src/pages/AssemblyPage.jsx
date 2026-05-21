@@ -71,6 +71,13 @@ export const AssemblyPage = ({ nations, profile, userNation, onRefresh }) => {
       const { error } = await supabase.from("assembly_votes").insert({ proposal_id: proposalId, nation_id: userNation.id, vote });
       if (error) { alert(error.message); return; }
     }
+    const { data: votes } = await supabase.from("assembly_votes").select("vote").eq("proposal_id", proposalId);
+    if (votes) {
+      const votesFor = votes.filter(v => v.vote === "for").length;
+      const votesAgainst = votes.filter(v => v.vote === "against").length;
+      const votesAbstain = votes.filter(v => v.vote === "abstain").length;
+      await supabase.from("assembly_proposals").update({ votes_for: votesFor, votes_against: votesAgainst, votes_abstain: votesAbstain }).eq("id", proposalId);
+    }
     loadProposals();
   };
 

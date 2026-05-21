@@ -85,8 +85,4 @@ export const boardStatusLabel = visibility => {
   return "Public";
 };
 
-export const categoryForBoard = board => {
-  const slug = board?.slug;
-  return FORUM_CATEGORIES.find(category => category.boards.includes(slug));
-};
 

@@ -4,9 +4,8 @@ import { card, mkBtn, inp, ta, slugify, timeAgo, fmtDate, ROLE_LABELS, ROLE_COLO
 import { CHANGELOG_ENTRIES } from "../lib/constants";
 
 import { Flag } from "../components/nation/Flag";
-import { recalculateAllNations, processAllStarvation } from "../lib/economy";
+import { recalculateAllNations, processAllStarvation, processTradeRoutes } from "../lib/economy";
 
-const REPORT_TYPES = ["forum_post","forum_thread","profile","dispatch","action","nation"];
 const REPORT_COLORS = { open:"#e74c3c", investigating:"#f39c12", resolved:"#2ecc71", dismissed:"#8fa0bd" };
 
 const ROLE_OPTIONS = [
@@ -380,11 +379,21 @@ export const AdminPanel = ({ nations, profiles, profile, onRefresh, isAdmin }) =
               }} disabled={ecoLoading} style={{ ...mkBtn("gold"), opacity:ecoLoading?0.6:1 }}>
                 {ecoLoading ? "Working..." : "Process Starvation Day"}
               </button>
+              <button onClick={async()=>{
+                setEcoLoading(true); setEcoStatus(null);
+                const result = await processTradeRoutes();
+                setEcoStatus({ type:"trade", ...result });
+                setEcoLoading(false);
+              }} disabled={ecoLoading} style={{ ...mkBtn("blue"), opacity:ecoLoading?0.6:1 }}>
+                {ecoLoading ? "Working..." : "Process Trade Routes"}
+              </button>
             </div>
             {ecoStatus && (
               <div style={{ padding:"0.6rem", borderRadius:6, background:"rgba(255,255,255,0.03)", fontSize:12, color:"#edf4ff" }}>
                 {ecoStatus.type === "recalc"
                   ? `Recalculated: ${ecoStatus.updated} nations updated, ${ecoStatus.failed} failed`
+                  : ecoStatus.type === "trade"
+                  ? `Trade routes: ${ecoStatus.processed} active routes processed`
                   : `Starvation: ${ecoStatus.starving?.length || 0} nations starved`}
               </div>
             )}

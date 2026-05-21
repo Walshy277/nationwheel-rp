@@ -61,7 +61,7 @@ insert into game_state (id, game_day, game_year)
 select 1, 44, 4488
 where not exists (select 1 from game_state where id = 1);
 
--- Helper function to advance game day
+-- Helper function to advance game day (also processes starvation and trade routes)
 create or replace function public.advance_game_day(amount int default 1)
 returns json
 language plpgsql
@@ -73,6 +73,8 @@ declare
   current_year int;
   new_day int;
   new_year int;
+  starved int;
+  trade_count int;
 begin
   if not public.is_lore_team(auth.uid()) then
     raise exception 'Only lore team can advance the game day';
@@ -95,7 +97,23 @@ begin
       updated_at = now()
   where id = 1;
 
-  return json_build_object('day', new_day, 'year', new_year);
+  -- Process starvation: reduce pop and HDI for nations with food <= 0
+  update nations n
+  set
+    population = greatest(1, round(n.population * 0.98)),
+    hdi = greatest(0, round((coalesce(n.hdi::numeric, 0.5) - 0.1)::numeric, 2))
+  where n.id in (
+    select nr.nation_id from nation_resources nr
+    where nr.food <= 0
+  );
+  get diagnostics starved = rowcount;
+
+  -- Recalculate resources after starvation
+  if starved > 0 then
+    perform public.recalculate_nation_resources();
+  end if;
+
+  return json_build_object('day', new_day, 'year', new_year, 'starved', starved);
 end;
 $$;
 
@@ -132,8 +150,25 @@ begin
   end loop;
 
   -- Extract nation mentions: [mention=nation:UUID]text[/mention]
-  -- Send to all members of that nation (if we have the info) — for now, skip
-  -- as we'd need a secondary query. Users can be @mentioned directly.
+  -- Send to all members of that nation
+  for m_nation in
+    select regexp_matches(post_body, '\[mention=nation:([a-f0-9\-]+)\](.*?)\[\/mention\]', 'gi')
+  loop
+    for pid in
+      select p.id from profiles p
+      where p.nation_id = m_nation[1]::uuid
+    loop
+      insert into notifications (profile_id, type, title, body, link)
+      values (
+        pid,
+        source_type || '_mention',
+        'Your nation was mentioned in ' || source_title,
+        m_nation[2],
+        source_link
+      )
+      on conflict do nothing;
+    end loop;
+  end loop;
 end;
 $$;
 

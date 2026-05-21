@@ -169,7 +169,7 @@ function AppShell() {
     { type: "dropdown", label: "More", items: [
       { id: "mechanics", label: "Mechanics" },
       { id: "leaderboards", label: "Leaderboards" },
-      { id: "changelog", label: "Changelog" },
+      ...(isAdminRole ? [{ id: "changelog", label: "Changelog" }] : []),
       ...(user ? [{ id: "settings", label: "Settings" }] : []),
     ]},
   ];
@@ -270,7 +270,7 @@ function AppShell() {
               {page === "news" && <NewsPage news={data.news} {...commonProps} onRefresh={fetchAll} />}
               {page === "mechanics" && <GameMechanicsPage navigate={navigate} />}
               {page === "leaderboards" && <LeaderboardsPage nations={data.nations} />}
-              {page === "changelog" && <ChangelogPage />}
+              {page === "changelog" && <ChangelogPage profile={profile} navigate={navigate} />}
               {page === "profile" && publicProfileId && <PublicProfilePage viewedProfile={data.profiles.find(item => item.id === publicProfileId)} nations={data.nations} posts={data.posts} actions={data.actions} onBack={() => navigate("forums")} />}
               {page === "profile" && !publicProfileId && user && profile && <ProfilePage profile={profile} profiles={data.profiles} userNation={userNation} onProfileUpdate={setProfile} onViewProfile={viewProfile} />}
               {page === "forums" && <ForumsPage boards={data.boards} route={forumRoute} onRouteChange={setForumRoute} nations={data.nations} {...commonProps} onRefresh={fetchAll} onRequireAuth={() => navigate("auth")} onViewProfile={viewProfile} />}

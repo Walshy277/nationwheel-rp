@@ -63,7 +63,7 @@ export const RPBoardPage = ({ posts, profile, userNation, nations, isMod, onRefr
         ) : (
           <>
             <div style={{ fontSize:11, color:"#8fa0bd", letterSpacing:"0.08em", textTransform:"uppercase" }}>{filtered.length} dispatch{filtered.length!==1?"es":""}</div>
-            {filtered.map(p=><PostCard key={p.id} post={p} nations={nations} isMod={isMod} onRefresh={onRefresh} />)}
+            {filtered.map(p=><PostCard key={p.id} post={p} nations={nations} isMod={isMod} profile={profile} onRefresh={onRefresh} />)}
           </>
         )}
       </div>

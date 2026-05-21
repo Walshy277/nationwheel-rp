@@ -126,6 +126,38 @@ export async function recalculateAllNations(nations) {
   return { ok: true, updated, failed };
 }
 
+export async function processTradeRoutes() {
+  if (!supabase) return { ok: false, error: "Supabase not configured" };
+  const { data: routes, error } = await supabase
+    .from("trade_routes")
+    .select("*")
+    .eq("status", "active");
+  if (error) return { ok: false, error: error.message };
+  const results = [];
+  for (const route of routes || []) {
+    const fromRes = await supabase.from("nation_resources").select("*").eq("nation_id", route.from_nation_id).single();
+    const toRes = await supabase.from("nation_resources").select("*").eq("nation_id", route.to_nation_id).single();
+    if (fromRes.error || toRes.error) continue;
+    const fromData = fromRes.data;
+    const toData = toRes.data;
+    const amount = Math.min(route.amount, fromData[route.resource_type] || 0);
+    if (amount <= 0) continue;
+    fromData[route.resource_type] = Math.max(0, fromData[route.resource_type] - amount);
+    toData[route.resource_type] = (toData[route.resource_type] || 0) + amount;
+    const { error: uErr } = await supabase.from("nation_resources").update({
+      [route.resource_type]: fromData[route.resource_type],
+      updated_at: new Date().toISOString(),
+    }).eq("nation_id", route.from_nation_id);
+    if (uErr) continue;
+    await supabase.from("nation_resources").update({
+      [route.resource_type]: toData[route.resource_type],
+      updated_at: new Date().toISOString(),
+    }).eq("nation_id", route.to_nation_id);
+    results.push({ from: route.from_nation_id, to: route.to_nation_id, resource: route.resource_type, amount });
+  }
+  return { ok: true, processed: results.length, details: results };
+}
+
 export async function processAllStarvation(nations) {
   if (!supabase) return { ok: false, error: "Supabase not configured" };
   const starving = [];

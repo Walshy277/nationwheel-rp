@@ -4,19 +4,11 @@ import { RichText } from "../../lib/richText";
 import { card, mkBtn, inp, ta, timeAgo, isProfileBlocked, mergeThreadPostPages } from "../../lib/uiUtils";
 import { FORUM_PAGE_SIZE, REACT_EMOJIS } from "../../lib/constants";
 import { Flag } from "../nation/Flag";
+import { ProfileButton } from "../profile/ProfileButton";
 import BBCodeToolbar from "./BBCodeToolbar";
+import { ReportButton } from "../moderation/ReportButton";
 import { createMentionNotifications, notifyThreadReply } from "../../lib/notifications";
 import { useToast } from "../../lib/ToastContext";
-
-function ProfileButton({ profile, onViewProfile, children, style = {} }) {
-  if (!profile?.id || !onViewProfile) return <span style={style}>{children || profile?.username || "Unknown"}</span>;
-  return (
-    <button onClick={(e) => { e.stopPropagation(); onViewProfile(profile.id); }}
-      style={{ background: "transparent", border: "none", padding: 0, minHeight: 0, color: "inherit", cursor: "pointer", font: "inherit", textAlign: "left", ...style }}>
-      {children || profile.username || "Unknown"}
-    </button>
-  );
-}
 
 function PostCard({ post, postNumber, thread, reactions, profile, nations, isMod, onViewProfile, onRefresh, replySort }) {
   const showStatus = useToast();
@@ -109,6 +101,7 @@ function PostCard({ post, postNumber, thread, reactions, profile, nations, isMod
             return <button key={e} onClick={() => toggleReaction(e)} style={{ ...mkBtn(active ? "gold" : "ghost"), minHeight: 28, padding: "2px 6px", fontSize: 13, lineHeight: 1 }}>{e}{count > 0 ? <span style={{ fontSize: 10, marginLeft: 2 }}>{count}</span> : ""}</button>;
           })}
           <span style={{ width: 1, height: 20, background: "rgba(78,128,190,0.2)", margin: "0 0.25rem" }} />
+          <ReportButton targetType="forum_post" targetId={post.id} profile={profile} />
           {(isMod || post.author_id === profile?.id) && <button onClick={() => { setEditing(true); setEditBody(post.body); }} style={{ ...mkBtn("ghost"), minHeight: 28, padding: "3px 7px", fontSize: 10 }}>Edit</button>}
           {(isMod || post.author_id === profile?.id) && <button onClick={deletePost} style={{ ...mkBtn("red"), minHeight: 28, padding: "3px 7px", fontSize: 10 }}>Delete</button>}
           {isMod && <span style={{ width: 1, height: 20, background: "rgba(78,128,190,0.2)", margin: "0 0.25rem" }} />}
@@ -271,6 +264,7 @@ export function ThreadView({ thread, board, profile, userNation, nations, isMod,
                         return <button key={e} onClick={() => { if (!profile) return; const existing = reactions.find(r => r.post_id === original.id && r.user_id === profile.id && r.emoji === e); (async () => { const result = existing ? await supabase.from("forum_reactions").delete().eq("id", existing.id) : await supabase.from("forum_reactions").insert({ post_id: original.id, user_id: profile.id, emoji: e }); if (result.error) showStatus(result.error.message, "error"); else { loadReactions(posts.map(p => p.id)); onRefresh(); } })(); }} style={{ ...mkBtn(active ? "gold" : "ghost"), minHeight: 28, padding: "2px 6px", fontSize: 13, lineHeight: 1 }}>{e}{count > 0 ? <span style={{ fontSize: 10, marginLeft: 2 }}>{count}</span> : ""}</button>;
                       })}
                       <span style={{ width: 1, height: 20, background: "rgba(78,128,190,0.2)", margin: "0 0.25rem" }} />
+                      <ReportButton targetType="forum_post" targetId={original.id} profile={profile} />
                       {(isMod || original.author_id === profile?.id) && <button onClick={() => { const body = prompt("Edit post:", original.body); if (body) { supabase.from("forum_posts").update({ body }).eq("id", original.id).then(({ error }) => { if (error) showStatus(error.message, "error"); else onRefresh(); }); } }} style={{ ...mkBtn("ghost"), minHeight: 28, padding: "3px 7px", fontSize: 10 }}>Edit</button>}
                       {(isMod || original.author_id === profile?.id) && <button onClick={async () => { if (!confirm("Delete this post?")) return; const { error } = await supabase.from("forum_posts").delete().eq("id", original.id); if (error) showStatus(error.message, "error"); else { await supabase.rpc("refresh_forum_counts"); onRefresh(); } }} style={{ ...mkBtn("red"), minHeight: 28, padding: "3px 7px", fontSize: 10 }}>Delete</button>}
                       {isMod && <span style={{ width: 1, height: 20, background: "rgba(78,128,190,0.2)", margin: "0 0.25rem" }} />}

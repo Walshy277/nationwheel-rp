@@ -3,8 +3,9 @@ import { supabase } from "../../lib/supabase";
 import { Flag } from "../nation/Flag";
 import { NationPill } from "../nation/NationPill";
 import { card, mkBtn, inp, ta, timeAgo, POST_COLS, POST_TYPES } from "../../lib/uiUtils";
+import { ReportButton } from "../moderation/ReportButton";
 
-export const PostCard = ({ post, nations, isMod, onRefresh }) => {
+export const PostCard = ({ post, nations, isMod, profile, onRefresh }) => {
   const targetNation = nations?.find(n => n.id === post.target_nation_id);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ title:post.title || "", body:post.body || "", post_type:post.post_type || "Dispatch" });
@@ -50,12 +51,15 @@ export const PostCard = ({ post, nations, isMod, onRefresh }) => {
           <p style={{ margin:0, color:"#d7e2f2", lineHeight:1.85, fontSize:13, whiteSpace:"pre-wrap" }}>{post.body}</p>
         </>
       )}
-      {isMod && !editing && (
-        <div style={{ display:"flex", gap:"0.35rem", marginTop:"0.75rem", flexWrap:"wrap" }}>
-          <button onClick={()=>setEditing(true)} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Edit Dispatch</button>
-          <button onClick={deletePost} style={{ ...mkBtn("red"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Remove Dispatch</button>
-        </div>
-      )}
+      <div style={{ display:"flex", gap:"0.35rem", marginTop:"0.75rem", flexWrap:"wrap" }}>
+        <ReportButton targetType="dispatch" targetId={post.id} profile={profile} />
+        {isMod && !editing && (
+          <>
+            <button onClick={()=>setEditing(true)} style={{ ...mkBtn("ghost"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Edit Dispatch</button>
+            <button onClick={deletePost} style={{ ...mkBtn("red"), minHeight:28, padding:"3px 7px", fontSize:10 }}>Remove Dispatch</button>
+          </>
+        )}
+      </div>
     </div>
   );
 };

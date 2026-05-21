@@ -131,7 +131,8 @@ alter table alliances add column if not exists flag_url text;
 create table if not exists alliance_members (
   id uuid primary key default gen_random_uuid(),
   alliance_id uuid references alliances(id) on delete cascade,
-  nation_id uuid references nations(id) on delete cascade
+  nation_id uuid references nations(id) on delete cascade,
+  role text not null default 'member' check (role in ('member','leader'))
 );
 
 create table if not exists war_participants (

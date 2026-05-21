@@ -150,17 +150,158 @@ export const GameMechanicsPage = ({ navigate }) => {
         <section style={card}>
           <h3 style={{ margin:"0 0 0.75rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:16 }}>Economy & Resources</h3>
           <p style={{ color:"#d7e2f2", fontSize:13, lineHeight:1.8, margin:0 }}>
-            Nations track several resource categories that power their economy and military:
+            Nations track five resource categories that power their economy and military. All resources are calculated from your nation's core stats — population, land area, GDP, HDI, army rank, government type, and economy sector.
+          </p>
+
+          <h4 style={{ margin:"1rem 0 0.5rem", fontFamily:"var(--display)", color:"#f6c132", fontSize:14 }}>Resource Formulas</h4>
+          <p style={{ color:"#9fb4d6", fontSize:12, lineHeight:1.7, margin:"0 0 0.75rem" }}>
+            Every resource calculation starts from three fundamental factors derived from your nation's stats:
+          </p>
+          <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(78,128,190,0.2)", borderRadius:6, padding:"0.75rem 1rem", marginBottom:"0.75rem" }}>
+            <code style={{ display:"block", color:"#99dca7", fontSize:12, lineHeight:1.8 }}>
+              PF = √population ÷ 100  &nbsp;(Population Factor)<br/>
+              LF = √land_km² ÷ 100  &nbsp;(Land Factor)<br/>
+              GF = log₁₀(GDP ÷ 1e9 + 1)  &nbsp;(GDP Factor)<br/>
+              hdiAdj = 1 − (HDI − 0.5) × 0.15  &nbsp;(HDI Adjustment)<br/>
+              hdiBonus = 1 + (HDI − 0.5) × 0.3  &nbsp;(HDI Bonus)
+            </code>
+          </div>
+
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem", marginBottom:"0.75rem" }}>
+            <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(78,128,190,0.2)", borderRadius:6, padding:"0.75rem 1rem" }}>
+              <strong style={{ color:"#edf4ff", fontSize:13 }}>Manpower</strong>
+              <code style={{ display:"block", color:"#99dca7", fontSize:12, lineHeight:1.8, marginTop:"0.3rem" }}>
+                PF × 10 × GOV_MULT × (1 + army_rank × 0.08) × hdiAdj
+              </code>
+              <p style={{ color:"#9fb4d6", fontSize:11, lineHeight:1.6, margin:"0.3rem 0 0" }}>
+                Affected by government type — militaristic regimes produce more manpower. Each army rank gives +8% bonus. Higher HDI reduces available manpower (fewer people available for conscription in developed nations).
+              </p>
+            </div>
+            <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(78,128,190,0.2)", borderRadius:6, padding:"0.75rem 1rem" }}>
+              <strong style={{ color:"#edf4ff", fontSize:13 }}>Food</strong>
+              <code style={{ display:"block", color:"#99dca7", fontSize:12, lineHeight:1.8, marginTop:"0.3rem" }}>
+                max(0, LF × 10 × ECO_food × hdiBonus + GF × 30 − PF × 1.5)
+              </code>
+              <p style={{ color:"#9fb4d6", fontSize:11, lineHeight:1.6, margin:"0.3rem 0 0" }}>
+                Agriculture-based economies produce more food. Higher HDI boosts food production. Each unit of population consumes 1.5 food — large populations require massive agricultural output to avoid starvation.
+              </p>
+            </div>
+            <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(78,128,190,0.2)", borderRadius:6, padding:"0.75rem 1rem" }}>
+              <strong style={{ color:"#edf4ff", fontSize:13 }}>Minerals</strong>
+              <code style={{ display:"block", color:"#99dca7", fontSize:12, lineHeight:1.8, marginTop:"0.3rem" }}>
+                max(5, LF × 8 × ECO_min + GF × 20)
+              </code>
+              <p style={{ color:"#9fb4d6", fontSize:11, lineHeight:1.6, margin:"0.3rem 0 0" }}>
+                Mining, heavy industry, and resource-extraction economies produce the most minerals. Minimum floor of 5 ensures every nation has some base output.
+              </p>
+            </div>
+            <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(78,128,190,0.2)", borderRadius:6, padding:"0.75rem 1rem" }}>
+              <strong style={{ color:"#edf4ff", fontSize:13 }}>Energy</strong>
+              <code style={{ display:"block", color:"#99dca7", fontSize:12, lineHeight:1.8, marginTop:"0.3rem" }}>
+                max(5, PF × 5 × ECO_ene + GF × 15)
+              </code>
+              <p style={{ color:"#9fb4d6", fontSize:11, lineHeight:1.6, margin:"0.3rem 0 0" }}>
+                Driven by population and industrial economy types. Manufacturing, energy sectors, and tech-heavy economies produce the most energy.
+              </p>
+            </div>
+            <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(78,128,190,0.2)", borderRadius:6, padding:"0.75rem 1rem" }}>
+              <strong style={{ color:"#edf4ff", fontSize:13 }}>Tech</strong>
+              <code style={{ display:"block", color:"#99dca7", fontSize:12, lineHeight:1.8, marginTop:"0.3rem" }}>
+                max(1, PF × 3 × HDI × 2 × ECO_tech)
+              </code>
+              <p style={{ color:"#9fb4d6", fontSize:11, lineHeight:1.6, margin:"0.3rem 0 0" }}>
+                Heavily weighted by HDI — developed nations produce far more tech. Innovation, AI, robotics, and cybernetics economies lead in tech output.
+              </p>
+            </div>
+            <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(78,128,190,0.2)", borderRadius:6, padding:"0.75rem 1rem" }}>
+              <strong style={{ color:"#edf4ff", fontSize:13 }}>GDP (Display)</strong>
+              <code style={{ display:"block", color:"#99dca7", fontSize:12, lineHeight:1.8, marginTop:"0.3rem" }}>
+                round(nominal_GDP_usd ÷ 1000)
+              </code>
+              <p style={{ color:"#9fb4d6", fontSize:11, lineHeight:1.6, margin:"0.3rem 0 0" }}>
+                Displayed in thousands of USD. Nominal GDP is calculated as population × 500 by default, or set manually by Lore Team.
+              </p>
+            </div>
+          </div>
+
+          <h4 style={{ margin:"1rem 0 0.5rem", fontFamily:"var(--display)", color:"#f6c132", fontSize:14 }}>Government Type Multipliers</h4>
+          <p style={{ color:"#9fb4d6", fontSize:12, lineHeight:1.7, margin:"0 0 0.5rem" }}>
+            Government type affects <strong style={{ color:"#edf4ff" }}>manpower production only</strong>. Militaristic regimes produce more manpower; decentralized or pacifist governments produce less.
+          </p>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.35rem", marginBottom:"0.75rem", fontSize:12 }}>
+            {[
+              ["2.0×", "Military Dictatorship, Junta, Stratocracy"],
+              ["1.8×", "Colony — Military Govt"],
+              ["1.5×", "Fascist Empire, Expansionist Republic"],
+              ["1.2–1.3×", "Empire, Monarchy, Kingdom, Federal Empire, Cybernetic Regency"],
+              ["1.0×", "Republic, Democracy, Constitutional Monarchy, Socialist Republic"],
+              ["0.8–0.9×", "Technocracy, Corporate Confederation, Trade Empire, Progressive Union"],
+              ["0.6–0.7×", "Crypto-Anarchy, Pirate Confederation, Protectorate"],
+              ["0.5×", "Fallen Empire"],
+            ].map(([mult, types]) => (
+              <div key={mult} style={{ background:"rgba(255,255,255,0.03)", borderRadius:4, padding:"0.35rem 0.6rem", display:"flex", gap:"0.5rem", alignItems:"baseline" }}>
+                <span style={{ color:"#f6c132", fontWeight:700, whiteSpace:"nowrap", fontSize:13 }}>{mult}</span>
+                <span style={{ color:"#b8c4d8", fontSize:11, lineHeight:1.5 }}>{types}</span>
+              </div>
+            ))}
+          </div>
+
+          <h4 style={{ margin:"1rem 0 0.5rem", fontFamily:"var(--display)", color:"#f6c132", fontSize:14 }}>Economy Sector Multipliers</h4>
+          <p style={{ color:"#9fb4d6", fontSize:12, lineHeight:1.7, margin:"0 0 0.5rem" }}>
+            Each economy type has unique multipliers across all four resources. Here are the peak performers:
+          </p>
+          <div style={{ overflowX:"auto", marginBottom:"0.75rem" }}>
+            <table style={{ width:"100%", fontSize:11, borderCollapse:"collapse", color:"#b8c4d8" }}>
+              <thead>
+                <tr style={{ borderBottom:"1px solid rgba(78,128,190,0.25)" }}>
+                  <th style={{ textAlign:"left", padding:"0.35rem 0.5rem", color:"#8fa0bd", fontWeight:600 }}>Resource</th>
+                  <th style={{ textAlign:"left", padding:"0.35rem 0.5rem", color:"#8fa0bd", fontWeight:600 }}>Top Multiplier</th>
+                  <th style={{ textAlign:"left", padding:"0.35rem 0.5rem", color:"#8fa0bd", fontWeight:600 }}>Best Economy Types</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style={{ borderBottom:"1px solid rgba(78,128,190,0.12)" }}>
+                  <td style={{ padding:"0.35rem 0.5rem", color:"#edf4ff", fontWeight:600 }}>Food</td>
+                  <td style={{ padding:"0.35rem 0.5rem", color:"#f6c132" }}>2.5×</td>
+                  <td style={{ padding:"0.35rem 0.5rem" }}>Agriculture, Ranching, Fishing, Freshwater</td>
+                </tr>
+                <tr style={{ borderBottom:"1px solid rgba(78,128,190,0.12)" }}>
+                  <td style={{ padding:"0.35rem 0.5rem", color:"#edf4ff", fontWeight:600 }}>Minerals</td>
+                  <td style={{ padding:"0.35rem 0.5rem", color:"#f6c132" }}>2.5×</td>
+                  <td style={{ padding:"0.35rem 0.5rem" }}>Minerals, Gems, Oil, Mining, Heavy Industry</td>
+                </tr>
+                <tr style={{ borderBottom:"1px solid rgba(78,128,190,0.12)" }}>
+                  <td style={{ padding:"0.35rem 0.5rem", color:"#edf4ff", fontWeight:600 }}>Energy</td>
+                  <td style={{ padding:"0.35rem 0.5rem", color:"#f6c132" }}>2.5×</td>
+                  <td style={{ padding:"0.35rem 0.5rem" }}>Energy, Oil, Manufacturing, Space, Heavy Industry</td>
+                </tr>
+                <tr>
+                  <td style={{ padding:"0.35rem 0.5rem", color:"#edf4ff", fontWeight:600 }}>Tech</td>
+                  <td style={{ padding:"0.35rem 0.5rem", color:"#f6c132" }}>3.0×</td>
+                  <td style={{ padding:"0.35rem 0.5rem" }}>Tech, Innovation, AI, Robotics, Cybernetics, Cloning</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4 style={{ margin:"1rem 0 0.5rem", fontFamily:"var(--display)", color:"#f6c132", fontSize:14 }}>Starvation</h4>
+          <p style={{ color:"#d7e2f2", fontSize:13, lineHeight:1.8, margin:0 }}>
+            Any nation with <strong style={{ color:"#edf4ff" }}>Food ≤ 0</strong> after resource calculation suffers the following penalties each processing cycle:
           </p>
           <ul style={{ color:"#b8c4d8", fontSize:13, lineHeight:1.8, paddingLeft:"1.25rem", margin:"0.5rem 0 0" }}>
-            <li><strong style={{ color:"#edf4ff" }}>Food</strong> — Sustains your population. Food shortages can lead to instability.</li>
-            <li><strong style={{ color:"#edf4ff" }}>Minerals</strong> — Raw materials for industry and construction.</li>
-            <li><strong style={{ color:"#edf4ff" }}>Energy</strong> — Powers your nation's industry and technology.</li>
-            <li><strong style={{ color:"#edf4ff" }}>Tech</strong> — Research and development capability.</li>
-            <li><strong style={{ color:"#edf4ff" }}>Manpower</strong> — Population available for military and labor.</li>
+            <li><strong style={{ color:"#e74c3c" }}>−2% population</strong> — population is multiplied by 0.98 and rounded.</li>
+            <li><strong style={{ color:"#e74c3c" }}>−0.1 HDI</strong> — human development index decreases by 0.1 (minimum 0).</li>
+            <li>After applying penalties, all nation resources are recalculated based on the new stats.</li>
           </ul>
+
+          <h4 style={{ margin:"1rem 0 0.5rem", fontFamily:"var(--display)", color:"#f6c132", fontSize:14 }}>Trade Routes</h4>
+          <p style={{ color:"#d7e2f2", fontSize:13, lineHeight:1.8, margin:0 }}>
+            Nations can establish trade routes to transfer resources between each other. Each route specifies a resource type, amount per transfer cycle, and the sender/receiver pair. Trade routes are processed in bulk and respect the sender's available stock — if a nation does not have enough of a resource, the transfer is capped at the available amount.
+          </p>
+
+          <h4 style={{ margin:"1rem 0 0.5rem", fontFamily:"var(--display)", color:"#f6c132", fontSize:14 }}>Recalculation</h4>
           <p style={{ color:"#9fb4d6", fontSize:12, lineHeight:1.7, margin:"0.5rem 0 0" }}>
-            Resources are produced based on your nation's stats and can be traded with other nations via trade routes. GDP is calculated from your resource production and trade activity. Use the Economy & Trade page to manage your nation's economic development.
+            The Lore Team can trigger a full recalculation for all nations at any time from the Admin panel. This re-calculates every nation's resources from scratch based on their current stats. Starvation and trade route processing are also triggered manually by staff.
           </p>
         </section>
 
@@ -195,7 +336,7 @@ export const GameMechanicsPage = ({ navigate }) => {
           </p>
         </section>
 
-        {/* Economy */}
+        {/* Notifications */}
         <section style={card}>
           <h3 style={{ margin:"0 0 0.75rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:16 }}>Notifications</h3>
           <p style={{ color:"#d7e2f2", fontSize:13, lineHeight:1.8, margin:0 }}>

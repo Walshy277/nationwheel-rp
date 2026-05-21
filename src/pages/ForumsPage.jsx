@@ -5,21 +5,12 @@ import { card, mkBtn, inp, ta, timeAgo, isProfileBlocked, writeRoute } from "../
 import { BOARD_ICONS } from "../lib/forumUtils";
 import { FORUM_PAGE_SIZE } from "../lib/constants";
 import { Flag } from "../components/nation/Flag";
+import { ProfileButton } from "../components/profile/ProfileButton";
 import BBCodeToolbar from "../components/forum/BBCodeToolbar";
 import ForumIndex from "./ForumIndex";
 import { ThreadView } from "../components/forum/ThreadView";
 import { createMentionNotifications } from "../lib/notifications";
 import { useToast } from "../lib/ToastContext";
-
-const ProfileButton = ({ profile, onViewProfile, children, style = {} }) => {
-  if (!profile?.id || !onViewProfile) return <span style={style}>{children || profile?.username || "Unknown"}</span>;
-  return (
-    <button onClick={(e)=> { e.stopPropagation(); onViewProfile(profile.id); }}
-      style={{ background:"transparent", border:"none", padding:0, minHeight:0, color:"inherit", cursor:"pointer", font:"inherit", textAlign:"left", ...style }}>
-      {children || profile.username || "Unknown"}
-    </button>
-  );
-};
 
 export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, nations, isMod, onRefresh, onRequireAuth, onViewProfile }) => {
   const showStatus = useToast();

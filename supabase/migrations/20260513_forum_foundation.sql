@@ -88,12 +88,15 @@ create table if not exists moderation_logs (
 create table if not exists reports (
   id uuid primary key default gen_random_uuid(),
   reporter_id uuid references profiles(id) on delete set null,
-  target_type text not null check (target_type in ('post','thread','profile','nation')),
+  target_type text not null check (target_type in ('post','thread','profile','nation','forum_post','forum_thread','dispatch','action')),
   target_id uuid not null,
   reason text not null,
-  status text default 'open' check (status in ('open','assigned','resolved','dismissed')),
+  status text default 'open' check (status in ('open','investigating','resolved','dismissed')),
   assigned_moderator uuid references profiles(id) on delete set null,
+  resolution text,
   resolution_note text,
+  assigned_to uuid references profiles(id) on delete set null,
+  resolved_by uuid references profiles(id) on delete set null,
   created_at timestamptz default now(),
   resolved_at timestamptz
 );

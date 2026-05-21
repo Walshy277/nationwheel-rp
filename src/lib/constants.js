@@ -39,6 +39,15 @@ export const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "";
 
 export const CHANGELOG_ENTRIES = [
   {
+    date: "2026-05-21",
+    title: "Economy mechanics deep-dive and admin-only changelog",
+    items: [
+      "Game Mechanics page expanded with full economy formulas, resource calculation breakdowns, government type multipliers, economy sector tables, starvation mechanics, and trade route details.",
+      "Changelog page restricted to Admin-level access only.",
+      "Changelog entry added documenting this update.",
+    ],
+  },
+  {
     date: "2026-05-15",
     title: "Forum moderation and profile polish",
     items: [
@@ -134,7 +143,6 @@ export const CHANGELOG_ENTRIES = [
 export const REACT_EMOJIS = ["\u{1F44D}","\u2764\uFE0F","\u{1F602}","\u{1F525}","\u{1F440}","\u{1FAE1}"];
 
 // In-game calendar
-export const GAME_DAYS_PER_YEAR = 365;
 export const fmtGameDate = (day, year) => {
   if (!day || !year) return "Day 1, 4488";
   return `Day ${day}, ${year}`;

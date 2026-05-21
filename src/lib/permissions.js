@@ -51,32 +51,8 @@ export const isNationLeader = profile =>
 export const isAllianceLeader = profile =>
   hasRole(profile, ROLE_ALLIANCE_LEADER);
 
-export const isStaff = profile =>
-  isLoreTeam(profile);
-
-export const canManageRoles = profile =>
-  isAdmin(profile);
-
-export const roleKey = profileOrRole => {
-  if (!profileOrRole) return ROLE_GUEST;
-  if (typeof profileOrRole === "string") return profileOrRole.toLowerCase().trim();
-  const roles = getRoles(profileOrRole);
-  if (roles.includes(ROLE_ADMIN)) return ROLE_ADMIN;
-  if (roles.includes(ROLE_LORE_TEAM)) return ROLE_LORE_TEAM;
-  if (roles.includes(ROLE_NATION_LEADER)) return ROLE_NATION_LEADER;
-  if (roles.includes(ROLE_ALLIANCE_LEADER)) return ROLE_ALLIANCE_LEADER;
-  if (roles.includes(ROLE_USER)) return ROLE_USER;
-  return ROLE_GUEST;
-};
-
-export const canAccessStaff = profile =>
-  isLoreTeam(profile);
-
 export const canManageWars = profile =>
   isLoreTeam(profile) || isNationLeader(profile);
-
-export const canModerateBoard = profile =>
-  isLoreTeam(profile);
 
 export const canEditNationStats = profile =>
   isLoreTeam(profile);
