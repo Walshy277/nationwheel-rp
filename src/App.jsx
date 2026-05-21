@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { supabase, SUPABASE_CONFIGURED } from "./lib/supabase";
 import { isAdmin, isLoreTeam } from "./lib/permissions";
-import { parseRoute, writeRoute, mkBtn, fmtGameDate, ROLE_LABELS, ROLE_COLORS, getRoles } from "./lib/uiUtils";
+import { parseRoute, writeRoute, mkBtn, fmtGameDate, ROLE_LABELS, ROLE_COLORS, getPrimaryRole } from "./lib/uiUtils";
 import { PAGE_PATHS, LOGO_SRC } from "./lib/constants";
 import { Flag } from "./components/nation/Flag";
 import { SetupModal } from "./components/layout/SetupModal";
@@ -222,9 +222,9 @@ function AppShell() {
                 : <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(246,193,50,0.15)" }} />}
               {profile?.username || "profile"}
             </button>
-            {getRoles(profile).map(r => (
-              <span key={r} style={{ fontSize: 8, fontWeight: 700, color: ROLE_COLORS[r] || "#8fa0bd", border: `1px solid ${ROLE_COLORS[r] || "#8fa0bd"}33`, borderRadius: 3, padding: "1px 5px", letterSpacing: "0.06em" }}>{ROLE_LABELS[r]?.toUpperCase() || r?.toUpperCase()}</span>
-            ))}
+            {(() => { const r = getPrimaryRole(profile); return r !== "user" && r !== "guest" ? (
+              <span style={{ fontSize: 8, fontWeight: 700, color: ROLE_COLORS[r] || "#8fa0bd", border: `1px solid ${ROLE_COLORS[r] || "#8fa0bd"}33`, borderRadius: 3, padding: "1px 5px", letterSpacing: "0.06em" }}>{ROLE_LABELS[r]?.toUpperCase() || r?.toUpperCase()}</span>
+            ) : null; })()}
             {loreTeam && <button onClick={() => navigate("admin")} style={{ ...mkBtn("ghost"), padding: "4px 8px", fontSize: 11 }}>{isAdminRole ? "Admin" : "Lore"}</button>}
             <button onClick={signOut} style={{ ...mkBtn("ghost"), padding: "4px 8px", fontSize: 11 }}>Sign Out</button>
           </> : (

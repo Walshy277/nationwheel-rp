@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isAdmin, isLoreTeam, isStaff, canManageRoles } from "./permissions";
+import { isAdmin, isLoreTeam, isStaff, canManageRoles, getPrimaryRole } from "./permissions";
 
 describe("permissions", () => {
   it("isAdmin returns true for admin role", () => {
@@ -28,5 +28,14 @@ describe("permissions", () => {
   it("canManageRoles checks admin", () => {
     expect(canManageRoles({ roles: ["admin"] })).toBe(true);
     expect(canManageRoles({ roles: ["user"] })).toBe(false);
+  });
+
+  it("getPrimaryRole returns highest priority role", () => {
+    expect(getPrimaryRole({ roles: ["admin", "nation_leader"] })).toBe("admin");
+    expect(getPrimaryRole({ roles: ["nation_leader", "alliance_leader"] })).toBe("nation_leader");
+    expect(getPrimaryRole({ roles: ["user", "lore_team"] })).toBe("lore_team");
+    expect(getPrimaryRole({ roles: ["user"] })).toBe("user");
+    expect(getPrimaryRole(null)).toBe("guest");
+    expect(getPrimaryRole({})).toBe("guest");
   });
 });

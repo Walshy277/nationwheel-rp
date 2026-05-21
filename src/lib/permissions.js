@@ -29,6 +29,16 @@ export const getRoles = profile =>
 export const hasRole = (profile, role) =>
   getRoles(profile).includes(role);
 
+const ROLE_PRIORITY = ["admin", "lore_team", "nation_leader", "alliance_leader", "user", "guest"];
+
+export const getPrimaryRole = profile => {
+  const roles = getRoles(profile);
+  for (const r of ROLE_PRIORITY) {
+    if (roles.includes(r)) return r;
+  }
+  return "guest";
+};
+
 export const isAdmin = profile =>
   hasRole(profile, ROLE_ADMIN);
 
