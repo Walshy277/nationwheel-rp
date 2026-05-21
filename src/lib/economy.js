@@ -96,9 +96,7 @@ export function calcNationResources(nation) {
 
 export async function recalculateAllNations(nations) {
   if (!supabase) return { ok: false, error: "Supabase not configured" };
-  let updated = 0;
-  let failed = 0;
-  for (const nation of nations) {
+  const results = await Promise.all(nations.map(async (nation) => {
     try {
       const res = calcNationResources(nation);
       const { error } = await supabase
@@ -114,42 +112,40 @@ export async function recalculateAllNations(nations) {
           updated_at: new Date().toISOString(),
         }, { onConflict: "nation_id" });
       if (error) {
-        failed++;
         console.warn("Failed to update", nation.name, error.message);
-      } else updated++;
+        return { ok: false };
+      }
+      return { ok: true };
     } catch (e) {
-      failed++;
       console.warn("Error recalculating", nation.name, e);
+      return { ok: false };
     }
-  }
+  }));
+  const updated = results.filter(r => r.ok).length;
+  const failed = results.filter(r => !r.ok).length;
   return { ok: true, updated, failed };
 }
 
 export async function processAllStarvation(nations) {
   if (!supabase) return { ok: false, error: "Supabase not configured" };
   const starving = [];
-  for (const nation of nations) {
-    if (!nation.population || nation.population <= 0) continue;
-    const res = calcNationResources(nation);
-    if (res.food <= 0) {
-      const newPop = Math.round(nation.population * 0.98);
-      const newHdi = Math.max(0, Math.round(((nation.hdi || 0.5) - 0.1) * 100) / 100);
-      starving.push({
-        id: nation.id,
-        name: nation.name,
-        oldPop: nation.population,
-        newPop,
-        popLost: nation.population - newPop,
-        oldHdi: nation.hdi || 0.5,
-        newHdi,
-      });
-      const { error } = await supabase
-        .from("nations")
-        .update({ population: newPop, hdi: newHdi })
-        .eq("id", nation.id);
-      if (error) console.warn("Failed to update starvation for", nation.name, error.message);
-    }
-  }
+  const updates = nations
+    .filter(n => n.population && n.population > 0)
+    .map(async (nation) => {
+      const res = calcNationResources(nation);
+      if (res.food <= 0) {
+        const newPop = Math.round(nation.population * 0.98);
+        const newHdi = Math.max(0, Math.round(((nation.hdi || 0.5) - 0.1) * 100) / 100);
+        starving.push({
+          id: nation.id, name: nation.name, oldPop: nation.population, newPop,
+          popLost: nation.population - newPop, oldHdi: nation.hdi || 0.5, newHdi,
+        });
+        const { error } = await supabase.from("nations")
+          .update({ population: newPop, hdi: newHdi }).eq("id", nation.id);
+        if (error) console.warn("Failed to update starvation for", nation.name, error.message);
+      }
+    });
+  await Promise.all(updates);
   if (starving.length > 0) {
     const { data: freshNations } = await supabase.from("nations").select("*");
     const result = await recalculateAllNations(freshNations || nations);

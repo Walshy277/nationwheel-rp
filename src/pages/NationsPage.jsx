@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NationProfile } from "./NationProfile";
-import { card, inp, fmtPop, fmtGDP, mkBtn } from "../lib/uiUtils";
+import { card, inp, fmtPop, fmtGDP } from "../lib/uiUtils";
 import { Flag } from "../components/nation/Flag";
 
 export const NationsPage = ({ nations, posts, actions, wars, alliances, allianceMembers, profile, userNation, isMod, isAdmin, onRefresh }) => {

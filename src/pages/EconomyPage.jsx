@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { card, mkBtn, inp, timeAgo } from "../lib/uiUtils";
-import { NationPill } from "../components/nation/NationPill";
 
 const RESOURCE_ICONS = {
   food: "Food",

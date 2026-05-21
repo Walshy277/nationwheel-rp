@@ -1,5 +1,3 @@
-import { BOARD_ICONS } from "./forumUtils";
-
 export const ACTION_SIZES = {
   small:  { days: 1,  label: "Small",  color: "#4caf50" },
   medium: { days: 3,  label: "Medium", color: "#f39c12" },
@@ -36,7 +34,7 @@ export const PAGE_PATHS = {
 export const FORUM_PAGE_SIZE = 25;
 
 export const LOGO_SRC = "/nationwheel_logo.jpg";
-export const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "0x4AAAAAADPbfZKKuhz6dC9R";
+export const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || "";
 
 
 export const CHANGELOG_ENTRIES = [

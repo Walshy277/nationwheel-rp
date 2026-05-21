@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { card, mkBtn, inp, ta, timeAgo, fmtDate, isMissingOptionalProfileSchema, ROLE_LABELS, ROLE_COLORS, getRoles } from "../lib/uiUtils";
+import { card, mkBtn, inp, ta, timeAgo, isMissingOptionalProfileSchema, ROLE_LABELS, ROLE_COLORS, getRoles } from "../lib/uiUtils";
 import { NationPill } from "../components/nation/NationPill";
 import { CommunityUsers } from "../components/profile/CommunityUsers";
 import { ProfileMediaUploader } from "../components/profile/ProfileMediaUploader";

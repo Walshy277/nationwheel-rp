@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { card, mkBtn, inp, timeAgo } from "../lib/uiUtils";
+import { card, mkBtn, timeAgo } from "../lib/uiUtils";
 
 export const SettingsPage = ({ profile, onProfileUpdate }) => {
   const [settings, setSettings] = useState(null);

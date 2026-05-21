@@ -27,7 +27,7 @@ export default [
     rules: {
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
-      "no-unused-vars": "off",
+      "no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
     },
   },

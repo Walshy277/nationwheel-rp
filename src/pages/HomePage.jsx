@@ -1,4 +1,4 @@
-import { card, mkBtn, timeAgo, fmtGDP, fmtPop, fmtLand, NEWS_COL, ACTION_SIZES } from "../lib/uiUtils";
+import { card, timeAgo, fmtGDP, NEWS_COL, ACTION_SIZES } from "../lib/uiUtils";
 import { Flag } from "../components/nation/Flag";
 
 const Section = ({ title, children, empty }) => (

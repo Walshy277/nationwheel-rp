@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { card, mkBtn, inp, ta, timeAgo, fmtGDP, fmtPop, fmtLand } from "../lib/uiUtils";
+import { card, mkBtn, inp, ta, fmtGDP, fmtPop, fmtLand } from "../lib/uiUtils";
 import { RichText } from "../lib/richText";
 import { Flag } from "../components/nation/Flag";
 import { NationPill } from "../components/nation/NationPill";

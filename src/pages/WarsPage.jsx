@@ -1,80 +1,44 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "../lib/supabase";
-import { card, mkBtn, inp, ta, timeAgo, isNationLeader, isAllianceLeader } from "../lib/uiUtils";
+import { card, mkBtn, inp, ta, isNationLeader } from "../lib/uiUtils";
 import { AllianceFlag } from "../components/alliance/AllianceFlag";
 import { AllianceFlagUploader } from "../components/alliance/AllianceFlagUploader";
 import { NationPill } from "../components/nation/NationPill";
 import { WarCard } from "../components/war/WarCard";
+import { AllianceBoards } from "../components/alliance/AllianceBoards";
+import { DiplomaticInbox } from "../components/alliance/DiplomaticInbox";
 import { notifyWarDeclare, createMentionNotifications } from "../lib/notifications";
+import { useToast } from "../lib/ToastContext";
 
-const WAR_TABS = { wars:"Wars", alliances:"Alliances" };
+export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, profiles, profile, userNation, isMod, onRefresh, onViewAlliance, mode }) => {
+  const [tab, setTab] = useState(mode === "alliances" ? "alliances" : mode === "wars" ? "wars" : "wars");
+  const showStatus = useToast();
 
-export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, profiles, profile, userNation, isMod, onRefresh, onViewAlliance, initialTab, mode }) => {
-  const [tab, setTab] = useState(initialTab || (mode === "alliances" ? "alliances" : "wars"));
-  const [statusMsg, setStatusMsg] = useState(null);
-  const showStatus = (msg, type="info") => { setStatusMsg({ msg, type }); setTimeout(()=>setStatusMsg(null), 4000); };
-  const lockedTab = mode === "alliances" ? "alliances" : mode === "wars" ? "wars" : null;
-
-  // War form
   const [showWarForm, setShowWarForm] = useState(false);
   const [wf, setWf] = useState({ target_type:"nation", target_id:"", name:"", casus_belli:"", objective:"", casualties:"", result:"" });
-
-  // Alliance form
   const [showAllyForm, setShowAllyForm] = useState(false);
   const [af, setAf] = useState({ name:"", description:"", type:"alliance" });
   const [allySubmitting, setAllySubmitting] = useState(false);
-
-  // Alliance info helpers
-  const myAllyIds = allianceMembers.filter(m=>m.nation_id===userNation?.id).map(m=>m.alliance_id);
-  const myAlliances = alliances.filter(a=>myAllyIds.includes(a.id));
-  const isLeader = profile && isNationLeader(profile);
-
-  // Alliance boards
-  const [allyBoards, setAllyBoards] = useState([]);
-  const [selectedBoard, setSelectedBoard] = useState(null);
-  const [boardPosts, setBoardPosts] = useState([]);
-  const [boardLoading, setBoardLoading] = useState(false);
-  const [newPost, setNewPost] = useState("");
-  const [showNewBoard, setShowNewBoard] = useState(false);
-  const [newBoardName, setNewBoardName] = useState("");
-  const [newBoardAllianceId, setNewBoardAllianceId] = useState("");
-
-  // Alliance requests
-  const [allyRequests, setAllyRequests] = useState([]);
   const [showRequests, setShowRequests] = useState(false);
-
-  // DM inbox
-  const [dms, setDms] = useState([]);
-  const [dmLoading, setDmLoading] = useState(false);
-  const [unreadDms, setUnreadDms] = useState(0);
-  const [showCompose, setShowCompose] = useState(false);
-  const [composeTo, setComposeTo] = useState("");
-  const [composeSubject, setComposeSubject] = useState("");
-  const [composeBody, setComposeBody] = useState("");
-
-  // Assign leader
+  const [allyRequests, setAllyRequests] = useState([]);
   const [assignLeaderFor, setAssignLeaderFor] = useState(null);
   const [assignLeaderId, setAssignLeaderId] = useState("");
 
-  // === Loaders ===
-  useEffect(() => {
-    if (tab !== "board" || !userNation) return;
-    setBoardLoading(true);
-    const ids = allianceMembers.filter(m=>m.nation_id===userNation.id).map(m=>m.alliance_id);
-    if (!ids.length) { setBoardLoading(false); return; }
-    supabase.from("alliance_boards").select("*, alliances:alliance_id(name)").in("alliance_id",ids).order("created_at",{ascending:false}).then(({data})=>{setAllyBoards(data||[]);setBoardLoading(false);});
-  }, [tab, userNation?.id, allianceMembers]); // eslint-disable-line react-hooks/exhaustive-deps
+  const myAllyIds = allianceMembers.filter(m=>m.nation_id===userNation?.id).map(m=>m.alliance_id);
+  const isLeader = profile && isNationLeader(profile);
 
-  useEffect(() => {
-    if (tab !== "inbox" || !profile) return;
-    setDmLoading(true);
-    supabase.from("direct_messages").select("*").or(`from_id.eq.${profile.id},to_id.eq.${profile.id}`).order("created_at",{ascending:false}).limit(50).then(({data})=>{
-      if (data) { setDms(data); setUnreadDms(data.filter(d=>d.to_id===profile.id&&!d.read).length); }
-      setDmLoading(false);
-    });
-  }, [tab, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const getTabs = () => {
+    if (mode === "alliances") {
+      const items = [["alliances","Alliances"]];
+      if (isLeader && myAllyIds.length) items.push(["board","Boards"], ["inbox","Inbox"]);
+      return items;
+    }
+    if (mode === "wars") return [["wars","Wars"]];
+    const items = [["wars","Wars"], ["alliances","Alliances"]];
+    if (isLeader) items.push(["board","Boards"], ["inbox","Inbox"]);
+    return items;
+  };
 
-  // === Actions ===
   const submitWar = async () => {
     if (!wf.target_id || !userNation) return showStatus("Select a target", "error");
     const legacyDefender = wf.target_type === "nation" ? wf.target_id : null;
@@ -97,7 +61,7 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
     notifyWarDeclare({ war:data, aggressorNationName:userNation.name, allProfiles:profiles||[] });
     createMentionNotifications({ body:wf.casus_belli, sourceTitle:data.name||`War: ${userNation.name}`, sourceLink:"/wars", sourceType:"war" });
     setWf({target_type:"nation",target_id:"",name:"",casus_belli:"",objective:"",casualties:"",result:""});
-    setShowWarForm(false); showStatus("War declared"); onRefresh();
+    setShowWarForm(false); showStatus("War declared", "success"); onRefresh();
   };
 
   const submitAlly = async () => {
@@ -110,26 +74,25 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
       }).select().single();
       if (error) { showStatus(error.message, "error"); setAllySubmitting(false); return; }
       if (data && userNation) {
-        const { error: memErr } = await supabase.from("alliance_members").insert({
+        await supabase.from("alliance_members").insert({
           alliance_id:data.id, nation_id:userNation.id, role:"leader",
         });
-        if (memErr) { showStatus(memErr.message, "error"); setAllySubmitting(false); return; }
       }
       setAf({name:"",description:"",type:"alliance"}); setShowAllyForm(false);
-      showStatus(`Alliance "${af.name}" formed!`); onRefresh();
+      showStatus(`Alliance "${af.name}" formed!`, "success"); onRefresh();
     } catch (e) { showStatus(e.message, "error"); }
     setAllySubmitting(false);
   };
 
   const requestJoin = async (a) => {
     const { error } = await supabase.from("alliance_requests").insert({alliance_id:a.id, nation_id:userNation.id});
-    if (error) showStatus(error.message, "error"); else showStatus("Join request sent");
+    if (error) showStatus(error.message, "error"); else showStatus("Join request sent", "success");
   };
 
   const leaveAlliance = async (a) => {
     if (!confirm(`Leave ${a.name}?`)) return;
     const { error } = await supabase.from("alliance_members").delete().eq("alliance_id",a.id).eq("nation_id",userNation.id);
-    if (error) showStatus(error.message, "error"); else { showStatus(`Left ${a.name}`); onRefresh(); }
+    if (error) showStatus(error.message, "error"); else { showStatus(`Left ${a.name}`, "success"); onRefresh(); }
   };
 
   const editAlliance = async (a) => {
@@ -143,18 +106,13 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
   const deleteAlliance = async (a) => {
     if (!confirm(`Delete ${a.name}?`)) return;
     const { error } = await supabase.from("alliances").delete().eq("id",a.id);
-    if (error) showStatus(error.message, "error"); else { showStatus("Alliance deleted"); onRefresh(); }
+    if (error) showStatus(error.message, "error"); else { showStatus("Alliance deleted", "success"); onRefresh(); }
   };
 
-  const approveRequest = async (r) => {
-    await supabase.from("alliance_members").insert({alliance_id:r.alliance_id, nation_id:r.nation_id, role:"member"});
-    await supabase.from("alliance_requests").update({status:"approved"}).eq("id",r.id);
-    loadRequests(); onRefresh();
-  };
-  const rejectRequest = async (r) => {
-    await supabase.from("alliance_requests").update({status:"rejected"}).eq("id",r.id);
-    loadRequests();
-  };
+  const getMembers = (a) => allianceMembers.filter(m=>m.alliance_id===a.id).map(m=>({...m, nation:nations.find(n=>n.id===m.nation_id)})).filter(m=>m.nation);
+  const getLeaders = (a) => getMembers(a).filter(m=>m.role==="leader");
+  const isMember = (a) => getMembers(a).some(m=>m.nation_id===userNation?.id);
+  const isAllyLeader = (a) => getLeaders(a).some(m=>m.nation_id===userNation?.id);
 
   const loadRequests = async () => {
     const ids = allianceMembers.filter(m=>m.nation_id===userNation?.id&&m.role==="leader").map(m=>m.alliance_id);
@@ -163,58 +121,19 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
     setAllyRequests(data||[]);
   };
 
-  const loadBoardPosts = async (boardId) => {
-    setSelectedBoard(boardId);
-    setBoardPosts([]);
-    const { data } = await supabase.from("alliance_board_posts").select("*").eq("board_id",boardId).order("created_at",{ascending:true});
-    setBoardPosts(data||[]);
+  const approveRequest = async (r) => {
+    await supabase.from("alliance_members").insert({alliance_id:r.alliance_id, nation_id:r.nation_id, role:"member"});
+    await supabase.from("alliance_requests").update({status:"approved"}).eq("id",r.id);
+    loadRequests(); onRefresh();
   };
 
-  const postToBoard = async () => {
-    if (!newPost.trim() || !selectedBoard) return;
-    const { error } = await supabase.from("alliance_board_posts").insert({board_id:selectedBoard, author_id:profile.id, body:newPost});
-    if (error) showStatus(error.message, "error"); else { setNewPost(""); loadBoardPosts(selectedBoard); }
+  const rejectRequest = async (r) => {
+    await supabase.from("alliance_requests").update({status:"rejected"}).eq("id",r.id);
+    loadRequests();
   };
 
-  const createBoard = async () => {
-    if (!newBoardName.trim() || !newBoardAllianceId) return;
-    const { error } = await supabase.from("alliance_boards").insert({alliance_id:newBoardAllianceId, title:newBoardName});
-    if (error) showStatus(error.message, "error"); else { setShowNewBoard(false); setNewBoardName(""); setNewBoardAllianceId(""); loadAllyBoards(); }
-  };
+  const tabs = getTabs();
 
-  const loadAllyBoards = async () => {
-    const ids = allianceMembers.filter(m=>m.nation_id===userNation?.id).map(m=>m.alliance_id);
-    if (!ids.length) return;
-    const { data } = await supabase.from("alliance_boards").select("*, alliances:alliance_id(name)").in("alliance_id",ids).order("created_at",{ascending:false});
-    setAllyBoards(data||[]);
-  };
-
-  const sendDm = async () => {
-    if (!composeTo.trim()||!composeSubject.trim()) return;
-    const { error } = await supabase.from("direct_messages").insert({from_id:profile.id, to_id:composeTo, subject:composeSubject, body:composeBody||null});
-    if (error) showStatus(error.message, "error"); else { setShowCompose(false); setComposeTo(""); setComposeSubject(""); setComposeBody(""); showStatus("Message sent"); }
-  };
-
-  // === Alliance helpers ===
-  const getMembers = (a) => allianceMembers.filter(m=>m.alliance_id===a.id).map(m=>({...m, nation:nations.find(n=>n.id===m.nation_id)})).filter(m=>m.nation);
-  const getLeaders = (a) => getMembers(a).filter(m=>m.role==="leader");
-  const isMember = (a) => getMembers(a).some(m=>m.nation_id===userNation?.id);
-  const isAllyLeader = (a) => getLeaders(a).some(m=>m.nation_id===userNation?.id);
-
-  // === Nav items ===
-  const getTabs = () => {
-    if (mode === "alliances") {
-      const items = [["alliances","Alliances"]];
-      if (isLeader && myAllyIds.length) items.push(["board","Boards"], ["inbox",`Inbox${unreadDms?` (${unreadDms})`:""}`]);
-      return items;
-    }
-    if (mode === "wars") return [["wars","Wars"]];
-    const items = [["wars","Wars"], ["alliances","Alliances"]];
-    if (isLeader) items.push(["board","Boards"], ["inbox",`Inbox${unreadDms?` (${unreadDms})`:""}`]);
-    return items;
-  };
-
-  // ==== RENDER ====
   return (
     <div>
       <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap" }}>
@@ -232,16 +151,14 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
         )}
       </div>
 
-      {statusMsg && <div style={{ padding:"0.6rem 1rem", marginBottom:"0.75rem", borderRadius:6, background:statusMsg.type==="error"?"rgba(231,76,60,0.12)":"rgba(46,204,113,0.12)", border:`1px solid ${statusMsg.type==="error"?"rgba(231,76,60,0.3)":"rgba(46,204,113,0.3)"}`, color:statusMsg.type==="error"?"#e74c3c":"#2ecc71", fontSize:12 }}>{statusMsg.msg}</div>}
+      {tabs.length > 1 && (
+        <div style={{ display:"flex", gap:"0.4rem", marginBottom:"1rem", flexWrap:"wrap" }}>
+          {tabs.map(([t,l])=>(
+            <button key={t} onClick={()=>{setTab(t);}} style={{ ...mkBtn(tab===t?"gold":"ghost"), fontSize:12 }}>{l}</button>
+          ))}
+        </div>
+      )}
 
-      {/* Tabs */}
-      <div style={{ display:"flex", gap:"0.4rem", marginBottom:"1rem", flexWrap:"wrap" }}>
-        {getTabs().map(([t,l])=>(
-          <button key={t} onClick={()=>{setTab(t);if(t==="board")loadAllyBoards();if(t==="inbox")setDmLoading(true);}} style={{ ...mkBtn(tab===t?"gold":"ghost"), fontSize:12 }}>{l}</button>
-        ))}
-      </div>
-
-      {/* ===== WARS TAB ===== */}
       {tab==="wars" && (
         <div>
           {showWarForm && (
@@ -287,7 +204,6 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
         </div>
       )}
 
-      {/* ===== ALLIANCES TAB ===== */}
       {tab==="alliances" && (
         <div>
           {showAllyForm && (
@@ -346,10 +262,7 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
                         <>
                           <button onClick={()=>editAlliance(a)} style={{ ...mkBtn("ghost"), fontSize:11, padding:"5px 10px" }}>Edit</button>
                           <button onClick={()=>deleteAlliance(a)} style={{ ...mkBtn("red"), fontSize:11, padding:"5px 10px" }}>Delete</button>
-                          <button onClick={async()=>{
-                            await loadRequests();
-                            setShowRequests(true);
-                          }} style={{ ...mkBtn("ghost"), fontSize:11, padding:"5px 10px" }}>
+                          <button onClick={async()=>{ await loadRequests(); setShowRequests(true); }} style={{ ...mkBtn("ghost"), fontSize:11, padding:"5px 10px" }}>
                             Requests{allyRequests.filter(r=>r.alliance_id===a.id).length ? ` (${allyRequests.filter(r=>r.alliance_id===a.id).length})` : ""}
                           </button>
                           {assignLeaderFor===a.id ? (
@@ -361,13 +274,7 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
                                   return p?<option key={m.nation_id} value={p.id}>{m.nation?.name}</option>:null;
                                 })}
                               </select>
-                              <button onClick={async()=>{
-                                if(!assignLeaderId)return;
-                                const p = profiles?.find(p=>p.id===assignLeaderId);
-                                if(!p)return;
-                                await supabase.from("alliance_members").update({role:"leader"}).eq("alliance_id",a.id).eq("nation_id",p.nation_id);
-                                setAssignLeaderFor(null); setAssignLeaderId(""); onRefresh();
-                              }} style={{ ...mkBtn(), fontSize:10, padding:"3px 8px", minHeight:26 }}>Assign</button>
+                              <button onClick={async()=>{ if(!assignLeaderId)return; const p = profiles?.find(p=>p.id===assignLeaderId); if(!p)return; await supabase.from("alliance_members").update({role:"leader"}).eq("alliance_id",a.id).eq("nation_id",p.nation_id); setAssignLeaderFor(null); setAssignLeaderId(""); onRefresh(); }} style={{ ...mkBtn(), fontSize:10, padding:"3px 8px", minHeight:26 }}>Assign</button>
                               <button onClick={()=>{setAssignLeaderFor(null);setAssignLeaderId("");}} style={{ ...mkBtn("red"), fontSize:10, padding:"3px 8px", minHeight:26 }}>×</button>
                             </span>
                           ) : (
@@ -390,7 +297,6 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
         </div>
       )}
 
-      {/* ===== REQUESTS MODAL ===== */}
       {showRequests && (
         <div style={{ position:"fixed", inset:0, zIndex:5000, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center", padding:"1rem" }} onClick={()=>setShowRequests(false)}>
           <div style={{ ...card, maxWidth:500, width:"100%", maxHeight:"80vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
@@ -418,119 +324,12 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
         </div>
       )}
 
-      {/* ===== BOARDS TAB ===== */}
       {tab==="board" && (
-        <div>
-          <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", marginBottom:"1rem", flexWrap:"wrap" }}>
-            <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:15, flex:1 }}>{selectedBoard?"Board Posts":"Alliance Boards"}</h3>
-            {selectedBoard ? (
-              <button onClick={()=>setSelectedBoard(null)} style={{ ...mkBtn("ghost"), fontSize:11 }}>Back</button>
-            ) : (
-              <button onClick={()=>setShowNewBoard(!showNewBoard)} style={{ ...mkBtn(), fontSize:11 }}>{showNewBoard?"Cancel":"New Board"}</button>
-            )}
-          </div>
-          {showNewBoard && !selectedBoard && (
-            <div style={{ ...card, marginBottom:"1rem" }}>
-              <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
-                <select value={newBoardAllianceId} onChange={e=>setNewBoardAllianceId(e.target.value)} style={{ ...inp, width:"auto", flex:1 }}>
-                  <option value="">Select alliance...</option>
-                  {myAlliances.filter(a=>isAllyLeader(a)).map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
-                <input placeholder="Board title" value={newBoardName} onChange={e=>setNewBoardName(e.target.value)} style={{ ...inp, flex:1 }} />
-                <button onClick={createBoard} style={mkBtn()}>Create</button>
-              </div>
-            </div>
-          )}
-          {!selectedBoard && (
-            <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
-              {boardLoading ? (
-                <div style={{ ...card, textAlign:"center", padding:"2rem", color:"#8493ad" }}>Loading boards...</div>
-              ) : allyBoards.length===0 ? (
-                <div style={{ ...card, textAlign:"center", padding:"2rem" }}>
-                  <div style={{ color:"#8493ad", fontStyle:"italic", fontSize:13 }}>No discussion boards for your alliances.</div>
-                </div>
-              ) : allyBoards.map(b=>(
-                <div key={b.id} style={{ ...card, cursor:"pointer", padding:"0.85rem" }} onClick={()=>loadBoardPosts(b.id)}>
-                  <div style={{ fontSize:13, color:"#edf4ff", fontWeight:700 }}>{b.title}</div>
-                  <div style={{ fontSize:11, color:"#8fa0bd" }}>{b.alliances?.name||"?"}</div>
-                </div>
-              ))}
-            </div>
-          )}
-          {selectedBoard && (
-            <div style={{ display:"flex", flexDirection:"column", gap:"0.6rem" }}>
-              {boardPosts.length===0 && <div style={{ ...card, textAlign:"center", padding:"1.5rem", color:"#8493ad", fontStyle:"italic", fontSize:13 }}>No posts yet.</div>}
-              {boardPosts.map(p=>{
-                const author = profiles?.find(pr=>pr.id===p.author_id);
-                return (
-                  <div key={p.id} style={card}>
-                    <div style={{ fontSize:11, color:"#8fa0bd", marginBottom:"0.35rem" }}>{author?.username||"?"} · {timeAgo(p.created_at)}</div>
-                    <div className="rich-post">{p.body}</div>
-                  </div>
-                );
-              })}
-              <div style={{ display:"flex", gap:"0.5rem" }}>
-                <textarea value={newPost} onChange={e=>setNewPost(e.target.value)} placeholder="Write a post..." style={{ ...ta, flex:1, minHeight:60 }} />
-                <button onClick={postToBoard} style={{ ...mkBtn(), alignSelf:"flex-end" }}>Post</button>
-              </div>
-            </div>
-          )}
-        </div>
+        <AllianceBoards allianceMembers={allianceMembers} userNation={userNation} profile={profile} alliances={alliances} showStatus={showStatus} />
       )}
 
-      {/* ===== INBOX TAB ===== */}
       {tab==="inbox" && (
-        <div>
-          <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", marginBottom:"1rem", flexWrap:"wrap" }}>
-            <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:15, flex:1 }}>Diplomatic Inbox</h3>
-            <button onClick={()=>setShowCompose(!showCompose)} style={{ ...mkBtn(), fontSize:11 }}>{showCompose?"Cancel":"Compose"}</button>
-          </div>
-          {showCompose && (
-            <div style={{ ...card, marginBottom:"1rem" }}>
-              <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
-                <select value={composeTo} onChange={e=>setComposeTo(e.target.value)} style={inp}>
-                  <option value="">Select recipient (nation leader)...</option>
-                  {nations.filter(n=>n.id!==userNation?.id).map(n=>{
-                    const lp = profiles?.find(p=>p.nation_id===n.id);
-                    return lp?<option key={n.id} value={lp.id}>{n.name} ({lp.username})</option>:null;
-                  })}
-                </select>
-                <input placeholder="Subject" value={composeSubject} onChange={e=>setComposeSubject(e.target.value)} style={inp} />
-                <textarea placeholder="Message" value={composeBody} onChange={e=>setComposeBody(e.target.value)} style={{ ...ta, minHeight:80 }} />
-                <button onClick={sendDm} style={mkBtn()}>Send Message</button>
-              </div>
-            </div>
-          )}
-          {dmLoading ? (
-            <div style={{ ...card, textAlign:"center", padding:"2rem", color:"#8493ad" }}>Loading messages...</div>
-          ) : dms.length===0 ? (
-            <div style={{ ...card, textAlign:"center", padding:"2rem" }}>
-              <div style={{ color:"#8493ad", fontStyle:"italic", fontSize:13 }}>No messages yet.</div>
-            </div>
-          ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
-              {dms.map(dm=>{
-                const from = profiles?.find(p=>p.id===dm.from_id);
-                const to = profiles?.find(p=>p.id===dm.to_id);
-                const isIncoming = dm.to_id===profile?.id;
-                return (
-                  <div key={dm.id} style={{ ...card, opacity:isIncoming&&!dm.read?1:0.7 }}>
-                    <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", marginBottom:"0.3rem" }}>
-                      <span style={{ fontSize:11, color:"#8fa0bd" }}>{isIncoming?"From":"To"} <strong style={{ color:"#edf4ff" }}>{isIncoming?from?.username:to?.username}</strong></span>
-                      {isIncoming && !dm.read && <span style={{ fontSize:9, fontWeight:700, color:"#f6c132", background:"rgba(246,193,50,0.12)", borderRadius:3, padding:"1px 5px" }}>NEW</span>}
-                      <span style={{ fontSize:10, color:"#8fa0bd", marginLeft:"auto" }}>{timeAgo(dm.created_at)}</span>
-                    </div>
-                    <div style={{ fontWeight:700, fontSize:12, color:"#edf4ff", marginBottom:"0.25rem" }}>{dm.subject}</div>
-                    {dm.body && <div style={{ fontSize:12, color:"#b8c4d8", lineHeight:1.6 }}>{dm.body}</div>}
-                    {isIncoming && !dm.read && (
-                      <button onClick={async()=>{await supabase.from("direct_messages").update({read:true}).eq("id",dm.id); setDms(dms.map(d=>d.id===dm.id?{...d,read:true}:d));}} style={{ ...mkBtn("ghost"), fontSize:10, padding:"3px 8px", marginTop:"0.4rem" }}>Mark Read</button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <DiplomaticInbox profile={profile} nations={nations} showStatus={showStatus} />
       )}
     </div>
   );
