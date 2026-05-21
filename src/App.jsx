@@ -168,11 +168,7 @@ export default function App() {
       {id:"news",label:"News"},
       {id:"wars",label:"Wars"},
       {id:"alliances",label:"Alliances"},
-    ]},
-    { type:"dropdown", label:"More", items:[
-      {id:"mechanics",label:"Mechanics"},
-      {id:"leaderboards",label:"Leaderboards"},
-      {id:"changelog",label:"Changelog"},
+      {id:"nations",label:"Nations"},
     ]},
     ...(user ? [
       { type:"dropdown", label:"World", items:[
@@ -183,6 +179,12 @@ export default function App() {
         {id:"assembly",label:"Assembly"},
       ]},
     ] : []),
+    { type:"dropdown", label:"More", items:[
+      {id:"mechanics",label:"Mechanics"},
+      {id:"leaderboards",label:"Leaderboards"},
+      {id:"changelog",label:"Changelog"},
+      ...(user ? [{id:"settings",label:"Settings"}] : []),
+    ]},
   ];
 
   const navigate = (id) => {

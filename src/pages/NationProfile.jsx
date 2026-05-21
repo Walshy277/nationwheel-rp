@@ -40,7 +40,6 @@ export const NationProfile = ({ nation, posts, actions, wars, alliances, allianc
   const nAlliances = alliances.filter(a => nAllyIds.includes(a.id));
   const isOwner = profile?.nation_id === nation.id;
   const isNationOwner = isOwner && isNationLeader(profile);
-  const ownerProfile = nation.owner_id ? (Array.isArray(nation.owner) ? nation.owner : nation.profiles || nation.owner) : null;
 
   useEffect(() => {
     setEditingProfile(false);

@@ -15,6 +15,16 @@ export const LeaderboardsPage = ({ nations }) => {
   const sorted = [...nations].filter(n=>n[m.key]!=null&&n[m.key]!==0).sort((a,b)=>(b[m.key]||0)-(a[m.key]||0));
   const max = sorted[0]?.[m.key]||1;
 
+  if (!nations || nations.length === 0) return (
+    <div>
+      <h2 style={{ margin:"0 0 1.25rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:20 }}>Leaderboards</h2>
+      <div style={{ ...card, textAlign:"center", padding:"2.5rem", color:"#8493ad" }}>
+        <div style={{ fontFamily:"var(--display)", fontSize:16, color:"#edf4ff", marginBottom:"0.35rem" }}>No nations yet.</div>
+        <p style={{ margin:0, fontSize:13 }}>Leaderboards will populate once nations are created.</p>
+      </div>
+    </div>
+  );
+
   return (
     <div>
       <h2 style={{ margin:"0 0 1.25rem", fontFamily:"var(--display)", color:"#d4af37", fontSize:20 }}>Leaderboards</h2>

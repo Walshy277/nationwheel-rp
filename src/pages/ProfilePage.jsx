@@ -54,7 +54,7 @@ export const ProfilePage = ({ profile, profiles, userNation, onProfileUpdate, on
     if (!confirm("Remove your forum signature image?")) return;
     const { error } = await supabase.from("profiles").update({ signature_url: null }).eq("id", profile.id).select("*").single();
     if (error) alert(error.message);
-    else onProfileUpdate(error ? null : { ...profile, signature_url: null });
+    else onProfileUpdate({ ...profile, signature_url: null });
   };
 
   return (
