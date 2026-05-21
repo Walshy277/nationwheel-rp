@@ -4,6 +4,7 @@ import { card, mkBtn, inp, ta, slugify, timeAgo, fmtDate, ROLE_LABELS, ROLE_COLO
 import { CHANGELOG_ENTRIES } from "../lib/constants";
 
 import { Flag } from "../components/nation/Flag";
+import { recalculateAllNations, processAllStarvation } from "../lib/economy";
 
 const REPORT_TYPES = ["forum_post","forum_thread","profile","dispatch","action","nation"];
 const REPORT_COLORS = { open:"#e74c3c", investigating:"#f39c12", resolved:"#2ecc71", dismissed:"#8fa0bd" };
@@ -31,6 +32,9 @@ export const AdminPanel = ({ nations, profiles, profile, onRefresh, isAdmin }) =
   const [moderationReason, setModerationReason] = useState("");
   const [reports, setReports] = useState([]);
   const [reportsLoading, setReportsLoading] = useState(false);
+  const [ecoStatus, setEcoStatus] = useState(null);
+  const [starvingNations, setStarvingNations] = useState(null);
+  const [ecoLoading, setEcoLoading] = useState(false);
   const selectedUser = profiles.find(p => p.id === userStatusId);
 
   const submitNation = async () => {
@@ -56,7 +60,7 @@ export const AdminPanel = ({ nations, profiles, profile, onRefresh, isAdmin }) =
   };
 
   const fields = [["name","Nation Name *"],["government","Government"],["ideology","Ideology"],["population","Population"],["gdp_usd","GDP (USD number)"],["land_km2","Land km2"],["army_rank","Army Rank 0-11"],["hdi","HDI 0.00-1.00"],["economy","Economy Sectors"],["diplomatic_status","Diplomatic Status"],["bloc","Bloc / Alliance"]];
-  const tabs = [["add",editId?"Edit Nation":"Add Nation"],["assign","Assign Nations"],["reports",`Reports (${reports.filter(r=>r.status==="open"||r.status==="investigating").length||""})`],...(isAdmin ? [["users","Users"],["roles","Manage Roles"],["code","Site Code"],["changes","Changelog"]] : []),["list","Nation List"]];
+  const tabs = [["add",editId?"Edit Nation":"Add Nation"],["assign","Assign Nations"],["reports",`Reports (${reports.filter(r=>r.status==="open"||r.status==="investigating").length||""})`],["economy","Economy"],...(isAdmin ? [["users","Users"],["roles","Manage Roles"],["code","Site Code"],["changes","Changelog"]] : []),["list","Nation List"]];
   const codeEntries = codeFiles ? Object.entries(codeFiles).sort(([a],[b])=>a.localeCompare(b)) : [];
   const selectedCode = codeFiles ? (codeFiles[selectedCodeFile] || "") : "";
   const setUserModeration = async (status) => {
@@ -345,6 +349,65 @@ export const AdminPanel = ({ nations, profiles, profile, onRefresh, isAdmin }) =
               <div style={{ color:"#8fa0bd", fontSize:11 }}>{fmtDate(entry.date)}</div>
             </div>
           ))}
+        </div>
+      )}
+
+      {tab==="economy" && (
+        <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
+          <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Economy Management</h3>
+          <div style={{ ...card, display:"flex", flexDirection:"column", gap:"0.6rem" }}>
+            <p style={{ margin:0, color:"#9fb4d6", fontSize:13, lineHeight:1.6 }}>
+              Recalculate resources for all nations using the v3 formula (sqrt pop/land scaling, log GDP imports).
+              Process Starvation applies one game day of famine: nations with food ≤ 0 lose 2% population and 0.1 HDI.
+            </p>
+            <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap" }}>
+              <button onClick={async()=>{
+                setEcoLoading(true); setEcoStatus(null);
+                const result = await recalculateAllNations(nations);
+                setEcoStatus({ type:"recalc", ...result });
+                setEcoLoading(false);
+              }} disabled={ecoLoading} style={{ ...mkBtn(), opacity:ecoLoading?0.6:1 }}>
+                {ecoLoading ? "Working..." : "Recalculate All"}
+              </button>
+              <button onClick={async()=>{
+                setEcoLoading(true); setEcoStatus(null);
+                setStarvingNations(null);
+                const result = await processAllStarvation(nations);
+                setStarvingNations(result.starving);
+                setEcoStatus({ type:"starve", ...result });
+                if (result.recalculated) onRefresh();
+                setEcoLoading(false);
+              }} disabled={ecoLoading} style={{ ...mkBtn("gold"), opacity:ecoLoading?0.6:1 }}>
+                {ecoLoading ? "Working..." : "Process Starvation Day"}
+              </button>
+            </div>
+            {ecoStatus && (
+              <div style={{ padding:"0.6rem", borderRadius:6, background:"rgba(255,255,255,0.03)", fontSize:12, color:"#edf4ff" }}>
+                {ecoStatus.type === "recalc"
+                  ? `Recalculated: ${ecoStatus.updated} nations updated, ${ecoStatus.failed} failed`
+                  : `Starvation: ${ecoStatus.starving?.length || 0} nations starved`}
+              </div>
+            )}
+          </div>
+          {starvingNations && starvingNations.length > 0 && (
+            <div style={card}>
+              <h4 style={{ margin:"0 0 0.6rem", fontFamily:"var(--display)", color:"#e74c3c", fontSize:13 }}>Starving Nations</h4>
+              <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
+                {starvingNations.map(s => (
+                  <div key={s.id} style={{ display:"flex", gap:"0.5rem", alignItems:"center", padding:"0.4rem 0.6rem", background:"rgba(231,76,60,0.06)", borderRadius:4, fontSize:12 }}>
+                    <span style={{ flex:1, color:"#edf4ff", fontWeight:700 }}>{s.name}</span>
+                    <span style={{ color:"#e74c3c" }}>Pop: {s.oldPop.toLocaleString()} → {s.newPop.toLocaleString()} ({-s.popLost.toLocaleString()})</span>
+                    <span style={{ color:"#e74c3c" }}>HDI: {s.oldHdi.toFixed(2)} → {s.newHdi.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {starvingNations && starvingNations.length === 0 && (
+            <div style={card}>
+              <p style={{ margin:0, color:"#2ecc71", fontSize:12 }}>No nations currently starving (all have food &gt; 0).</p>
+            </div>
+          )}
         </div>
       )}
 
