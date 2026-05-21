@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { supabase, SUPABASE_CONFIGURED } from "./lib/supabase";
 import { isAdmin, isLoreTeam, isStaff, canManageRoles } from "./lib/permissions";
 import { ensureProfile, parseRoute, writeRoute, timeAgo, card, mkBtn, inp, ta, fmtGameDate, ROLE_LABELS, ROLE_COLORS, getRoles } from "./lib/uiUtils";
@@ -320,7 +321,8 @@ export default function App() {
               {page==="economy"     && <EconomyPage nations={data.nations} profile={profile} userNation={userNation} onRefresh={fetchAll} />}
               {page==="assembly"    && <AssemblyPage nations={data.nations} profile={profile} userNation={userNation} onRefresh={fetchAll} />}
               {page==="settings"    && <SettingsPage profile={profile} onProfileUpdate={updateProfile} />}
-              {(page==="wars" || page==="alliances") && !allianceViewId && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profiles={data.profiles} profile={profile} userNation={userNation} isMod={loreTeam} onRefresh={fetchAll} onViewAlliance={setAllianceViewId} initialTab={page==="alliances"?"alliances":"wars"} />}
+              {page==="wars" && !allianceViewId && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profiles={data.profiles} profile={profile} userNation={userNation} isMod={loreTeam} onRefresh={fetchAll} onViewAlliance={setAllianceViewId} mode="wars" />}
+              {page==="alliances" && !allianceViewId && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profiles={data.profiles} profile={profile} userNation={userNation} isMod={loreTeam} onRefresh={fetchAll} onViewAlliance={setAllianceViewId} mode="alliances" />}
               {(page==="wars" || page==="alliances") && allianceViewId && <AllianceProfile
                 alliance={data.alliances.find(a=>a.id===allianceViewId)}
                 allianceMembers={data.allianceMembers}
@@ -349,7 +351,7 @@ export default function App() {
       </main>
 
       <footer className="app-footer" style={{ borderTop:"1px solid rgba(20,96,184,0.22)", padding:"1rem", textAlign:"center", fontSize:10, color:"#6f85a8", letterSpacing:"0.15em", textTransform:"uppercase" }}>
-        Nationwheel - Geopolitical Roleplay World - Season 1
+        Nationwheel - Geopolitical Roleplay World - Season 2
         {gameState && <span style={{ marginLeft:"1rem", color:"#d4af37" }}>{fmtGameDate(gameState.game_day, gameState.game_year)}</span>}
       </footer>
 
@@ -420,20 +422,34 @@ export default function App() {
         ::-webkit-scrollbar-thumb{background:rgba(246,193,50,0.28);border-radius:2px;}
         nav::-webkit-scrollbar{display:none;}
         @media (max-width: 760px) {
-          .app-header{height:auto!important;min-height:104px!important;padding:0.65rem 0.75rem 0.55rem!important;display:grid!important;grid-template-columns:1fr auto!important;grid-template-areas:"brand tools" "nav nav"!important;gap:0.55rem!important;align-items:center!important;}
-          .staff-tools{top:104px!important;}
+          .app-header{height:auto!important;min-height:auto!important;padding:0.5rem 0.6rem 0.5rem!important;display:grid!important;grid-template-columns:1fr auto!important;grid-template-areas:"brand tools" "nav nav"!important;gap:0.4rem!important;align-items:center!important;}
+          .staff-tools{top:96px!important;}
           .brand{grid-area:brand;min-width:0;}
-          .brand-logo{width:32px!important;height:32px!important;}
-          .brand-name{font-size:13px!important;letter-spacing:0.06em!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-          .user-tools{grid-area:tools;gap:0.35rem!important;max-width:48vw;overflow:hidden;justify-content:flex-end;}
+          .brand-logo{width:30px!important;height:30px!important;}
+          .brand-name{font-size:12px!important;letter-spacing:0.04em!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+          .user-tools{grid-area:tools;gap:0.3rem!important;max-width:48vw;overflow:hidden;justify-content:flex-end;}
           .user-tools > span{display:none!important;}
-          .user-tools button{padding:6px 9px!important;font-size:11px!important;min-height:34px!important;}
-          .app-nav{grid-area:nav;width:100%;gap:0.35rem!important;padding:0.05rem 0 0.15rem;overflow-x:auto!important;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;}
-          .nav-button{min-height:38px!important;padding:8px 12px!important;font-size:12px!important;border:1px solid rgba(20,96,184,0.26)!important;scroll-snap-align:start;}
-          .app-main{padding:1rem 0.75rem 1.25rem!important;max-width:none!important;}
+          .user-tools button{padding:5px 7px!important;font-size:11px!important;min-height:34px!important;}
+          .app-nav{grid-area:nav;width:100%;gap:0.3rem!important;padding:0;overflow-x:auto!important;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;flex-wrap:nowrap!important;}
+          .nav-button{min-height:36px!important;padding:6px 10px!important;font-size:11.5px!important;border:1px solid rgba(20,96,184,0.26)!important;scroll-snap-align:start;white-space:nowrap;}
+          .app-main{padding:0.75rem 0.6rem 1rem!important;max-width:none!important;}
           .app-footer{font-size:9px!important;letter-spacing:0.08em!important;padding:0.85rem 0.75rem!important;}
-          .board-card{padding:1rem!important;}
-          .board-card-row{align-items:flex-start!important;gap:0.75rem!important;}
+          .board-card{padding:0.85rem!important;}
+          .board-card-row{align-items:flex-start!important;gap:0.6rem!important;}
+          .post-card{padding:0.85rem!important;}
+          .forum-composer-card{padding:0.85rem!important;}
+          .forum-composer-textarea{min-height:180px!important;}
+          input,textarea,select{font-size:16px!important;}
+          button{min-height:44px!important;}
+          .nav-button{min-height:36px!important;}
+          .rich-post{font-size:13px!important;line-height:1.7!important;}
+          .card-grid{grid-template-columns:1fr!important;}
+          h2{font-size:18px!important;}
+          h3{font-size:15px!important;}
+          .tag-list{gap:0.3rem!important;}
+          .tag-list button,.tag-list span{padding:5px 9px!important;font-size:11px!important;}
+          .content-table{font-size:12px!important;}
+          .content-table td,.content-table th{padding:6px 8px!important;}
           .board-count{min-width:48px;}
           .forum-index-head{display:block;}
           .forum-index-head button{margin-top:0.75rem;}
@@ -470,21 +486,48 @@ export default function App() {
 
 function NavDropdown({ group, page, onNavigate }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const btnRef = useRef(null);
+  const menuRef = useRef(null);
+  const [pos, setPos] = useState({ top:0, left:0 });
+  const reposition = useCallback(() => {
+    if (!open || !btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    setPos({ top: rect.bottom + 4, left: rect.left });
+  }, [open]);
   useEffect(() => {
     if (!open) return;
-    const close = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    reposition();
+    const close = e => {
+      const inBtn = btnRef.current?.contains(e.target);
+      const inMenu = menuRef.current?.contains(e.target);
+      if (!inBtn && !inMenu) setOpen(false);
+    };
     document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [open, reposition]);
+  const menuStyle = useMemo(() => {
+    let left = pos.left, top = pos.top;
+    const menuW = 160, menuH = group.items.length * 40 + 12;
+    if (left + menuW + 8 > window.innerWidth) left = window.innerWidth - menuW - 8;
+    if (left < 8) left = 8;
+    if (top + menuH + 8 > window.innerHeight) top = window.innerHeight - menuH - 8;
+    if (top < 8) top = 8;
+    return { position:"fixed", top, left, zIndex:9999, background:"#0b1422", border:"1px solid rgba(78,128,190,0.3)", borderRadius:6, boxShadow:"0 8px 30px rgba(0,0,0,0.5)", minWidth:140, padding:"4px", maxHeight:`calc(100vh - ${top}px - 8px)`, overflowY:"auto" };
+  }, [pos, group]);
   const active = group.items.some(n => page === n.id);
   return (
-    <div ref={ref} style={{ position:"relative", display:"inline-flex" }}>
-      <button className="nav-button" onClick={()=>setOpen(!open)} style={{ background:active?"rgba(20,96,184,0.16)":"transparent", color:active?"#f6c132":"#8aa4c9", border:"none", borderRadius:5, padding:"5px 9px", cursor:"pointer", fontSize:11.5, fontWeight:active?800:600, whiteSpace:"nowrap", transition:"all 0.15s", fontFamily:"inherit" }}>
+    <div style={{ display:"inline-flex" }}>
+      <button ref={btnRef} className="nav-button" onClick={()=>setOpen(!open)} style={{ background:active?"rgba(20,96,184,0.16)":"transparent", color:active?"#f6c132":"#8aa4c9", border:"none", borderRadius:5, padding:"5px 9px", cursor:"pointer", fontSize:11.5, fontWeight:active?800:600, whiteSpace:"nowrap", transition:"all 0.15s", fontFamily:"inherit" }}>
         {group.label} <span style={{ fontSize:9, marginLeft:2 }}>{open?"▲":"▼"}</span>
       </button>
-      {open && (
-        <div style={{ position:"absolute", top:"100%", left:0, marginTop:4, background:"#0b1422", border:"1px solid rgba(78,128,190,0.3)", borderRadius:6, boxShadow:"0 8px 30px rgba(0,0,0,0.5)", zIndex:300, minWidth:140, padding:"4px" }}>
+      {open && createPortal(
+        <div ref={menuRef} style={menuStyle}>
           {group.items.map(n => (
             <button key={n.id} onClick={()=>{ setOpen(false); onNavigate(n.id); }} style={{ display:"block", width:"100%", textAlign:"left", background:page===n.id?"rgba(20,96,184,0.16)":"transparent", color:page===n.id?"#f6c132":"#8aa4c9", border:"none", borderRadius:4, padding:"7px 12px", cursor:"pointer", fontSize:12, fontWeight:page===n.id?700:500, fontFamily:"inherit", whiteSpace:"nowrap", transition:"background 0.12s" }}
               onMouseEnter={e=>e.currentTarget.style.background="rgba(78,128,190,0.12)"}
@@ -492,7 +535,8 @@ function NavDropdown({ group, page, onNavigate }) {
               {n.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

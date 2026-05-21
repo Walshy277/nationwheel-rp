@@ -7,8 +7,9 @@ import { NationPill } from "../components/nation/NationPill";
 import { WarCard } from "../components/war/WarCard";
 import { notifyWarDeclare, createMentionNotifications } from "../lib/notifications";
 
-export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, profiles, profile, userNation, isMod, onRefresh, onViewAlliance, initialTab }) => {
+export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, profiles, profile, userNation, isMod, onRefresh, onViewAlliance, initialTab, mode }) => {
   const [tab, setTab] = useState(initialTab || "wars");
+  const lockedTab = mode === "alliances" ? "alliances" : mode === "wars" ? "wars" : null;
   const [showWarForm, setShowWarForm] = useState(false);
   const [showAllyForm, setShowAllyForm] = useState(false);
   const [wf, setWf] = useState({ target_type:"nation", target_id:"", name:"", casus_belli:"", objective:"", casualties:"", result:"" });
@@ -136,15 +137,15 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
   return (
     <div>
       <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", marginBottom:"1.25rem", flexWrap:"wrap" }}>
-        <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:20, flex:1 }}>Wars & Alliances</h2>
-        {userNation && tab==="wars" && <button onClick={()=>setShowWarForm(!showWarForm)} style={{ ...mkBtn("red"), fontSize:12 }}>Declare War</button>}
-        {userNation && tab==="alliances" && <button onClick={()=>setShowAllyForm(!showAllyForm)} style={{ ...mkBtn(), fontSize:12 }}>Form Alliance</button>}
+        <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:20, flex:1 }}>{mode === "alliances" ? "Alliances" : "Wars"}</h2>
+        {userNation && !lockedTab && tab==="wars" && <button onClick={()=>setShowWarForm(!showWarForm)} style={{ ...mkBtn("red"), fontSize:12 }}>Declare War</button>}
+        {userNation && (lockedTab === "alliances" || tab==="alliances") && <button onClick={()=>setShowAllyForm(!showAllyForm)} style={{ ...mkBtn(), fontSize:12 }}>Form Alliance</button>}
       </div>
-      <div style={{ display:"flex", gap:"0.4rem", marginBottom:"1rem", flexWrap:"wrap" }}>
+      {!lockedTab && <div style={{ display:"flex", gap:"0.4rem", marginBottom:"1rem", flexWrap:"wrap" }}>
         {[["wars","Wars"],["alliances","Alliances"], ...(isLeader ? [["board","Alliance Boards"],["inbox",`Inbox${unreadDms?` (${unreadDms})`:""}`]] : [])].map(([t,l])=>(
           <button key={t} onClick={()=>{setTab(t);if(t==="board")loadAllyBoards();if(t==="inbox")loadDms();}} style={{ ...mkBtn(tab===t?"gold":"ghost"), fontSize:12 }}>{l}</button>
         ))}
-      </div>
+      </div>}
 
       {tab==="wars" && (
         <div>

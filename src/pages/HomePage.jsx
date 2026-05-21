@@ -22,7 +22,7 @@ export const HomePage = ({ nations, news, actions, wars }) => {
         <div style={{ position:"absolute", inset:"auto 0 0 0", height:3, background:"linear-gradient(90deg,#145bb0,#f6c132,#1f8f43)", pointerEvents:"none" }} />
         <div style={{ display:"flex", gap:"2.5rem", flexWrap:"wrap", alignItems:"center" }}>
           <div style={{ flex:1, minWidth:180 }}>
-            <p style={{ margin:"0 0 0.3rem", fontSize:11, letterSpacing:"0.12em", color:"#8fa0bd", textTransform:"uppercase" }}>Season 1 - Living World</p>
+            <p style={{ margin:"0 0 0.3rem", fontSize:11, letterSpacing:"0.12em", color:"#8fa0bd", textTransform:"uppercase" }}>Season 2 - Living World</p>
             <h2 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:"clamp(1.4rem,3vw,2rem)" }}>World at a Glance</h2>
           </div>
           <div style={{ display:"flex", gap:"2rem", flexWrap:"wrap" }}>
