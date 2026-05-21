@@ -10,7 +10,7 @@ import { notifyWarDeclare, createMentionNotifications } from "../lib/notificatio
 const WAR_TABS = { wars:"Wars", alliances:"Alliances" };
 
 export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, profiles, profile, userNation, isMod, onRefresh, onViewAlliance, initialTab, mode }) => {
-  const [tab, setTab] = useState(initialTab || "wars");
+  const [tab, setTab] = useState(initialTab || (mode === "alliances" ? "alliances" : "wars"));
   const [statusMsg, setStatusMsg] = useState(null);
   const showStatus = (msg, type="info") => { setStatusMsg({ msg, type }); setTimeout(()=>setStatusMsg(null), 4000); };
   const lockedTab = mode === "alliances" ? "alliances" : mode === "wars" ? "wars" : null;
@@ -203,6 +203,12 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
 
   // === Nav items ===
   const getTabs = () => {
+    if (mode === "alliances") {
+      const items = [["alliances","Alliances"]];
+      if (isLeader && myAllyIds.length) items.push(["board","Boards"], ["inbox",`Inbox${unreadDms?` (${unreadDms})`:""}`]);
+      return items;
+    }
+    if (mode === "wars") return [["wars","Wars"]];
     const items = [["wars","Wars"], ["alliances","Alliances"]];
     if (isLeader) items.push(["board","Boards"], ["inbox",`Inbox${unreadDms?` (${unreadDms})`:""}`]);
     return items;
@@ -218,10 +224,10 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
           {mode!=="alliances" && mode!=="wars" && <span>|</span>}
           {mode!=="wars" && <span>{alliances.length} alliances</span>}
         </div>
-        {userNation && !lockedTab && tab==="wars" && isLeader && (
+        {userNation && tab==="wars" && isLeader && (
           <button onClick={()=>setShowWarForm(!showWarForm)} style={{ ...mkBtn("red"), fontSize:12 }}>{showWarForm?"Cancel":"Declare War"}</button>
         )}
-        {userNation && !lockedTab && tab==="alliances" && isLeader && (
+        {userNation && tab==="alliances" && isLeader && (
           <button onClick={()=>setShowAllyForm(!showAllyForm)} style={{ ...mkBtn(), fontSize:12 }}>{showAllyForm?"Cancel":"Form Alliance"}</button>
         )}
       </div>
@@ -229,13 +235,11 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
       {statusMsg && <div style={{ padding:"0.6rem 1rem", marginBottom:"0.75rem", borderRadius:6, background:statusMsg.type==="error"?"rgba(231,76,60,0.12)":"rgba(46,204,113,0.12)", border:`1px solid ${statusMsg.type==="error"?"rgba(231,76,60,0.3)":"rgba(46,204,113,0.3)"}`, color:statusMsg.type==="error"?"#e74c3c":"#2ecc71", fontSize:12 }}>{statusMsg.msg}</div>}
 
       {/* Tabs */}
-      {!lockedTab && (
-        <div style={{ display:"flex", gap:"0.4rem", marginBottom:"1rem", flexWrap:"wrap" }}>
-          {getTabs().map(([t,l])=>(
-            <button key={t} onClick={()=>{setTab(t);if(t==="board")loadAllyBoards();if(t==="inbox")setDmLoading(true);}} style={{ ...mkBtn(tab===t?"gold":"ghost"), fontSize:12 }}>{l}</button>
-          ))}
-        </div>
-      )}
+      <div style={{ display:"flex", gap:"0.4rem", marginBottom:"1rem", flexWrap:"wrap" }}>
+        {getTabs().map(([t,l])=>(
+          <button key={t} onClick={()=>{setTab(t);if(t==="board")loadAllyBoards();if(t==="inbox")setDmLoading(true);}} style={{ ...mkBtn(tab===t?"gold":"ghost"), fontSize:12 }}>{l}</button>
+        ))}
+      </div>
 
       {/* ===== WARS TAB ===== */}
       {tab==="wars" && (
