@@ -30,6 +30,8 @@ export const PAGE_PATHS = {
   economy: "/economy",
   assembly: "/assembly",
   settings: "/settings",
+  search: "/search",
+  events: "/events",
 };
 export const FORUM_PAGE_SIZE = 25;
 
@@ -139,6 +141,9 @@ export const CHANGELOG_ENTRIES = [
     ],
   },
 ];
+
+export const EVENT_CATEGORIES = ["natural_disaster","nomad_activity","disease","discovery","economic","political","magical","other"];
+export const EVENT_SEVERITY = ["minor","moderate","major","cataclysmic"];
 
 export const REACT_EMOJIS = ["\u{1F44D}","\u2764\uFE0F","\u{1F602}","\u{1F525}","\u{1F440}","\u{1FAE1}"];
 

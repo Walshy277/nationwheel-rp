@@ -4,7 +4,7 @@ import { supabase, SUPABASE_CONFIGURED } from "./supabase";
 const DataContext = createContext(null);
 
 export function DataProvider({ children }) {
-  const [data, setData] = useState({ nations:[], profiles:[], news:[], posts:[], actions:[], wars:[], warParticipants:[], alliances:[], allianceMembers:[], boards:[], threads:[], forumPosts:[], forumReactions:[] });
+  const [data, setData] = useState({ nations:[], profiles:[], news:[], posts:[], actions:[], wars:[], warParticipants:[], alliances:[], allianceMembers:[], boards:[], threads:[], forumPosts:[], forumReactions:[], events:[] });
   const [loading, setLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
 
@@ -26,7 +26,7 @@ export function DataProvider({ children }) {
       }
       return retry.data || [];
     };
-    const [nations, profiles, news, posts, actions, wars, warParticipants, alliances, allianceMembers, boards] = await Promise.all([
+    const [nations, profiles, news, posts, actions, wars, warParticipants, alliances, allianceMembers, boards, events] = await Promise.all([
       run("Nations", supabase.from("nations").select("*, owner:owner_id(username)").order("name"),
         () => supabase.from("nations").select("*").order("name")),
       supabase.from("profiles").select("id,username,roles,nation_id,avatar_url,signature_url,bio,status,suspended_until,ban_reason,last_active_at,created_at").order("username").limit(1000),
@@ -40,12 +40,13 @@ export function DataProvider({ children }) {
       supabase.from("alliance_members").select("*").limit(1000),
       run("Forum boards", supabase.from("forum_board_summaries").select("*").order("sort_order"),
         () => supabase.from("forum_boards").select("*").order("sort_order")),
+      supabase.from("global_events").select("*").order("created_at",{ascending:false}).limit(50),
     ]);
     const unwrap = result => Array.isArray(result) ? result : (result.data || []);
     const plainWars = unwrap(wars);
     const plainWarParticipants = warParticipants;
     const warsWithParticipants = plainWars.map(w => ({ ...w, war_participants: plainWarParticipants.filter(p => p.war_id === w.id) }));
-    setData({ nations, profiles:unwrap(profiles), news:unwrap(news), posts:unwrap(posts), actions:unwrap(actions), wars:warsWithParticipants, warParticipants:plainWarParticipants, alliances:unwrap(alliances), allianceMembers:unwrap(allianceMembers), boards:unwrap(boards), threads:[], forumPosts:[], forumReactions:[] });
+    setData({ nations, profiles:unwrap(profiles), news:unwrap(news), posts:unwrap(posts), actions:unwrap(actions), wars:warsWithParticipants, warParticipants:plainWarParticipants, alliances:unwrap(alliances), allianceMembers:unwrap(allianceMembers), boards:unwrap(boards), threads:[], forumPosts:[], forumReactions:[], events:unwrap(events) });
     setLoading(false);
   }, []);
 

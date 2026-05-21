@@ -8,6 +8,95 @@ import { recalculateAllNations, processAllStarvation, processTradeRoutes } from 
 
 const REPORT_COLORS = { open:"#e74c3c", investigating:"#f39c12", resolved:"#2ecc71", dismissed:"#8fa0bd" };
 
+const EVENT_STATUS_COL = { proposed:"#7f8c8d", approved:"#3498db", active:"#2ecc71", completed:"#2ecc71", rejected:"#e74c3c" };
+const EVENT_CAT_LABEL = { natural_disaster:"Natural Disaster", nomad_activity:"Nomad Activity", disease:"Disease", discovery:"Discovery", economic:"Economic", political:"Political", magical:"Magical", other:"Other" };
+const EVENT_SEV_COL = { minor:"#8fa0bd", moderate:"#f39c12", major:"#e74c3c", cataclysmic:"#9b59b6" };
+
+function EventAdminList({ profile, onRefresh }) {
+  const [events, setEvents] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [managing, setManaging] = useState(null);
+  const [loreNotes, setLoreNotes] = useState("");
+
+  const load = async () => {
+    const { data } = await supabase.from("global_events").select("*").order("created_at", { ascending: false }).limit(100);
+    if (data) setEvents(data);
+    setLoading(false);
+  };
+
+  if (!events) load();
+
+  const updateStatus = async (event, status) => {
+    const update = { status, lore_notes: loreNotes.trim() || event.lore_notes };
+    if (["approved", "active"].includes(status)) {
+      update.canonized_by = profile?.id;
+      update.canonized_at = new Date().toISOString();
+    }
+    await supabase.from("global_events").update(update).eq("id", event.id);
+    setManaging(null);
+    setLoreNotes("");
+    load();
+    if (onRefresh) onRefresh();
+  };
+
+  if (loading) return <div style={{ color:"#8493ad", fontSize:12, padding:"1rem", textAlign:"center" }}>Loading events...</div>;
+  if (!events?.length) return <div style={{ color:"#9fb4d6", fontSize:12, padding:"1rem" }}>No events created yet.</div>;
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
+      {events.map(e => {
+        const isManaging = managing === e.id;
+        return (
+          <div key={e.id} style={{ ...card, borderLeft:`3px solid ${EVENT_SEV_COL[e.severity] || "#8fa0bd"}` }}>
+            <div style={{ display:"flex", gap:"0.5rem", alignItems:"flex-start" }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:"flex", gap:"0.4rem", alignItems:"center", flexWrap:"wrap" }}>
+                  <strong style={{ color:"#edf4ff", fontSize:13 }}>{e.title}</strong>
+                  <span style={{ fontSize:9, fontWeight:700, color:EVENT_STATUS_COL[e.status]||"#8fa0bd", border:`1px solid ${EVENT_STATUS_COL[e.status]||"#8fa0bd"}44`, borderRadius:3, padding:"1px 5px", textTransform:"uppercase" }}>{e.status}</span>
+                  <span style={{ fontSize:9, fontWeight:700, color:EVENT_SEV_COL[e.severity]||"#8fa0bd", border:`1px solid ${EVENT_SEV_COL[e.severity]||"#8fa0bd"}44`, borderRadius:3, padding:"1px 5px", textTransform:"uppercase" }}>{e.severity}</span>
+                  <span style={{ fontSize:10, color:"#8fa0bd" }}>{EVENT_CAT_LABEL[e.category] || e.category}</span>
+                </div>
+                {e.affected_region && <div style={{ fontSize:11, color:"#9fb4d6", marginTop:"0.15rem" }}>{e.affected_region}</div>}
+                {e.description && <div style={{ fontSize:11, color:"#b8c4d8", marginTop:"0.25rem", lineHeight:1.5 }}>{e.description.slice(0, 200)}{e.description.length > 200 ? "..." : ""}</div>}
+                {e.lore_notes && <div style={{ fontSize:10, color:"#8fa0bd", marginTop:"0.25rem", background:"rgba(255,255,255,0.03)", borderRadius:3, padding:"0.3rem 0.5rem" }}>Notes: {e.lore_notes}</div>}
+              </div>
+            </div>
+
+            {isManaging && (
+              <div style={{ marginTop:"0.6rem", paddingTop:"0.6rem", borderTop:"1px solid rgba(78,128,190,0.15)" }}>
+                <textarea placeholder="Staff notes" value={loreNotes} onChange={e=>setLoreNotes(e.target.value)} style={{ ...ta, minHeight:40, fontSize:11 }} />
+                <div style={{ display:"flex", gap:"0.35rem", marginTop:"0.4rem", flexWrap:"wrap" }}>
+                  {e.status === "proposed" && <>
+                    <button onClick={()=>updateStatus(e, "approved")} style={mkBtn("blue")}>Approve</button>
+                    <button onClick={()=>updateStatus(e, "active")} style={mkBtn("green")}>Approve & Activate</button>
+                    <button onClick={()=>updateStatus(e, "rejected")} style={mkBtn("red")}>Reject</button>
+                  </>}
+                  {e.status === "approved" && <>
+                    <button onClick={()=>updateStatus(e, "active")} style={mkBtn("green")}>Activate</button>
+                    <button onClick={()=>updateStatus(e, "completed")} style={mkBtn()}>Complete</button>
+                    <button onClick={()=>updateStatus(e, "rejected")} style={mkBtn("red")}>Reject</button>
+                  </>}
+                  {e.status === "active" && <>
+                    <button onClick={()=>updateStatus(e, "completed")} style={mkBtn("green")}>Complete</button>
+                    <button onClick={()=>updateStatus(e, "rejected")} style={mkBtn("red")}>Reject</button>
+                  </>}
+                  <button onClick={()=>{setManaging(null); setLoreNotes("");}} style={mkBtn("ghost")}>Cancel</button>
+                </div>
+              </div>
+            )}
+
+            {!isManaging && (
+              <div style={{ marginTop:"0.35rem" }}>
+                <button onClick={()=>{setManaging(e.id); setLoreNotes(e.lore_notes||"");}} style={{ ...mkBtn("ghost"), fontSize:10, padding:"2px 7px" }}>Manage</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 const ROLE_OPTIONS = [
   "admin",
   "lore_team",
@@ -59,7 +148,7 @@ export const AdminPanel = ({ nations, profiles, profile, onRefresh, isAdmin }) =
   };
 
   const fields = [["name","Nation Name *"],["government","Government"],["ideology","Ideology"],["population","Population"],["gdp_usd","GDP (USD number)"],["land_km2","Land km2"],["army_rank","Army Rank 0-11"],["hdi","HDI 0.00-1.00"],["economy","Economy Sectors"],["diplomatic_status","Diplomatic Status"],["bloc","Bloc / Alliance"]];
-  const tabs = [["add",editId?"Edit Nation":"Add Nation"],["assign","Assign Nations"],["reports",`Reports (${reports.filter(r=>r.status==="open"||r.status==="investigating").length||""})`],["economy","Economy"],...(isAdmin ? [["users","Users"],["roles","Manage Roles"],["code","Site Code"],["changes","Changelog"]] : []),["list","Nation List"]];
+  const tabs = [["add",editId?"Edit Nation":"Add Nation"],["assign","Assign Nations"],["reports",`Reports (${reports.filter(r=>r.status==="open"||r.status==="investigating").length||""})`],["economy","Economy"],["events","Events"],...(isAdmin ? [["users","Users"],["roles","Manage Roles"],["code","Site Code"],["changes","Changelog"]] : []),["list","Nation List"]];
   const codeEntries = codeFiles ? Object.entries(codeFiles).sort(([a],[b])=>a.localeCompare(b)) : [];
   const selectedCode = codeFiles ? (codeFiles[selectedCodeFile] || "") : "";
   const setUserModeration = async (status) => {
@@ -417,6 +506,17 @@ export const AdminPanel = ({ nations, profiles, profile, onRefresh, isAdmin }) =
               <p style={{ margin:0, color:"#2ecc71", fontSize:12 }}>No nations currently starving (all have food &gt; 0).</p>
             </div>
           )}
+        </div>
+      )}
+
+      {tab==="events" && (
+        <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
+          <h3 style={{ margin:0, fontFamily:"var(--display)", color:"#d4af37", fontSize:14 }}>Global Events Management</h3>
+          <p style={{ margin:0, color:"#9fb4d6", fontSize:13, lineHeight:1.6 }}>
+            Review, approve, reject, and manage global events. Events can be natural disasters, nomad activity, disease outbreaks, discoveries, and more.
+            Canonized events are visible to all players on the Events page.
+          </p>
+          <EventAdminList isAdmin={isAdmin} profile={profile} onRefresh={onRefresh} />
         </div>
       )}
 

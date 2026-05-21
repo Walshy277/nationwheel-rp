@@ -28,6 +28,7 @@ export const StaffTools = ({ isAdmin, page, navigate, counts, gameState, onGameD
           ["nations", `Nations ${counts.nations}`],
           ["wars", `Wars ${counts.wars}`],
           ["actions", `Actions ${counts.actions}`],
+          ["events", "Events"],
           ["news", "News"],
         ].map(([id,label])=>(
           <button key={id} onClick={()=>navigate(id)} style={{ ...mkBtn(page===id?"gold":"ghost"), minHeight:30, padding:"5px 9px", fontSize:10.5 }}>{label}</button>
