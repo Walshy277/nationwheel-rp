@@ -26,10 +26,6 @@ export const AssemblyPage = ({ nations, profile, userNation, onRefresh }) => {
   const [form, setForm] = useState({ title:"", description:"", category:"resolution" });
   const [userVotes, setUserVotes] = useState({});
 
-  useEffect(() => {
-    loadProposals();
-  }, []);
-
   const loadProposals = async () => {
     setLoading(true);
     const { data } = await supabase.from("assembly_proposals").select("*").order("created_at", { ascending: false }).limit(50);
@@ -46,6 +42,8 @@ export const AssemblyPage = ({ nations, profile, userNation, onRefresh }) => {
     }
     setLoading(false);
   };
+
+  useEffect(() => { loadProposals(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const proposeResolution = async () => {
     if (!form.title.trim() || !form.description.trim()) return;

@@ -63,7 +63,7 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
     const ids = allianceMembers.filter(m=>m.nation_id===userNation.id).map(m=>m.alliance_id);
     if (!ids.length) { setBoardLoading(false); return; }
     supabase.from("alliance_boards").select("*, alliances:alliance_id(name)").in("alliance_id",ids).order("created_at",{ascending:false}).then(({data})=>{setAllyBoards(data||[]);setBoardLoading(false);});
-  }, [tab, userNation?.id, allianceMembers]);
+  }, [tab, userNation?.id, allianceMembers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (tab !== "inbox" || !profile) return;
@@ -72,7 +72,7 @@ export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, na
       if (data) { setDms(data); setUnreadDms(data.filter(d=>d.to_id===profile.id&&!d.read).length); }
       setDmLoading(false);
     });
-  }, [tab, profile?.id]);
+  }, [tab, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // === Actions ===
   const submitWar = async () => {

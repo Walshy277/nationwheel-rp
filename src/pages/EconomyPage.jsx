@@ -18,8 +18,6 @@ export const EconomyPage = ({ nations, profile, userNation, onRefresh }) => {
   const [showTradeForm, setShowTradeForm] = useState(false);
   const [tradeForm, setTradeForm] = useState({ to_nation_id:"", resource_type:"food", amount:10 });
 
-  useEffect(() => { loadData(); }, [userNation?.id]);
-
   const loadData = async () => {
     setLoading(true);
     if (userNation) {
@@ -30,6 +28,8 @@ export const EconomyPage = ({ nations, profile, userNation, onRefresh }) => {
     }
     setLoading(false);
   };
+
+  useEffect(() => { loadData(); }, [userNation?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const createTradeRoute = async () => {
     if (!tradeForm.to_nation_id) return;

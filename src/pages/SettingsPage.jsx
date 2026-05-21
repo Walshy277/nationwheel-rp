@@ -8,10 +8,6 @@ export const SettingsPage = ({ profile, onProfileUpdate }) => {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
   const loadSettings = async () => {
     if (!profile) { setLoading(false); return; }
     setLoading(true);
@@ -23,6 +19,8 @@ export const SettingsPage = ({ profile, onProfileUpdate }) => {
     if (data) setSettings(data);
     setLoading(false);
   };
+
+  useEffect(() => { loadSettings(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleSetting = (key) => {
     setSettings(prev => ({ ...prev, [key]: !prev[key] }));

@@ -126,6 +126,31 @@ export default function App() {
     });
   }, [fetchAll]);
 
+  const navigate = (id) => {
+    setPage(id);
+    setForumRoute({ type:"boards" });
+    setPublicProfileId(null);
+    setAllianceViewId(null);
+    setNationViewId(null);
+    writeRoute(PAGE_PATHS[id] || "/forums");
+  };
+  const viewProfile = useCallback((profileId) => {
+    setPage("profile");
+    setForumRoute({ type:"boards" });
+    setPublicProfileId(profileId);
+    setNationViewId(null);
+    writeRoute(`/profile/${encodeURIComponent(profileId)}`);
+  }, []);
+  const viewNation = useCallback((nationId) => {
+    const nation = data.nations.find(n => n.id === nationId);
+    if (!nation) return;
+    setPage("nation");
+    setPublicProfileId(null);
+    setAllianceViewId(null);
+    setNationViewId(nationId);
+    writeRoute(`/nation/${encodeURIComponent(nationId)}`);
+  }, [data.nations]);
+
   useEffect(() => {
     const handlePopState = () => {
       const nextRoute = parseRoute();
@@ -137,6 +162,24 @@ export default function App() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      const el = e.target.closest(".bb-mention");
+      if (!el) return;
+      const type = el.getAttribute("data-type");
+      const id = el.getAttribute("data-id");
+      if (type === "user") {
+        const found = data.profiles.find(p => p.id === id || p.username === id);
+        if (found) viewProfile(found.id);
+      } else if (type === "nation") {
+        const found = data.nations.find(n => n.id === id || n.slug === id);
+        if (found) viewNation(found.id);
+      }
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [data.profiles, data.nations, viewProfile, viewNation]);
 
   if (!SUPABASE_CONFIGURED) {
     return (
@@ -187,30 +230,6 @@ export default function App() {
     ]},
   ];
 
-  const navigate = (id) => {
-    setPage(id);
-    setForumRoute({ type:"boards" });
-    setPublicProfileId(null);
-    setAllianceViewId(null);
-    setNationViewId(null);
-    writeRoute(PAGE_PATHS[id] || "/forums");
-  };
-  const viewProfile = (profileId) => {
-    setPage("profile");
-    setForumRoute({ type:"boards" });
-    setPublicProfileId(profileId);
-    setNationViewId(null);
-    writeRoute(`/profile/${encodeURIComponent(profileId)}`);
-  };
-  const viewNation = (nationId) => {
-    const nation = data.nations.find(n => n.id === nationId);
-    if (!nation) return;
-    setPage("nation");
-    setPublicProfileId(null);
-    setAllianceViewId(null);
-    setNationViewId(nationId);
-    writeRoute(`/nation/${encodeURIComponent(nationId)}`);
-  };
   const handleNotificationLink = (link) => {
     if (!link) return;
     if (link.startsWith("/")) {
@@ -221,23 +240,6 @@ export default function App() {
       if (pagePath) navigate(pagePath);
     }
   };
-  useEffect(() => {
-    const handler = (e) => {
-      const el = e.target.closest(".bb-mention");
-      if (!el) return;
-      const type = el.getAttribute("data-type");
-      const id = el.getAttribute("data-id");
-      if (type === "user") {
-        const found = data.profiles.find(p => p.id === id || p.username === id);
-        if (found) viewProfile(found.id);
-      } else if (type === "nation") {
-        const found = data.nations.find(n => n.id === id || n.slug === id);
-        if (found) viewNation(found.id);
-      }
-    };
-    document.addEventListener("click", handler);
-    return () => document.removeEventListener("click", handler);
-  }, [data.profiles, data.nations]);
 
   const handleGameDayAdvance = (result) => {
     if (result) setGameState(prev => ({ ...prev, game_day: result.day, game_year: result.year }));
