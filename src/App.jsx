@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase, SUPABASE_CONFIGURED } from "./lib/supabase";
 import { isAdmin, isLoreTeam, isStaff, canManageRoles } from "./lib/permissions";
 import { ensureProfile, parseRoute, writeRoute, timeAgo, card, mkBtn, inp, ta, fmtGameDate, ROLE_LABELS, ROLE_COLORS, getRoles } from "./lib/uiUtils";
@@ -13,6 +13,7 @@ import { HomePage } from "./pages/HomePage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { PublicProfilePage } from "./pages/PublicProfilePage";
 import { NationsPage } from "./pages/NationsPage";
+import { NationProfile } from "./pages/NationProfile";
 import { RPBoardPage } from "./pages/RPBoardPage";
 import { ActionsPage } from "./pages/ActionsPage";
 import { WarsPage } from "./pages/WarsPage";
@@ -36,6 +37,7 @@ export default function App() {
   const [forumRoute, setForumRoute] = useState(initialRoute.forumRoute);
   const [publicProfileId, setPublicProfileId] = useState(initialRoute.profileId || null);
   const [allianceViewId, setAllianceViewId] = useState(null);
+  const [nationViewId, setNationViewId] = useState(initialRoute.nationId || null);
   const [data, setData] = useState({ nations:[], profiles:[], news:[], posts:[], actions:[], wars:[], warParticipants:[], alliances:[], allianceMembers:[], boards:[], threads:[], forumPosts:[], forumReactions:[] });
   const [loading, setLoading] = useState(true);
   const [setupRequired, setSetupRequired] = useState(false);
@@ -129,6 +131,7 @@ export default function App() {
       setPage(nextRoute.page);
       setForumRoute(nextRoute.forumRoute);
       setPublicProfileId(nextRoute.profileId || null);
+      setNationViewId(nextRoute.nationId || null);
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
@@ -156,25 +159,27 @@ export default function App() {
 
   const userNation = profile?.nation_id ? data.nations.find(n=>n.id===profile.nation_id) : null;
   const isAdminRole = isAdmin(profile);
-  const isLoreTeam = isLoreTeam(profile);
+  const loreTeam = isLoreTeam(profile);
 
-  const nav = [
+  const navGroups = [
+    { type:"links", items:[
       {id:"forums",label:"Boards"},
-      {id:"nations",label:"Nations"},
+      {id:"news",label:"News"},
+    ]},
+    { type:"dropdown", label:"More", items:[
       {id:"mechanics",label:"Mechanics"},
       {id:"leaderboards",label:"Leaderboards"},
       {id:"changelog",label:"Changelog"},
-      {id:"news",label:"News"},
+    ]},
     ...(user ? [
-      {id:"profile",label:"Profile"},
-      {id:"settings",label:"Settings"},
-      {id:"rp",label:"Dispatches"},
-      {id:"actions",label:"Actions"},
-      {id:"diplomacy",label:"Diplomacy"},
-      {id:"economy",label:"Economy"},
-      {id:"assembly",label:"Assembly"},
-      {id:"wars",label:"Wars & Alliances"},
-      {id:"home",label:"Overview"},
+      { type:"dropdown", label:"World", items:[
+        {id:"rp",label:"Dispatches"},
+        {id:"actions",label:"Actions"},
+        {id:"diplomacy",label:"Diplomacy"},
+        {id:"economy",label:"Economy"},
+        {id:"assembly",label:"Assembly"},
+        {id:"wars",label:"Wars & Alliances"},
+      ]},
     ] : []),
   ];
 
@@ -183,21 +188,53 @@ export default function App() {
     setForumRoute({ type:"boards" });
     setPublicProfileId(null);
     setAllianceViewId(null);
+    setNationViewId(null);
     writeRoute(PAGE_PATHS[id] || "/forums");
   };
   const viewProfile = (profileId) => {
     setPage("profile");
     setForumRoute({ type:"boards" });
     setPublicProfileId(profileId);
+    setNationViewId(null);
     writeRoute(`/profile/${encodeURIComponent(profileId)}`);
+  };
+  const viewNation = (nationId) => {
+    const nation = data.nations.find(n => n.id === nationId);
+    if (!nation) return;
+    setPage("nation");
+    setPublicProfileId(null);
+    setAllianceViewId(null);
+    setNationViewId(nationId);
+    writeRoute(`/nation/${encodeURIComponent(nationId)}`);
   };
   const handleNotificationLink = (link) => {
     if (!link) return;
     if (link.startsWith("/")) {
+      const [section, sub] = link.replace(/^\//, "").split("/");
+      if (section === "profile" && sub) { viewProfile(sub); return; }
+      if (section === "nation" && sub) { viewNation(sub); return; }
       const pagePath = Object.entries(PAGE_PATHS).find(([, p]) => link.startsWith(p))?.[0];
       if (pagePath) navigate(pagePath);
     }
   };
+  useEffect(() => {
+    const handler = (e) => {
+      const el = e.target.closest(".bb-mention");
+      if (!el) return;
+      const type = el.getAttribute("data-type");
+      const id = el.getAttribute("data-id");
+      if (type === "user") {
+        const found = data.profiles.find(p => p.id === id || p.username === id);
+        if (found) viewProfile(found.id);
+      } else if (type === "nation") {
+        const found = data.nations.find(n => n.id === id || n.slug === id);
+        if (found) viewNation(found.id);
+      }
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [data.profiles, data.nations]);
+
   const handleGameDayAdvance = (result) => {
     if (result) setGameState(prev => ({ ...prev, game_day: result.day, game_year: result.year }));
   };
@@ -217,21 +254,37 @@ export default function App() {
           <span className="brand-name" style={{ fontFamily:"var(--brand)", color:"#f5f8ff", fontSize:15, letterSpacing:"0.08em", fontWeight:900 }}>NATIONWHEEL</span>
         </div>
         <nav className="app-nav" style={{ display:"flex", gap:"0.1rem", flex:1, overflowX:"auto", scrollbarWidth:"none" }}>
-          {nav.map(n=>(
-            <button className="nav-button" key={n.id} onClick={()=>navigate(n.id)} style={{ background:page===n.id?"rgba(20,96,184,0.16)":"transparent", color:page===n.id?"#f6c132":"#8aa4c9", border:"none", borderRadius:5, padding:"5px 9px", cursor:"pointer", fontSize:11.5, fontWeight:page===n.id?800:600, whiteSpace:"nowrap", transition:"all 0.15s", fontFamily:"inherit" }}>
-              {n.label}
-            </button>
-          ))}
+          {navGroups.map((group, gi) => {
+            if (group.type === "links") {
+              return group.items.map(n => (
+                <button className="nav-button" key={n.id} onClick={()=>navigate(n.id)} style={{ background:page===n.id?"rgba(20,96,184,0.16)":"transparent", color:page===n.id?"#f6c132":"#8aa4c9", border:"none", borderRadius:5, padding:"5px 9px", cursor:"pointer", fontSize:11.5, fontWeight:page===n.id?800:600, whiteSpace:"nowrap", transition:"all 0.15s", fontFamily:"inherit" }}>
+                  {n.label}
+                </button>
+              ));
+            }
+            if (group.type === "dropdown") {
+              return <NavDropdown key={gi} group={group} page={page} onNavigate={navigate} />;
+            }
+            return null;
+          })}
         </nav>
         <div className="user-tools" style={{ display:"flex", alignItems:"center", gap:"0.5rem", flexShrink:0 }}>
           {user ? <>
-            {userNation && <><Flag nation={userNation} size={20} /><span style={{ fontSize:11, color:"#9fb4d6", maxWidth:70, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{userNation.name}</span></>}
+            {userNation && <button onClick={()=>viewNation(userNation.id)} style={{ background:"transparent", border:"none", padding:0, minHeight:0, cursor:"pointer", display:"flex", alignItems:"center", gap:"0.35rem" }}>
+              <Flag nation={userNation} size={20} />
+              <span style={{ fontSize:11, color:"#9fb4d6", maxWidth:70, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{userNation.name}</span>
+            </button>}
             <NotificationsBell profile={profile} onNavigate={handleNotificationLink} />
-            <button onClick={()=>navigate("profile")} style={{ background:"transparent", border:"none", padding:0, minHeight:0, color:"#9fb4d6", fontSize:11, cursor:"pointer" }}>{profile?.username || "profile"}</button>
+            <button onClick={()=>viewProfile(profile?.id)} style={{ background:"transparent", border:"none", padding:0, minHeight:0, color:"#9fb4d6", fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", gap:"0.35rem" }}>
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} alt="" style={{ width:22, height:22, borderRadius:"50%", objectFit:"cover", border:"1px solid rgba(246,193,50,0.2)" }} />
+                : <div style={{ width:22, height:22, borderRadius:"50%", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(246,193,50,0.15)" }} />}
+              {profile?.username || "profile"}
+            </button>
             {getRoles(profile).map(r => (
               <span key={r} style={{ fontSize:8, fontWeight:700, color:ROLE_COLORS[r]||"#8fa0bd", border:`1px solid ${ROLE_COLORS[r]||"#8fa0bd"}33`, borderRadius:3, padding:"1px 5px", letterSpacing:"0.06em" }}>{ROLE_LABELS[r]?.toUpperCase() || r?.toUpperCase()}</span>
             ))}
-            {isLoreTeam && <button onClick={()=>navigate("admin")} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>{isAdminRole ? "Admin" : "Lore"}</button>}
+            {loreTeam && <button onClick={()=>navigate("admin")} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>{isAdminRole ? "Admin" : "Lore"}</button>}
             <button onClick={()=>supabase.auth.signOut()} style={{ ...mkBtn("ghost"), padding:"4px 8px", fontSize:11 }}>Sign Out</button>
           </> : (
             <button onClick={()=>navigate("auth")} style={{ ...mkBtn("gold"), padding:"4px 10px", fontSize:11 }}>Sign In</button>
@@ -239,7 +292,7 @@ export default function App() {
         </div>
       </header>
 
-      {isLoreTeam && (
+      {loreTeam && (
         <StaffTools
           isAdmin={isAdminRole}
           page={page}
@@ -259,14 +312,14 @@ export default function App() {
           ? <div style={{ textAlign:"center", padding:"5rem", color:"#8493ad", fontFamily:"var(--display)", letterSpacing:"0.2em", fontSize:13 }}>LOADING WORLD</div>
           : <>
               {page==="home"         && <HomePage nations={data.nations} news={data.news} actions={data.actions} wars={data.wars} />}
-              {page==="nations"      && <NationsPage nations={data.nations} posts={data.posts} actions={data.actions} wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} profile={profile} userNation={userNation} isMod={isLoreTeam} isAdmin={isAdminRole} onRefresh={fetchAll} />}
-              {page==="rp"           && <RPBoardPage posts={data.posts} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} />}
-              {page==="actions"      && <ActionsPage actions={data.actions} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} />}
-              {page==="diplomacy"  && <DiplomacyPage nations={data.nations} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} />}
+              {page==="nations"      && <NationsPage nations={data.nations} posts={data.posts} actions={data.actions} wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} profile={profile} userNation={userNation} isMod={loreTeam} isAdmin={isAdminRole} onRefresh={fetchAll} />}
+              {page==="rp"           && <RPBoardPage posts={data.posts} profile={profile} userNation={userNation} nations={data.nations} isMod={loreTeam} onRefresh={fetchAll} />}
+              {page==="actions"      && <ActionsPage actions={data.actions} profile={profile} userNation={userNation} nations={data.nations} isMod={loreTeam} onRefresh={fetchAll} />}
+              {page==="diplomacy"  && <DiplomacyPage nations={data.nations} profile={profile} userNation={userNation} isMod={loreTeam} onRefresh={fetchAll} />}
               {page==="economy"     && <EconomyPage nations={data.nations} profile={profile} userNation={userNation} onRefresh={fetchAll} />}
               {page==="assembly"    && <AssemblyPage nations={data.nations} profile={profile} userNation={userNation} onRefresh={fetchAll} />}
               {page==="settings"    && <SettingsPage profile={profile} onProfileUpdate={updateProfile} />}
-              {page==="wars" && !allianceViewId && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profiles={data.profiles} profile={profile} userNation={userNation} isMod={isLoreTeam} onRefresh={fetchAll} onViewAlliance={setAllianceViewId} />}
+              {page==="wars" && !allianceViewId && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profiles={data.profiles} profile={profile} userNation={userNation} isMod={loreTeam} onRefresh={fetchAll} onViewAlliance={setAllianceViewId} />}
               {page==="wars" && allianceViewId && <AllianceProfile
                 alliance={data.alliances.find(a=>a.id===allianceViewId)}
                 allianceMembers={data.allianceMembers}
@@ -276,19 +329,20 @@ export default function App() {
                 profiles={data.profiles}
                 profile={profile}
                 userNation={userNation}
-                isMod={isLoreTeam}
+                isMod={loreTeam}
                 onBack={()=>setAllianceViewId(null)}
                 onRefresh={fetchAll}
               />}
-              {page==="news"         && <NewsPage news={data.news} profile={profile} isMod={isLoreTeam} onRefresh={fetchAll} />}
+              {page==="news"         && <NewsPage news={data.news} profile={profile} isMod={loreTeam} onRefresh={fetchAll} />}
               {page==="mechanics"    && <GameMechanicsPage navigate={navigate} />}
               {page==="leaderboards" && <LeaderboardsPage nations={data.nations} />}
               {page==="changelog"    && <ChangelogPage />}
               {page==="profile" && publicProfileId && <PublicProfilePage viewedProfile={data.profiles.find(item=>item.id===publicProfileId)} nations={data.nations} posts={data.posts} actions={data.actions} onBack={()=>navigate("forums")} />}
               {page==="profile" && !publicProfileId && user && profile && <ProfilePage profile={profile} profiles={data.profiles} userNation={userNation} onProfileUpdate={updateProfile} onViewProfile={viewProfile} />}
-              {page==="forums"       && <ForumsPage boards={data.boards} route={forumRoute} onRouteChange={setForumRoute} profile={profile} userNation={userNation} nations={data.nations} isMod={isLoreTeam} onRefresh={fetchAll} onRequireAuth={()=>navigate("auth")} onViewProfile={viewProfile} />}
+              {page==="forums"       && <ForumsPage boards={data.boards} route={forumRoute} onRouteChange={setForumRoute} profile={profile} userNation={userNation} nations={data.nations} isMod={loreTeam} onRefresh={fetchAll} onRequireAuth={()=>navigate("auth")} onViewProfile={viewProfile} />}
               {page==="auth"         && <AuthPage setupRequired={setupRequired} onAuth={(u,p)=>{setUser(u);if(p)setProfile(p);else ensureProfile(u).then(next=>{if(next)setProfile(next);}).catch(console.error);fetchAll();setPage("forums");setForumRoute({ type:"boards" });writeRoute("/forums");}} />}
-              {page==="admin" && isLoreTeam && <AdminPanel nations={data.nations} profiles={data.profiles} profile={profile} onRefresh={fetchAll} isAdmin={isAdminRole} />}
+              {page==="admin" && loreTeam && <AdminPanel nations={data.nations} profiles={data.profiles} profile={profile} onRefresh={fetchAll} isAdmin={isAdminRole} />}
+              {page==="nation" && nationViewId && <NationProfile nation={data.nations.find(n=>n.id===nationViewId)} posts={data.posts} actions={data.actions} wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} nations={data.nations} onBack={()=>navigate("forums")} profile={profile} userNation={userNation} isMod={loreTeam} isAdmin={isAdminRole} onRefresh={fetchAll} />}
             </>
         }
       </main>
@@ -409,6 +463,36 @@ export default function App() {
         }
         @keyframes forumSpin{to{transform:rotate(360deg)}}
       `}</style>
+    </div>
+  );
+}
+
+function NavDropdown({ group, page, onNavigate }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+  const active = group.items.some(n => page === n.id);
+  return (
+    <div ref={ref} style={{ position:"relative", display:"inline-flex" }}>
+      <button className="nav-button" onClick={()=>setOpen(!open)} style={{ background:active?"rgba(20,96,184,0.16)":"transparent", color:active?"#f6c132":"#8aa4c9", border:"none", borderRadius:5, padding:"5px 9px", cursor:"pointer", fontSize:11.5, fontWeight:active?800:600, whiteSpace:"nowrap", transition:"all 0.15s", fontFamily:"inherit" }}>
+        {group.label} <span style={{ fontSize:9, marginLeft:2 }}>{open?"▲":"▼"}</span>
+      </button>
+      {open && (
+        <div style={{ position:"absolute", top:"100%", left:0, marginTop:4, background:"#0b1422", border:"1px solid rgba(78,128,190,0.3)", borderRadius:6, boxShadow:"0 8px 30px rgba(0,0,0,0.5)", zIndex:300, minWidth:140, padding:"4px" }}>
+          {group.items.map(n => (
+            <button key={n.id} onClick={()=>{ setOpen(false); onNavigate(n.id); }} style={{ display:"block", width:"100%", textAlign:"left", background:page===n.id?"rgba(20,96,184,0.16)":"transparent", color:page===n.id?"#f6c132":"#8aa4c9", border:"none", borderRadius:4, padding:"7px 12px", cursor:"pointer", fontSize:12, fontWeight:page===n.id?700:500, fontFamily:"inherit", whiteSpace:"nowrap", transition:"background 0.12s" }}
+              onMouseEnter={e=>e.currentTarget.style.background="rgba(78,128,190,0.12)"}
+              onMouseLeave={e=>e.currentTarget.style.background=page===n.id?"rgba(20,96,184,0.16)":"transparent"}>
+              {n.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -76,6 +76,9 @@ export const parseRoute = () => {
   if (section === "profile" && sub) {
     return { page: "profile", profileId: decodeURIComponent(sub), forumRoute: { type: "boards" } };
   }
+  if (section === "nation" && sub) {
+    return { page: "nation", nationId: decodeURIComponent(sub), forumRoute: { type: "boards" } };
+  }
   const page = Object.entries(PAGE_PATHS).find(([, pagePath]) => pagePath === path)?.[0] || "forums";
   return { page, forumRoute: { type: "boards" } };
 };
