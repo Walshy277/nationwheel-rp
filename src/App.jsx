@@ -165,6 +165,8 @@ export default function App() {
     { type:"links", items:[
       {id:"forums",label:"Boards"},
       {id:"news",label:"News"},
+      {id:"wars",label:"Wars"},
+      {id:"alliances",label:"Alliances"},
     ]},
     { type:"dropdown", label:"More", items:[
       {id:"mechanics",label:"Mechanics"},
@@ -178,7 +180,6 @@ export default function App() {
         {id:"diplomacy",label:"Diplomacy"},
         {id:"economy",label:"Economy"},
         {id:"assembly",label:"Assembly"},
-        {id:"wars",label:"Wars & Alliances"},
       ]},
     ] : []),
   ];
@@ -319,8 +320,8 @@ export default function App() {
               {page==="economy"     && <EconomyPage nations={data.nations} profile={profile} userNation={userNation} onRefresh={fetchAll} />}
               {page==="assembly"    && <AssemblyPage nations={data.nations} profile={profile} userNation={userNation} onRefresh={fetchAll} />}
               {page==="settings"    && <SettingsPage profile={profile} onProfileUpdate={updateProfile} />}
-              {page==="wars" && !allianceViewId && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profiles={data.profiles} profile={profile} userNation={userNation} isMod={loreTeam} onRefresh={fetchAll} onViewAlliance={setAllianceViewId} />}
-              {page==="wars" && allianceViewId && <AllianceProfile
+              {(page==="wars" || page==="alliances") && !allianceViewId && <WarsPage wars={data.wars} alliances={data.alliances} allianceMembers={data.allianceMembers} warParticipants={data.warParticipants} nations={data.nations} profiles={data.profiles} profile={profile} userNation={userNation} isMod={loreTeam} onRefresh={fetchAll} onViewAlliance={setAllianceViewId} initialTab={page==="alliances"?"alliances":"wars"} />}
+              {(page==="wars" || page==="alliances") && allianceViewId && <AllianceProfile
                 alliance={data.alliances.find(a=>a.id===allianceViewId)}
                 allianceMembers={data.allianceMembers}
                 nations={data.nations}

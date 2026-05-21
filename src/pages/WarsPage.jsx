@@ -7,8 +7,8 @@ import { NationPill } from "../components/nation/NationPill";
 import { WarCard } from "../components/war/WarCard";
 import { notifyWarDeclare, createMentionNotifications } from "../lib/notifications";
 
-export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, profiles, profile, userNation, isMod, onRefresh, onViewAlliance }) => {
-  const [tab, setTab] = useState("wars");
+export const WarsPage = ({ wars, alliances, allianceMembers, warParticipants, nations, profiles, profile, userNation, isMod, onRefresh, onViewAlliance, initialTab }) => {
+  const [tab, setTab] = useState(initialTab || "wars");
   const [showWarForm, setShowWarForm] = useState(false);
   const [showAllyForm, setShowAllyForm] = useState(false);
   const [wf, setWf] = useState({ target_type:"nation", target_id:"", name:"", casus_belli:"", objective:"", casualties:"", result:"" });

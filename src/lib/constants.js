@@ -23,6 +23,7 @@ export const PAGE_PATHS = {
   rp: "/dispatches",
   actions: "/actions",
   wars: "/wars",
+  alliances: "/alliances",
   home: "/overview",
   auth: "/auth",
   admin: "/admin",

@@ -63,7 +63,7 @@ const ForumIndex = ({ boards, profile, onSelectBoard, onRequireAuth, card, mkBtn
                     const meta = boardMeta(board);
                     return (
                       <button key={board.id} className="forum-board-row" onClick={() => onSelectBoard(board)}>
-                        <span className="forum-board-icon" aria-hidden="true">{board.icon || BOARD_ICONS[board.slug] || meta.icon || "•"}</span>
+                        <span className="forum-board-icon" aria-hidden="true">{BOARD_ICONS[board.slug] || meta.icon || board.icon || "•"}</span>
                         <span className="forum-board-main">
                           <span className="forum-board-title">
                             {board.name}
