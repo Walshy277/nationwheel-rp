@@ -91,7 +91,7 @@ export function calcNationResources(nation) {
   const energy = Math.round(Math.max(5, PF * 5 * match(eco, ECO.ene) + GF * 15));
   const tech = Math.round(Math.max(1, PF * 3 * (hdi * 2) * match(eco, ECO.tech)));
 
-  return { manpower, food, minerals, energy, tech, gdp: Math.round(gdp / 1000) };
+  return { manpower, food, minerals, energy, tech, gdp: Math.round(gdp) };
 }
 
 export async function recalculateAllNations(nations) {

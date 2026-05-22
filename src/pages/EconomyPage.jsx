@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { card, mkBtn, inp, timeAgo } from "../lib/uiUtils";
+import { card, mkBtn, inp, timeAgo, fmtGDP } from "../lib/uiUtils";
 
 const RESOURCE_ICONS = {
   food: "Food",
@@ -87,7 +87,7 @@ export const EconomyPage = ({ nations, profile, userNation, onRefresh }) => {
                   </div>
                   <div style={{ marginTop:"0.75rem", paddingTop:"0.75rem", borderTop:"1px solid rgba(78,128,190,0.16)", display:"flex", justifyContent:"space-between" }}>
                     <span style={{ color:"#8fa0bd", fontSize:12 }}>Calculated GDP</span>
-                    <span style={{ color:"#d4af37", fontWeight:700, fontSize:15 }}>${(resources.gdp || 0).toLocaleString()}</span>
+                    <span style={{ color:"#d4af37", fontWeight:700, fontSize:15 }}>{fmtGDP(resources.gdp)}</span>
                   </div>
                 </div>
               )}

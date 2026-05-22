@@ -216,10 +216,10 @@ export const GameMechanicsPage = ({ navigate }) => {
             <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(78,128,190,0.2)", borderRadius:6, padding:"0.75rem 1rem" }}>
               <strong style={{ color:"#edf4ff", fontSize:13 }}>GDP (Display)</strong>
               <code style={{ display:"block", color:"#99dca7", fontSize:12, lineHeight:1.8, marginTop:"0.3rem" }}>
-                round(nominal_GDP_usd ÷ 1000)
+                round(nominal_GDP_usd)
               </code>
               <p style={{ color:"#9fb4d6", fontSize:11, lineHeight:1.6, margin:"0.3rem 0 0" }}>
-                Displayed in thousands of USD. Nominal GDP is calculated as population × 500 by default, or set manually by Lore Team.
+                Displayed in full USD with abbreviating suffixes (T/B/M). Nominal GDP is calculated as population × 500 by default, or set manually by Lore Team.
               </p>
             </div>
           </div>

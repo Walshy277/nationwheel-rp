@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { RichText } from "../lib/richText";
 import { card, mkBtn, inp, ta, timeAgo, isProfileBlocked, writeRoute } from "../lib/uiUtils";
-import { BOARD_ICONS } from "../lib/forumUtils";
+import { BOARD_ICONS, boardVisibility } from "../lib/forumUtils";
 import { FORUM_PAGE_SIZE } from "../lib/constants";
 import { Flag } from "../components/nation/Flag";
 import { ProfileButton } from "../components/profile/ProfileButton";
@@ -91,6 +91,11 @@ export const ForumsPage = ({ boards, route, onRouteChange, profile, userNation, 
     if (nextRoute.type === "board") {
       const board = boards.find(item => item.slug === nextRoute.boardSlug);
       if (!board) return;
+      const vis = boardVisibility(board);
+      if ((vis === "staff" || vis === "hidden") && !isMod) {
+        setForumError("Board not found.");
+        return;
+      }
       setView({ type:"board", board });
       setBoardThreads([]);
       loadBoardThreads(board);

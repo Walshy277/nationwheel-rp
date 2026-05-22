@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { BOARD_ICONS, FORUM_CATEGORIES, boardMeta, boardStatusLabel, boardVisibility } from "../lib/forumUtils";
+import { isLoreTeam } from "../lib/permissions";
 
 const visibilityTone = visibility => {
   if (visibility === "staff") return { color: "#8bd3ff", border: "rgba(52,152,219,0.38)" };
@@ -12,6 +13,8 @@ const visibilityTone = visibility => {
 const ForumIndex = ({ boards, profile, onSelectBoard, onRequireAuth, card, mkBtn, timeAgo }) => {
   const [collapsed, setCollapsed] = useState({});
 
+  const isStaff = isLoreTeam(profile);
+
   const grouped = useMemo(() => {
     const boardBySlug = Object.fromEntries(boards.map(board => [board.slug, board]));
     return FORUM_CATEGORIES.map(category => ({
@@ -19,9 +22,14 @@ const ForumIndex = ({ boards, profile, onSelectBoard, onRequireAuth, card, mkBtn
       boards: category.boards
         .map(slug => boardBySlug[slug])
         .filter(Boolean)
+        .filter(board => {
+          const vis = boardVisibility(board);
+          if (vis === "staff" || vis === "hidden") return isStaff;
+          return true;
+        })
         .sort((a, b) => (a.sort_order ?? boardMeta(a).sort ?? 0) - (b.sort_order ?? boardMeta(b).sort ?? 0)),
     })).filter(category => category.boards.length > 0);
-  }, [boards]);
+  }, [boards, isStaff]);
 
   return (
     <div className="forum-index">

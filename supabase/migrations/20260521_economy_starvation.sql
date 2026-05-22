@@ -65,7 +65,7 @@ begin
       v_min := greatest(5, round(lf * 8 * 1.0 + gf * 20))::int;
       v_ene := greatest(5, round(pf * 5 * 1.0 + gf * 15))::int;
       v_tech := greatest(1, round(pf * 3 * (coalesce(rec.hdi, 0.5) * 2) * 1.0))::int;
-      v_gdp := greatest(0, round(coalesce(rec.gdp_usd, 0) / 1000))::bigint;
+      v_gdp := greatest(0, round(coalesce(rec.gdp_usd, 0)))::bigint;
 
       insert into nation_resources (nation_id, food, minerals, energy, tech, manpower, gdp, updated_at)
       values (rec.id, v_food, v_min, v_ene, v_tech, v_man, v_gdp, now())
