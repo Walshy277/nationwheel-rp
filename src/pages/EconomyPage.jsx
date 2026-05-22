@@ -87,7 +87,7 @@ export const EconomyPage = ({ nations, profile, userNation, onRefresh }) => {
                   </div>
                   <div style={{ marginTop:"0.75rem", paddingTop:"0.75rem", borderTop:"1px solid rgba(78,128,190,0.16)", display:"flex", justifyContent:"space-between" }}>
                     <span style={{ color:"#8fa0bd", fontSize:12 }}>Calculated GDP</span>
-                    <span style={{ color:"#d4af37", fontWeight:700, fontSize:15 }}>{fmtGDP(resources.gdp)}</span>
+                    <span style={{ color:"#d4af37", fontWeight:700, fontSize:15 }}>{fmtGDP(userNation.gdp_usd || userNation.population * 500)}</span>
                   </div>
                 </div>
               )}

@@ -70,6 +70,8 @@ function match(text, table) {
   return 1.0;
 }
 
+function clamp(v, lo, hi) { return Math.min(Math.max(v, lo), hi); }
+
 export function calcNationResources(nation) {
   const pop = nation.population || 1;
   const gdp = nation.gdp_usd || Math.round(pop * 500);
@@ -79,17 +81,59 @@ export function calcNationResources(nation) {
   const gov = nation.government || "";
   const eco = nation.economy || "";
 
-  const PF = Math.sqrt(pop) / 100;
-  const LF = Math.sqrt(land) / 100;
-  const GF = Math.log10(gdp / 1e9 + 1);
-  const hdiAdj = 1 - (hdi - 0.5) * 0.15;
-  const hdiBonus = 1 + (hdi - 0.5) * 0.3;
+  // Normalised stat factors (0–1) using sqrt for wider spread
+  const popF = clamp(Math.sqrt(pop / 1e9), 0, 1);
+  const gdpF = clamp(Math.sqrt(gdp / 1e13), 0, 1);
+  const landF = clamp(Math.sqrt(land / 1e7), 0, 1);
+  const rankF = rank / 11;
+  const hdiF = hdi;
 
-  const manpower = Math.round(PF * 10 * match(gov, GOV_MULT) * (1 + rank * 0.08) * hdiAdj);
-  const food = Math.round(Math.max(0, LF * 10 * match(eco, ECO.food) * hdiBonus + GF * 30 - PF * 1.5));
-  const minerals = Math.round(Math.max(5, LF * 8 * match(eco, ECO.min) + GF * 20));
-  const energy = Math.round(Math.max(5, PF * 5 * match(eco, ECO.ene) + GF * 15));
-  const tech = Math.round(Math.max(1, PF * 3 * (hdi * 2) * match(eco, ECO.tech)));
+  // Government and economy multipliers
+  const govMult = match(gov, GOV_MULT);
+  const ecoFood = match(eco, ECO.food);
+  const ecoMin  = match(eco, ECO.min);
+  const ecoEne  = match(eco, ECO.ene);
+  const ecoTech = match(eco, ECO.tech);
+
+  const SCALE = 900000;
+
+  // Every resource considers: population, GDP, land, army rank, HDI, gov type, economy sector
+  // Primary driver for each resource is weighted most heavily.
+
+  const manpower = clamp(Math.round(popF * (
+    0.50 * govMult +
+    0.25 * rankF +
+    0.25 * (1 - hdiF)
+  ) * SCALE), 0, 999999);
+
+  const food = clamp(Math.round((
+    0.45 * landF * ecoFood +
+    0.20 * hdiF +
+    0.20 * gdpF +
+    0.15 * ecoFood -
+    0.10 * popF
+  ) * SCALE), 0, 999999);
+
+  const minerals = clamp(Math.round((
+    0.40 * landF * ecoMin +
+    0.30 * gdpF +
+    0.20 * ecoMin +
+    0.10 * popF
+  ) * SCALE), 0, 999999);
+
+  const energy = clamp(Math.round((
+    0.35 * popF * ecoEne +
+    0.30 * gdpF +
+    0.20 * ecoEne +
+    0.15 * landF
+  ) * SCALE), 0, 999999);
+
+  const tech = clamp(Math.round((
+    0.35 * hdiF * ecoTech +
+    0.25 * gdpF +
+    0.20 * ecoTech +
+    0.20 * popF
+  ) * SCALE), 0, 999999);
 
   return { manpower, food, minerals, energy, tech, gdp: Math.round(gdp) };
 }

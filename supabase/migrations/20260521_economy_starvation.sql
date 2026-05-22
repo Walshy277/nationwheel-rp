@@ -1,7 +1,185 @@
 -- Economy v3: starvation mechanics & recalculation RPC
 
+-- Economy sector substring matcher (mirrors JS match() in economy.js)
+create or replace function public.match_eco(eco_text text, resource_type text)
+returns numeric
+language plpgsql
+immutable
+as $$
+declare
+  v text := coalesce(lower(regexp_replace(eco_text, '[$,\d]', '', 'g')), '');
+begin
+  if resource_type = 'food' then
+    if v like '%agriculture%' then return 2.5; end if;
+    if v like '%ranching%' then return 2.0; end if;
+    if v like '%fish%' then return 2.0; end if;
+    if v like '%freshwater%' then return 2.0; end if;
+    if v like '%maritime%' then return 1.5; end if;
+    if v like '%textiles%' then return 1.5; end if;
+    if v like '%healthcare%' then return 0.8; end if;
+    if v like '%pharma%' then return 0.8; end if;
+    if v like '%biotech%' then return 0.8; end if;
+    if v like '%manufacturing%' then return 0.8; end if;
+    if v like '%energy%' then return 0.6; end if;
+    if v like '%oil%' then return 0.6; end if;
+    if v like '%minerals%' then return 0.6; end if;
+    if v like '%gems%' then return 0.6; end if;
+    if v like '%heavy industry%' then return 0.6; end if;
+    if v like '%surveillance%' then return 0.5; end if;
+    if v like '%tourism%' then return 0.5; end if;
+    if v like '%innovation%' then return 0.4; end if;
+    if v like '%tech%' then return 0.4; end if;
+    if v like '%robotics%' then return 0.4; end if;
+    if v like '%ai%' then return 0.4; end if;
+    if v like '%cybernetics%' then return 0.4; end if;
+    if v like '%cloning%' then return 0.3; end if;
+    if v like '%space%' then return 0.4; end if;
+    if v like '%finance%' then return 0.3; end if;
+    if v like '%shadow banking%' then return 0.3; end if;
+    if v like '%casinos%' then return 0.3; end if;
+    if v like '%crypto%' then return 0.3; end if;
+    if v like '%bank%' then return 0.3; end if;
+    if v like '%tax haven%' then return 0.3; end if;
+    if v like '%piracy%' then return 0.4; end if;
+    if v like '%black market%' then return 0.3; end if;
+    if v like '%church tax%' then return 0.8; end if;
+    if v like '%guilds%' then return 0.7; end if;
+    if v like '%monopolies%' then return 0.5; end if;
+    if v like '%ritual%' then return 0.5; end if;
+    if v like '%magic%' then return 0.5; end if;
+    if v like '%shamanic%' then return 0.5; end if;
+    return 1.0;
+  end if;
+  if resource_type = 'min' then
+    if v like '%minerals%' then return 2.5; end if;
+    if v like '%gems%' then return 2.5; end if;
+    if v like '%oil%' then return 2.5; end if;
+    if v like '%mining%' then return 2.5; end if;
+    if v like '%heavy industry%' then return 1.5; end if;
+    if v like '%manufacturing%' then return 1.5; end if;
+    if v like '%maritime%' then return 1.5; end if;
+    if v like '%surveillance%' then return 0.5; end if;
+    if v like '%cloning%' then return 1.0; end if;
+    if v like '%monopolies%' then return 1.2; end if;
+    if v like '%guilds%' then return 0.8; end if;
+    if v like '%space%' then return 0.8; end if;
+    if v like '%energy%' then return 0.8; end if;
+    if v like '%textiles%' then return 1.0; end if;
+    if v like '%tech%' then return 0.3; end if;
+    if v like '%innovation%' then return 0.3; end if;
+    if v like '%robotics%' then return 0.3; end if;
+    if v like '%ai%' then return 0.3; end if;
+    if v like '%cybernetics%' then return 0.3; end if;
+    if v like '%biotech%' then return 0.3; end if;
+    if v like '%pharma%' then return 0.3; end if;
+    if v like '%finance%' then return 0.2; end if;
+    if v like '%shadow banking%' then return 0.2; end if;
+    if v like '%casinos%' then return 0.2; end if;
+    if v like '%bank%' then return 0.2; end if;
+    if v like '%crypto%' then return 0.2; end if;
+    if v like '%tax haven%' then return 0.2; end if;
+    if v like '%piracy%' then return 0.5; end if;
+    if v like '%black market%' then return 0.5; end if;
+    if v like '%church tax%' then return 0.3; end if;
+    if v like '%tourism%' then return 0.3; end if;
+    if v like '%healthcare%' then return 0.3; end if;
+    if v like '%magic%' then return 0.3; end if;
+    if v like '%shamanic%' then return 0.3; end if;
+    if v like '%ritual%' then return 0.3; end if;
+    if v like '%agriculture%' then return 0.8; end if;
+    if v like '%ranching%' then return 0.8; end if;
+    if v like '%fish%' then return 0.8; end if;
+    if v like '%freshwater%' then return 0.5; end if;
+    return 1.0;
+  end if;
+  if resource_type = 'ene' then
+    if v like '%energy%' then return 2.5; end if;
+    if v like '%oil%' then return 2.5; end if;
+    if v like '%manufacturing%' then return 2.0; end if;
+    if v like '%heavy industry%' then return 2.0; end if;
+    if v like '%tech%' then return 1.5; end if;
+    if v like '%innovation%' then return 1.5; end if;
+    if v like '%robotics%' then return 1.5; end if;
+    if v like '%ai%' then return 1.5; end if;
+    if v like '%cybernetics%' then return 1.5; end if;
+    if v like '%biotech%' then return 1.5; end if;
+    if v like '%cloning%' then return 1.5; end if;
+    if v like '%maritime%' then return 1.5; end if;
+    if v like '%space%' then return 2.0; end if;
+    if v like '%monopolies%' then return 1.5; end if;
+    if v like '%gems%' then return 1.2; end if;
+    if v like '%minerals%' then return 1.2; end if;
+    if v like '%textiles%' then return 1.0; end if;
+    if v like '%healthcare%' then return 1.0; end if;
+    if v like '%pharma%' then return 1.0; end if;
+    if v like '%surveillance%' then return 1.2; end if;
+    if v like '%magic%' then return 1.0; end if;
+    if v like '%ritual%' then return 0.8; end if;
+    if v like '%shamanic%' then return 0.8; end if;
+    if v like '%agriculture%' then return 0.8; end if;
+    if v like '%ranching%' then return 0.8; end if;
+    if v like '%fish%' then return 0.8; end if;
+    if v like '%freshwater%' then return 0.8; end if;
+    if v like '%finance%' then return 0.5; end if;
+    if v like '%shadow banking%' then return 0.5; end if;
+    if v like '%casinos%' then return 0.5; end if;
+    if v like '%bank%' then return 0.5; end if;
+    if v like '%crypto%' then return 0.5; end if;
+    if v like '%tax haven%' then return 0.5; end if;
+    if v like '%piracy%' then return 0.7; end if;
+    if v like '%black market%' then return 0.7; end if;
+    if v like '%church tax%' then return 0.5; end if;
+    if v like '%guilds%' then return 0.8; end if;
+    if v like '%tourism%' then return 0.6; end if;
+    return 1.0;
+  end if;
+  if resource_type = 'tech' then
+    if v like '%tech%' then return 3.0; end if;
+    if v like '%innovation%' then return 3.0; end if;
+    if v like '%ai%' then return 3.0; end if;
+    if v like '%robotics%' then return 3.0; end if;
+    if v like '%cybernetics%' then return 3.0; end if;
+    if v like '%biotech%' then return 3.0; end if;
+    if v like '%cloning%' then return 3.0; end if;
+    if v like '%space%' then return 2.5; end if;
+    if v like '%surveillance%' then return 2.5; end if;
+    if v like '%finance%' then return 2.0; end if;
+    if v like '%shadow banking%' then return 2.0; end if;
+    if v like '%casinos%' then return 2.0; end if;
+    if v like '%bank%' then return 2.0; end if;
+    if v like '%crypto%' then return 2.0; end if;
+    if v like '%manufacturing%' then return 1.5; end if;
+    if v like '%heavy industry%' then return 1.5; end if;
+    if v like '%pharma%' then return 1.5; end if;
+    if v like '%healthcare%' then return 1.5; end if;
+    if v like '%monopolies%' then return 1.0; end if;
+    if v like '%guilds%' then return 1.0; end if;
+    if v like '%maritime%' then return 0.8; end if;
+    if v like '%energy%' then return 0.8; end if;
+    if v like '%piracy%' then return 0.6; end if;
+    if v like '%black market%' then return 0.8; end if;
+    if v like '%magic%' then return 0.5; end if;
+    if v like '%shamanic%' then return 0.3; end if;
+    if v like '%ritual%' then return 0.3; end if;
+    if v like '%agriculture%' then return 0.5; end if;
+    if v like '%ranching%' then return 0.5; end if;
+    if v like '%fish%' then return 0.5; end if;
+    if v like '%minerals%' then return 0.5; end if;
+    if v like '%gems%' then return 0.5; end if;
+    if v like '%oil%' then return 0.5; end if;
+    if v like '%textiles%' then return 0.5; end if;
+    if v like '%tourism%' then return 0.5; end if;
+    if v like '%tax haven%' then return 0.5; end if;
+    if v like '%church tax%' then return 0.3; end if;
+    if v like '%freshwater%' then return 0.3; end if;
+    return 1.0;
+  end if;
+  return 1.0;
+end;
+$$;
+
 -- Recalculate resources for all nations using v3 formula
--- This is a simplified SQL fallback; the primary recalculation runs from JS.
+-- Mirrors calcNationResources() in economy.js
 create or replace function public.recalculate_nation_resources()
 returns json
 language plpgsql
@@ -10,12 +188,17 @@ set search_path = public
 as $$
 declare
   rec record;
-  pf numeric;
-  lf numeric;
-  gf numeric;
-  hdi_adj numeric;
-  hdi_bonus numeric;
+  pop_f numeric;
+  gdp_f numeric;
+  land_f numeric;
+  rank_f numeric;
+  hdi_f numeric;
   gov_mult numeric;
+  eco_food numeric;
+  eco_min  numeric;
+  eco_ene  numeric;
+  eco_tech numeric;
+  scale constant numeric := 900000;
   v_man integer;
   v_food integer;
   v_min integer;
@@ -31,11 +214,11 @@ begin
 
   for rec in select * from nations loop
     begin
-      pf := sqrt(greatest(coalesce(rec.population, 1)::numeric, 1)) / 100.0;
-      lf := sqrt(greatest(coalesce(rec.land_km2, 1)::numeric, 1)) / 100.0;
-      gf := log10(greatest(coalesce(rec.gdp_usd, rec.population * 500)::numeric, 1) / 1e9 + 1);
-      hdi_adj := 1.0 - (coalesce(rec.hdi, 0.5) - 0.5) * 0.15;
-      hdi_bonus := 1.0 + (coalesce(rec.hdi, 0.5) - 0.5) * 0.3;
+      pop_f  := least(greatest(sqrt(coalesce(rec.population, 1)::numeric / 1e9), 0), 1);
+      gdp_f  := least(greatest(sqrt(coalesce(rec.gdp_usd, rec.population * 500)::numeric / 1e13), 0), 1);
+      land_f := least(greatest(sqrt(coalesce(rec.land_km2, 1)::numeric / 1e7), 0), 1);
+      rank_f := coalesce(rec.army_rank, 0)::numeric / 11.0;
+      hdi_f  := coalesce(rec.hdi, 0.5)::numeric;
 
       gov_mult := case lower(rec.government)
         when 'military dictatorship' then 2.0 when 'junta' then 2.0
@@ -60,11 +243,46 @@ begin
         else 1.0
       end;
 
-      v_man := round(pf * 10 * gov_mult * (1 + coalesce(rec.army_rank, 0) * 0.08) * hdi_adj)::int;
-      v_food := greatest(0, round(lf * 10 * 1.0 * hdi_bonus + gf * 30 - pf * 1.5))::int;
-      v_min := greatest(5, round(lf * 8 * 1.0 + gf * 20))::int;
-      v_ene := greatest(5, round(pf * 5 * 1.0 + gf * 15))::int;
-      v_tech := greatest(1, round(pf * 3 * (coalesce(rec.hdi, 0.5) * 2) * 1.0))::int;
+      eco_food := public.match_eco(rec.economy, 'food');
+      eco_min  := public.match_eco(rec.economy, 'min');
+      eco_ene  := public.match_eco(rec.economy, 'ene');
+      eco_tech := public.match_eco(rec.economy, 'tech');
+
+      v_man := least(greatest(round(pop_f * (
+        0.50 * gov_mult +
+        0.25 * rank_f +
+        0.25 * (1 - hdi_f)
+      ) * scale)::int, 0), 999999);
+
+      v_food := least(greatest(round((
+        0.45 * land_f * eco_food +
+        0.20 * hdi_f +
+        0.20 * gdp_f +
+        0.15 * eco_food -
+        0.10 * pop_f
+      ) * scale)::int, 0), 999999);
+
+      v_min := least(greatest(round((
+        0.40 * land_f * eco_min +
+        0.30 * gdp_f +
+        0.20 * eco_min +
+        0.10 * pop_f
+      ) * scale)::int, 0), 999999);
+
+      v_ene := least(greatest(round((
+        0.35 * pop_f * eco_ene +
+        0.30 * gdp_f +
+        0.20 * eco_ene +
+        0.15 * land_f
+      ) * scale)::int, 0), 999999);
+
+      v_tech := least(greatest(round((
+        0.35 * hdi_f * eco_tech +
+        0.25 * gdp_f +
+        0.20 * eco_tech +
+        0.20 * pop_f
+      ) * scale)::int, 0), 999999);
+
       v_gdp := greatest(0, round(coalesce(rec.gdp_usd, 0)))::bigint;
 
       insert into nation_resources (nation_id, food, minerals, energy, tech, manpower, gdp, updated_at)

@@ -155,15 +155,16 @@ export const GameMechanicsPage = ({ navigate }) => {
 
           <h4 style={{ margin:"1rem 0 0.5rem", fontFamily:"var(--display)", color:"#f6c132", fontSize:14 }}>Resource Formulas</h4>
           <p style={{ color:"#9fb4d6", fontSize:12, lineHeight:1.7, margin:"0 0 0.75rem" }}>
-            Every resource calculation starts from three fundamental factors derived from your nation's stats:
+            All resources are normalised to a 0–999,999 scale using sqrt-based factors and weighted contributions from every nation stat:
           </p>
           <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(78,128,190,0.2)", borderRadius:6, padding:"0.75rem 1rem", marginBottom:"0.75rem" }}>
             <code style={{ display:"block", color:"#99dca7", fontSize:12, lineHeight:1.8 }}>
-              PF = √population ÷ 100  &nbsp;(Population Factor)<br/>
-              LF = √land_km² ÷ 100  &nbsp;(Land Factor)<br/>
-              GF = log₁₀(GDP ÷ 1e9 + 1)  &nbsp;(GDP Factor)<br/>
-              hdiAdj = 1 − (HDI − 0.5) × 0.15  &nbsp;(HDI Adjustment)<br/>
-              hdiBonus = 1 + (HDI − 0.5) × 0.3  &nbsp;(HDI Bonus)
+              popF  = clamp(√(pop / 1e9), 0, 1)  &nbsp;(Population 0–1)<br/>
+              gdpF  = clamp(√(GDP / 1e13), 0, 1)  &nbsp;(GDP 0–1)<br/>
+              landF = clamp(√(land / 1e7), 0, 1)  &nbsp;(Land 0–1)<br/>
+              rankF = army_rank / 11  &nbsp;(Army Rank 0–1)<br/>
+              hdiF  = HDI (0–1)<br/>
+              SCALE = 900,000
             </code>
           </div>
 
@@ -171,46 +172,46 @@ export const GameMechanicsPage = ({ navigate }) => {
             <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(78,128,190,0.2)", borderRadius:6, padding:"0.75rem 1rem" }}>
               <strong style={{ color:"#edf4ff", fontSize:13 }}>Manpower</strong>
               <code style={{ display:"block", color:"#99dca7", fontSize:12, lineHeight:1.8, marginTop:"0.3rem" }}>
-                PF × 10 × GOV_MULT × (1 + army_rank × 0.08) × hdiAdj
+                popF × (0.5×GOV + 0.25×rankF + 0.25×(1−hdiF)) × SCALE
               </code>
               <p style={{ color:"#9fb4d6", fontSize:11, lineHeight:1.6, margin:"0.3rem 0 0" }}>
-                Affected by government type — militaristic regimes produce more manpower. Each army rank gives +8% bonus. Higher HDI reduces available manpower (fewer people available for conscription in developed nations).
+                Driven by population and government type. Militaristic regimes get a large boost. Army rank contributes and higher HDI slightly reduces available manpower.
               </p>
             </div>
             <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(78,128,190,0.2)", borderRadius:6, padding:"0.75rem 1rem" }}>
               <strong style={{ color:"#edf4ff", fontSize:13 }}>Food</strong>
               <code style={{ display:"block", color:"#99dca7", fontSize:12, lineHeight:1.8, marginTop:"0.3rem" }}>
-                max(0, LF × 10 × ECO_food × hdiBonus + GF × 30 − PF × 1.5)
+                (0.45×landF×ECO_f + 0.2×hdiF + 0.2×gdpF + 0.15×ECO_f − 0.1×popF) × SCALE
               </code>
               <p style={{ color:"#9fb4d6", fontSize:11, lineHeight:1.6, margin:"0.3rem 0 0" }}>
-                Agriculture-based economies produce more food. Higher HDI boosts food production. Each unit of population consumes 1.5 food — large populations require massive agricultural output to avoid starvation.
+                Land area is the primary driver, amplified by agriculture-focused economies. HDI and GDP provide secondary bonuses. Large populations impose a small penalty.
               </p>
             </div>
             <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(78,128,190,0.2)", borderRadius:6, padding:"0.75rem 1rem" }}>
               <strong style={{ color:"#edf4ff", fontSize:13 }}>Minerals</strong>
               <code style={{ display:"block", color:"#99dca7", fontSize:12, lineHeight:1.8, marginTop:"0.3rem" }}>
-                max(5, LF × 8 × ECO_min + GF × 20)
+                (0.4×landF×ECO_m + 0.3×gdpF + 0.2×ECO_m + 0.1×popF) × SCALE
               </code>
               <p style={{ color:"#9fb4d6", fontSize:11, lineHeight:1.6, margin:"0.3rem 0 0" }}>
-                Mining, heavy industry, and resource-extraction economies produce the most minerals. Minimum floor of 5 ensures every nation has some base output.
+                Land area multiplied by mining/extraction economy sectors drives mineral output. GDP reflects industrial capacity to process resources.
               </p>
             </div>
             <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(78,128,190,0.2)", borderRadius:6, padding:"0.75rem 1rem" }}>
               <strong style={{ color:"#edf4ff", fontSize:13 }}>Energy</strong>
               <code style={{ display:"block", color:"#99dca7", fontSize:12, lineHeight:1.8, marginTop:"0.3rem" }}>
-                max(5, PF × 5 × ECO_ene + GF × 15)
+                (0.35×popF×ECO_e + 0.3×gdpF + 0.2×ECO_e + 0.15×landF) × SCALE
               </code>
               <p style={{ color:"#9fb4d6", fontSize:11, lineHeight:1.6, margin:"0.3rem 0 0" }}>
-                Driven by population and industrial economy types. Manufacturing, energy sectors, and tech-heavy economies produce the most energy.
+                Population and industrial economy sectors (energy, manufacturing, heavy industry) are the main drivers. GDP reflects infrastructure for power generation.
               </p>
             </div>
             <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(78,128,190,0.2)", borderRadius:6, padding:"0.75rem 1rem" }}>
               <strong style={{ color:"#edf4ff", fontSize:13 }}>Tech</strong>
               <code style={{ display:"block", color:"#99dca7", fontSize:12, lineHeight:1.8, marginTop:"0.3rem" }}>
-                max(1, PF × 3 × HDI × 2 × ECO_tech)
+                (0.35×hdiF×ECO_t + 0.25×gdpF + 0.2×ECO_t + 0.2×popF) × SCALE
               </code>
               <p style={{ color:"#9fb4d6", fontSize:11, lineHeight:1.6, margin:"0.3rem 0 0" }}>
-                Heavily weighted by HDI — developed nations produce far more tech. Innovation, AI, robotics, and cybernetics economies lead in tech output.
+                HDI is the strongest factor with economy sector applying multiplicatively. Tech/innovation/AI economies produce the most research output.
               </p>
             </div>
             <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(78,128,190,0.2)", borderRadius:6, padding:"0.75rem 1rem" }}>
@@ -226,7 +227,7 @@ export const GameMechanicsPage = ({ navigate }) => {
 
           <h4 style={{ margin:"1rem 0 0.5rem", fontFamily:"var(--display)", color:"#f6c132", fontSize:14 }}>Government Type Multipliers</h4>
           <p style={{ color:"#9fb4d6", fontSize:12, lineHeight:1.7, margin:"0 0 0.5rem" }}>
-            Government type affects <strong style={{ color:"#edf4ff" }}>manpower production only</strong>. Militaristic regimes produce more manpower; decentralized or pacifist governments produce less.
+            Government type affects <strong style={{ color:"#edf4ff" }}>manpower production</strong> as a weighted input (50% weight). Militaristic regimes produce more manpower; decentralized or pacifist governments produce less.
           </p>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.35rem", marginBottom:"0.75rem", fontSize:12 }}>
             {[
